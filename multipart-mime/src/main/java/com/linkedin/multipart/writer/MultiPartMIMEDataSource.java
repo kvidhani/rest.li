@@ -15,12 +15,8 @@ public interface MultiPartMIMEDataSource {
    */
   void onInit(DataSourceHandle dataSourceHandle);
 
-  /**
-   */
   void onWritePossible();
 
-  /**
-   */
   void onAbort(Throwable e);
 
   /**

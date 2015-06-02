@@ -7,14 +7,12 @@ import com.linkedin.r2.message.streaming.WriteHandle;
 /**
  * Created by kvidhani on 5/19/15.
  */
-//todo update the interface to mention these new exceptions
 //todo update this for thread safety...perhaps with atomic references?
 //todo redo javadocs
 
 public class DataSourceHandleImpl implements DataSourceHandle
 {
   private final WriteHandle _writeHandle;
-  //todo how to make this configurable
   private HandleState _state;
 
   //Package private construction
@@ -44,7 +42,7 @@ public class DataSourceHandleImpl implements DataSourceHandle
       throw new IllegalStateException("This DataSourceHandle is closed");
     }
 
-    _state = HandleState.CLOSED; //TODO use atomic reference in case multiple threads deal with this?
+    _state = HandleState.CLOSED;
     _writeHandle.write(remainingData);
   }
 

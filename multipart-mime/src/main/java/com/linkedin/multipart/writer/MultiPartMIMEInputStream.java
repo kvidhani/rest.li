@@ -1,24 +1,20 @@
 package com.linkedin.multipart.writer;
 
-import com.google.common.collect.ImmutableMap;
 import com.linkedin.data.ByteString;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-//todo  java docs everywhere
 
 /**
  * Created by kvidhani on 5/18/15.
  */
+//todo  java docs everywhere
 //todo mention that this class closes the underlying input stream when either of the following happen:
 //1. The stream is finished being read
 //2. There was an exception reading the stream, so we then close the stream and call error on write handle
@@ -30,9 +26,10 @@ public final class MultiPartMIMEInputStream implements MultiPartMIMEDataSource {
   private final InputStream _inputStream;
   private boolean _dataSourceFinished = false; //since there is no way to see if an InputStream has already been closed
   private final ExecutorService _executorService;
-  private final long _maximumBlockingTime;
-  public static final long DEFAULT_MAXIMUM_BLOCKING_DURATION = 3000l;
-  public static final long DEFAULT_CHUNK_SIZE = 5000l;
+  private final int _maximumBlockingTime;
+  private final int _writeChunkSize;
+  public static final int DEFAULT_MAXIMUM_BLOCKING_DURATION = 3000;
+  public static final int DEFAULT_WRITE_CHUNK_SIZE = 5000;
 
   @Override
   public void onInit(final DataSourceHandle dataSourceHandle) {
@@ -46,7 +43,6 @@ public final class MultiPartMIMEInputStream implements MultiPartMIMEDataSource {
   public void onWritePossible() {
 
     //todo - is it worth checking to see if the input stream is already closed? Shouldn't really happen
-
     final CountDownLatch latch = new CountDownLatch(1);
 
     //We use two threads from the client provided thread pool. We must use this technique
@@ -95,7 +91,7 @@ public final class MultiPartMIMEInputStream implements MultiPartMIMEDataSource {
     public void run() {
 
       try {
-        byte[] bytes = new byte[_dataSourceHandle.capacity()];
+        byte[] bytes = new byte[_writeChunkSize];
         int bytesRead = _inputStream.read(bytes);
         //The number of bytes 'N' here could be the following:
         if (bytesRead == -1) {
@@ -103,8 +99,8 @@ public final class MultiPartMIMEInputStream implements MultiPartMIMEDataSource {
           //last read from the InputStream.
           _dataSourceFinished = true;
           _result = ByteString.empty();
-        } else if (bytesRead == _dataSourceHandle.capacity()) {
-          //2. N==Capacity. This signifies the most common case which is that we read as many bytes as we were told to read.
+        } else if (bytesRead == _writeChunkSize) {
+          //2. N==Capacity. This signifies the most common case which is that we read as many bytes as we originally desired
           _result = ByteString.copy(bytes);
         } else {
           //3. Capacity > N >= 0. This signifies that the input stream is wrapping up and we just got the last few bytes.
@@ -155,7 +151,8 @@ public final class MultiPartMIMEInputStream implements MultiPartMIMEDataSource {
               try {
                 _inputStream.close();
               } catch (IOException ioException) {
-                //todo can this exception be swallowed? Perhaps be logged?
+                //todo - still deciding on this
+                //Currently swallowing this exception
                 //An exception thrown when we try to close the InputStream should not really
                 //make its way down as an error...
               }
@@ -170,11 +167,12 @@ public final class MultiPartMIMEInputStream implements MultiPartMIMEDataSource {
             try {
               _inputStream.close();
             } catch (IOException ioException) {
-              //todo can this exception be swallowed? Perhaps be logged?
+              //todo - still deciding on this
+              //Currently swallowing this exception
               //An exception thrown when we try to close the InputStream should not really
               //make its way down as an error...
             }
-            //Now mark is it an error
+            //Now mark is it an error using the correct throwable
             _dataSourceHandle.error(_inputStreamReader._error);
           }
         } else {
@@ -184,7 +182,8 @@ public final class MultiPartMIMEInputStream implements MultiPartMIMEDataSource {
             //free up any threads blocked on the read()
             _inputStream.close();
           } catch (IOException ioException) {
-            //todo can this exception be swallowed? Perhaps be logged?
+            //todo - still deciding on this
+            //Currently swallowing this exception
           }
           _dataSourceHandle.error(new TimeoutException("InputStream reading timed out"));
         }
@@ -192,11 +191,11 @@ public final class MultiPartMIMEInputStream implements MultiPartMIMEDataSource {
 
         //If this thread interrupted, then we have no choice but to abort everything
         try {
-          //Close the input stream here since we won't be doing any more reading. This should also potentially
-          //free up any threads blocked on the read() if a TimeoutException took place.
+          //Close the input stream here since we won't be doing any more reading.
           _inputStream.close();
         } catch (IOException ioException) {
-          //todo can this exception be swallowed? Perhaps be logged?
+          //todo - still deciding on this
+          //Currently swallowing this exception
         }
         _dataSourceHandle.error(exception);
       }
@@ -206,48 +205,48 @@ public final class MultiPartMIMEInputStream implements MultiPartMIMEDataSource {
   /**
    * Create a new instance of a MultiPartMIMEInputStream that wraps the provided InputStream to
    * construct an individual multipart MIME part within the multipart MIME envelope.
-   * @param headers to be placed within this part
-   * @param inputStream to be used to read bytes
    */
-  //todo mention in java docs that the thread pool MUST have atleast two threads
-  public static MultiPartMIMEInputStream createMultiPartMIMEInputStream(final Map<String, String> headers,
-      final InputStream inputStream, final ExecutorService executorService) {
-    return createMultiPartMIMEInputStream(headers, inputStream, executorService, DEFAULT_MAXIMUM_BLOCKING_DURATION);
-  }
-
-  /**
-   * Create a new instance of a MultiPartMIMEInputStream that wraps the provided InputStream to
-   * construct an individual multipart MIME part within the multipart MIME envelope.
-   */
-  public static MultiPartMIMEInputStream createMultiPartMIMEInputStream(final Map<String, String> headers,
-      final InputStream inputStream, final ExecutorService executorService, final long maximumBlockingTime) {
-    return new MultiPartMIMEInputStream(headers, inputStream, executorService, maximumBlockingTime);
-  }
-
-
+  //todo do java docs and mention in java docs that the thread pool MUST have atleast two threads
   public static class Builder {
 
-    //USE A BUILDER_ REUSME HERE
-    public Builder appendMultiPartMIMEDataSource(final MultiPartMIMEDataSource dataSource) {
-      _dataSources.add(dataSource);
+    private final InputStream _inputStream;
+    private final ExecutorService _executorService;
+    private final Map<String, String> _headers;
+    private int _maximumBlockingTime = DEFAULT_MAXIMUM_BLOCKING_DURATION;
+    private int _writeChunkSize = DEFAULT_WRITE_CHUNK_SIZE;
+
+    //These are all required
+    public Builder(final InputStream inputStream, final ExecutorService executorService, final Map<String, String> headers) {
+      _inputStream = inputStream;
+      _executorService = executorService;
+      _headers = headers;
+    }
+
+    public Builder withMaximumBlockingTime(final int maximumBlockingTime) {
+      _maximumBlockingTime = maximumBlockingTime;
       return this;
     }
 
-    public MultiPartMIMEWriter build() {
-      return new MultiPartMIMEWriter(_dataSources);
+    public Builder withWriteChunkSize(final int writeChunkSize) {
+      _writeChunkSize = writeChunkSize;
+      return this;
+    }
+
+    public MultiPartMIMEInputStream build()
+    {
+      return new MultiPartMIMEInputStream(_inputStream, _executorService, _headers, _maximumBlockingTime, _writeChunkSize);
     }
   }
 
-
-
-  //Private construction due to the static factories. This also helps prevent subclassing since this class is
-  //not designed to be subclassed
-  private MultiPartMIMEInputStream(final Map<String, String> headers, final InputStream inputStream,
-      final ExecutorService executorService, long maximumBlockingTime) {
-    //todo defensive copy
-    _headers = new HashMap<String, String>(headers);
+  //Private construction due to the builder
+  private MultiPartMIMEInputStream(final InputStream inputStream, final ExecutorService executorService,
+                                   final Map<String, String> headers, final int maximumBlockingTime,
+                                   final int writeChunkSize)
+  {
     _inputStream = inputStream;
     _executorService = executorService;
+    _headers = new HashMap<String, String>(headers); //defensive copy
     _maximumBlockingTime = maximumBlockingTime;
+    _writeChunkSize = writeChunkSize;
   }
 }
