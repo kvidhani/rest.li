@@ -14,13 +14,17 @@ import java.util.concurrent.TimeoutException;
 /**
  * Created by kvidhani on 5/18/15.
  */
-//todo  java docs everywhere
-//todo mention that this class closes the underlying input stream when either of the following happen:
+//Todo - Javadocs
+//Mention that this class closes the underlying input stream when either of the following happen:
 //1. The stream is finished being read
 //2. There was an exception reading the stream, so we then close the stream and call error on write handle
 //3. The write was aborted, in which case we also close the stream.
 
-public final class MultiPartMIMEInputStream implements MultiPartMIMEDataSource {
+public final class MultiPartMIMEInputStream implements MultiPartMIMEDataSource
+{
+  public static final int DEFAULT_MAXIMUM_BLOCKING_DURATION = 3000;
+  public static final int DEFAULT_WRITE_CHUNK_SIZE = 5000;
+
   private DataSourceHandle _dataSourceHandle;
   private final Map<String, String> _headers;
   private final InputStream _inputStream;
@@ -28,21 +32,16 @@ public final class MultiPartMIMEInputStream implements MultiPartMIMEDataSource {
   private final ExecutorService _executorService;
   private final int _maximumBlockingTime;
   private final int _writeChunkSize;
-  public static final int DEFAULT_MAXIMUM_BLOCKING_DURATION = 3000;
-  public static final int DEFAULT_WRITE_CHUNK_SIZE = 5000;
 
   @Override
-  public void onInit(final DataSourceHandle dataSourceHandle) {
-    //todo should we check to see if this was not null? This would be a potential bug...
+  public void onInit(final DataSourceHandle dataSourceHandle)
+  {
     _dataSourceHandle = dataSourceHandle;
   }
 
-  //todo mention in java docs that application developers MUST make sure that the input stream that they
-  //provided can read as many bytes as requested out, otherwise they risk a premature call to onDone() called
   @Override
   public void onWritePossible() {
 
-    //todo - is it worth checking to see if the input stream is already closed? Shouldn't really happen
     final CountDownLatch latch = new CountDownLatch(1);
 
     //We use two threads from the client provided thread pool. We must use this technique
@@ -72,7 +71,7 @@ public final class MultiPartMIMEInputStream implements MultiPartMIMEDataSource {
     try {
       _inputStream.close();
     } catch (IOException ioException) {
-      //todo can this exception be swallowed? Perhaps be logged?
+      //This can safely be swallowed
     }
   }
 
@@ -151,8 +150,7 @@ public final class MultiPartMIMEInputStream implements MultiPartMIMEDataSource {
               try {
                 _inputStream.close();
               } catch (IOException ioException) {
-                //todo - still deciding on this
-                //Currently swallowing this exception
+                //Safe to swallow
                 //An exception thrown when we try to close the InputStream should not really
                 //make its way down as an error...
               }
@@ -167,8 +165,7 @@ public final class MultiPartMIMEInputStream implements MultiPartMIMEDataSource {
             try {
               _inputStream.close();
             } catch (IOException ioException) {
-              //todo - still deciding on this
-              //Currently swallowing this exception
+              //Safe to swallow
               //An exception thrown when we try to close the InputStream should not really
               //make its way down as an error...
             }
@@ -182,8 +179,7 @@ public final class MultiPartMIMEInputStream implements MultiPartMIMEDataSource {
             //free up any threads blocked on the read()
             _inputStream.close();
           } catch (IOException ioException) {
-            //todo - still deciding on this
-            //Currently swallowing this exception
+            //Safe to swallow
           }
           _dataSourceHandle.error(new TimeoutException("InputStream reading timed out"));
         }
@@ -194,8 +190,7 @@ public final class MultiPartMIMEInputStream implements MultiPartMIMEDataSource {
           //Close the input stream here since we won't be doing any more reading.
           _inputStream.close();
         } catch (IOException ioException) {
-          //todo - still deciding on this
-          //Currently swallowing this exception
+          //Safe to swallow
         }
         _dataSourceHandle.error(exception);
       }

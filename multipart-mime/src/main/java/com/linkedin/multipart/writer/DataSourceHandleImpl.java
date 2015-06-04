@@ -13,12 +13,14 @@ import com.linkedin.r2.message.streaming.WriteHandle;
 public class DataSourceHandleImpl implements DataSourceHandle
 {
   private final WriteHandle _writeHandle;
+  private final MultiPartMIMEWriter _writer;
   private HandleState _state;
 
   //Package private construction
-  DataSourceHandleImpl(final WriteHandle writeHandle)
+  DataSourceHandleImpl(final WriteHandle writeHandle, final MultiPartMIMEWriter writer)
   {
     _writeHandle = writeHandle;
+    _writer = writer;
     _state = HandleState.ACTIVE;
   }
 
@@ -34,24 +36,26 @@ public class DataSourceHandleImpl implements DataSourceHandle
   }
 
   @Override
-  public void done(ByteString remainingData) throws IllegalStateException, IllegalArgumentException
+  public void done(ByteString remainingData) throws IllegalStateException
   {
-    //todo consider moving validation to a single method
     if(_state == HandleState.CLOSED)
     {
       throw new IllegalStateException("This DataSourceHandle is closed");
     }
 
     _state = HandleState.CLOSED;
+    //We first transition the data source. Otherwise if we write first, then a new call to onWritePossible() could
+    //occur in the writer inside of MultiPartMIMEWriter before our transition finishes.
+    _writer.currentDataSourceFinished();
     _writeHandle.write(remainingData);
   }
 
   @Override
-  public void error(Throwable throwable)  throws IllegalStateException
+  public void error(Throwable throwable)
   {
-    //todo - ask Zhenkai if its safe to do this over and over
     _state = HandleState.CLOSED;
     _writeHandle.error(throwable);
+    _writer.abortAllDataSources(throwable); //If this data source has encountered an error
+    //everyone else in front of them needs to know
   }
-
 }
