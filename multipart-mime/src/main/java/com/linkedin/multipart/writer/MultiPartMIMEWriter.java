@@ -1,6 +1,7 @@
 package com.linkedin.multipart.writer;
 
 import com.linkedin.data.ByteString;
+import com.linkedin.r2.message.rest.RestResponseBuilder;
 import com.linkedin.r2.message.streaming.EntityStream;
 import com.linkedin.r2.message.streaming.EntityStreams;
 import com.linkedin.r2.message.streaming.WriteHandle;
