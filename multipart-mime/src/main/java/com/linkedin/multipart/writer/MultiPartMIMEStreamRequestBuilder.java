@@ -1,5 +1,6 @@
 package com.linkedin.multipart.writer;
 
+import com.linkedin.multipart.MultiPartMIMEUtils;
 import com.linkedin.r2.message.rest.StreamRequest;
 import com.linkedin.r2.message.rest.StreamRequestBuilder;
 import java.net.URI;
@@ -32,7 +33,8 @@ public final class MultiPartMIMEStreamRequestBuilder {
 
   //If the client manually placed a content type header, this will override it
   public StreamRequest build() {
-    final String contentTypeHeader = MultiPartMIMEUtils.buildContentTypeHeader(_mimeType, _boundary, _contentTypeParameters);
+    final String contentTypeHeader = MultiPartMIMEUtils
+        .buildContentTypeHeader(_mimeType, _boundary, _contentTypeParameters);
     _streamRequestBuilder.addHeaderValue(MultiPartMIMEUtils.CONTENT_TYPE_HEADER, contentTypeHeader);
     return _streamRequestBuilder.build(_writer.getEntityStream());
   }

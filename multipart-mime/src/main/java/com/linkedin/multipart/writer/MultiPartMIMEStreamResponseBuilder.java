@@ -1,5 +1,6 @@
 package com.linkedin.multipart.writer;
 
+import com.linkedin.multipart.MultiPartMIMEUtils;
 import com.linkedin.r2.message.rest.StreamResponse;
 import com.linkedin.r2.message.rest.StreamResponseBuilder;
 import java.util.List;
@@ -31,7 +32,8 @@ public class MultiPartMIMEStreamResponseBuilder {
 
   //Delegate
   public StreamResponse build() {
-    final String contentTypeHeader = MultiPartMIMEUtils.buildContentTypeHeader(_mimeType, _boundary, _contentTypeParameters);
+    final String contentTypeHeader = MultiPartMIMEUtils
+        .buildContentTypeHeader(_mimeType, _boundary, _contentTypeParameters);
     _streamResponseBuilder.addHeaderValue(MultiPartMIMEUtils.CONTENT_TYPE_HEADER, contentTypeHeader);
     return _streamResponseBuilder.build(_writer.getEntityStream());
   }

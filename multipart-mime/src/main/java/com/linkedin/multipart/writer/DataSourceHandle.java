@@ -7,7 +7,7 @@ import com.linkedin.data.ByteString;
  * Created by kvidhani on 5/18/15.
  */
 //todo redo javadocs
-interface DataSourceHandle {
+public interface DataSourceHandle {
 
   /**
    * This writes data out from the data source.
