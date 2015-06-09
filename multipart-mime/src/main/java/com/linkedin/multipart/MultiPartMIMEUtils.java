@@ -2,6 +2,8 @@ package com.linkedin.multipart;
 
 import com.linkedin.data.ByteString;
 import java.nio.charset.Charset;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.TreeMap;
@@ -17,6 +19,15 @@ public class MultiPartMIMEUtils {
   public static final String MULTIPART_PREFIX = "multipart/";
   public static final String BOUNDARY_PARAMETER = "boundary";
   public static final byte[] CRLF = "\r\n".getBytes();
+  public static final List<Byte> CRLF_BYTE_LIST = new ArrayList<Byte>();
+  public static final byte[] CONSECUTIVE_CRLFS = "\r\n\r\n".getBytes();
+  public static final List<Byte> CONSECUTIVE_CRLFS_BYTE_LIST = new ArrayList<Byte>();
+  static {
+    for (final byte b : CONSECUTIVE_CRLFS) {
+      CONSECUTIVE_CRLFS_BYTE_LIST.add(b);
+    }
+  }
+
   private static final char[] MULTIPART_CHARS =
       "-_1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ".toCharArray();
 
@@ -71,6 +82,7 @@ public class MultiPartMIMEUtils {
     return contentTypeBuilder.toString();
   }
 
+  //todo we can only do so much validation, we need javadocs to mention we make some assumptions
   public static String extractBoundary(final String contentTypeHeader) throws IllegalArgumentException
   {
     if(!contentTypeHeader.contains(";"))
@@ -96,12 +108,14 @@ public class MultiPartMIMEUtils {
       parameterMap.put(parameterKey, parameterKeyValue[1].trim());
     }
 
+    //todo handle boundary parameters in quotes
     final String boundaryValue = parameterMap.get(BOUNDARY_PARAMETER);
 
     if (boundaryValue == null) {
       throw new IllegalArgumentException("No boundary parameter found!");
     }
 
+    return boundaryValue;
 
   }
 }
