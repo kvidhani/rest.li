@@ -39,138 +39,167 @@ public class MultiPartMIMEReader {
   private class R2MultiPartMimeReader implements Reader {
     private ReadHandle _rh;
     private List<Byte> _byteList = new ArrayList<Byte>();
+    private String _preamble;
+
     private final String _boundary;
     private final String _finishingBoundary;
     private final List<Byte> _boundaryBytes = new ArrayList<Byte>();
     private final List<Byte> _finishingBoundaryBytes = new ArrayList<Byte>();
 
-    private int _mostRecentBoundaryStartingIndex = -1;
     private ReadState _readState = ReadState.READING_PREAMBLE;
     private SinglePartMIMEReader _currentSinglePartMIMEReader;
-    private int _numPartsToNotify;
+    private boolean _readerReady;
 
     @Override
     public void onInit(ReadHandle rh) {
       _rh = rh;
-      //start the reading process
+      //start the reading process since the top level callback has been bound
       //todo figure out how to tune this and what makes sense
-      _rh.request(15);
+      _rh.request(5);
+    }
+
+    private void signalR2Reader() {
+      if(_currentSinglePartMIMEReader._isFinished) {
+        _currentSinglePartMIMEReader._callback.onFinished();
+      }
+
+      //Drive data with a refresh
+      onDataAvailable(ByteString.empty());
     }
 
     //todo consider malformed bodies of all sorts! premature onDone()? You bet!
-    //todo consider no parts, or just one part
-    //todo max header limit
+    //todo consider no parts, or just one part, or even just one tiny part that is empty
+    //todo max header limit - open JIRA
+    //todo when using sublist, keep in mind that it will prevent garbage collection of parent list
     @Override
     public void onDataAvailable(ByteString data) {
 
-      if (_readState == ReadState.READING_PREAMBLE) {
+      //todo check to see if things are done
 
-        //Read the data in locally into our buffer
-        appendByteStringToList(data);
+      //We buffer forward a bit if we are out of data or if the data we have is the size of the boundary
+      //This is to cover the case where a client asks for data but we have ONLY the boundary in buffer
+      //which would then lead us to giving the client empty data when we call onPartDataAvailable().
+      if (_byteList.size() <= _boundaryBytes.size()) {
+        _rh.request(1);
+        return;
+      }
+
+      //All operations will require us to buffer
+      appendByteStringToList(data);
+
+      if (_readState == ReadState.READING_PREAMBLE) {
 
         //todo improve this, this is n^2 - Consider using Google guava Bytes.indexof
         int tempLookup = Collections.indexOfSubList(_byteList, _boundaryBytes);
         if (tempLookup > -1) {
-          _mostRecentBoundaryStartingIndex = tempLookup;
-          _readState = ReadState.READING_HEADER;
+          final List<Byte> preambleBytes = _byteList.subList(0, tempLookup);
+          _preamble = new String(ArrayUtils.toPrimitive((Byte[]) preambleBytes.toArray()));
+          _byteList = _byteList.subList(tempLookup, _byteList.size());
+          _readState = ReadState.PART_READING;
         } else {
           _rh.request(1);
           return;
         }
-        //todo store the preamble?
       }
 
-      if(_readState == ReadState.READING_HEADER) {
-        //Now read until we have all the headers. Headers may or may not exist. According to the RFC:
-        //If the headers do not exist, we will see two CRLFs one after another.
-        //If atleast one header does exist, we will see the headers followed by two CRLFs
-        //Essentially we are looking for the first occurrence of two CRLFs after we see the boundary.
+      if (_readState == ReadState.PART_READING) {
+        //todo improve this begins with
+        final int boundaryIndex = Collections.indexOfSubList(_byteList, _boundaryBytes);
 
-        //We need to make sure we can look ahead a bit here first
-        final int boundaryEnding = _mostRecentBoundaryStartingIndex + _boundaryBytes.size();
-        if ((boundaryEnding + MultiPartMIMEUtils.CONSECUTIVE_CRLFS_BYTE_LIST.size()) > _byteList.size()) {
-          _rh.request(1);
+        if (boundaryIndex == 0) { //buffer begins with boundary
+
+          //Close the current single part reader (except if this is the first boundary)
+          if (_currentSinglePartMIMEReader != null) {
+            _currentSinglePartMIMEReader._callback.onFinished();
+            _currentSinglePartMIMEReader._isFinished = true;
+            //we will now move on to notify the reader of the next part
+          }
+
+          //Now read until we have all the headers. Headers may or may not exist. According to the RFC:
+          //If the headers do not exist, we will see two CRLFs one after another.
+          //If atleast one header does exist, we will see the headers followed by two CRLFs
+          //Essentially we are looking for the first occurrence of two CRLFs after we see the boundary.
+
+          //We need to make sure we can look ahead a bit here first
+          final int boundaryEnding = boundaryIndex + _boundaryBytes.size();
+          if ((boundaryEnding + MultiPartMIMEUtils.CONSECUTIVE_CRLFS_BYTE_LIST.size()) > _byteList.size()) {
+            _rh.request(1);
+            return;
+          }
+
+          //Now determine the existence of headers
+          final List<Byte> possibleHeaderArea = _byteList.subList(boundaryEnding, _byteList.size());
+          final int headerEnding =
+              Collections.indexOfSubList(possibleHeaderArea, MultiPartMIMEUtils.CONSECUTIVE_CRLFS_BYTE_LIST);
+          if (headerEnding == -1) {
+            _rh.request(1);
+            return;
+          }
+
+          //Now we found the end. Let's make a window into the header area.
+          final List<Byte> headerByteSubList = _byteList.subList(boundaryEnding, headerEnding);
+
+          final Map<String, String> headers;
+          if (headerByteSubList.equals(MultiPartMIMEUtils.CONSECUTIVE_CRLFS_BYTE_LIST)) {
+            //we have no headers
+            headers = Collections.emptyMap();
+          } else {
+            headers = new HashMap<String, String>();
+            //We have headers, lets read them in - we search using a sliding window
+            int currentHeaderStart = 0;
+            for (int i = 0; i < headerByteSubList.size() - MultiPartMIMEUtils.CRLF_BYTE_LIST.size(); i++) {
+              final List<Byte> currentWindow = headerByteSubList.subList(i, MultiPartMIMEUtils.CRLF_BYTE_LIST.size());
+              if (currentWindow.equals(MultiPartMIMEUtils.CRLF_BYTE_LIST)) {
+                //We found the end of a header. This means that from currentHeaderStart until i we have a header
+                final List<Byte> currentHeaderBytes = headerByteSubList.subList(currentHeaderStart, i);
+                final byte[] headerBytes = ArrayUtils.toPrimitive((Byte[]) currentHeaderBytes.toArray());
+                final String header = new String(headerBytes);
+                final int colonIndex = header.indexOf(":");
+                headers.put(header.substring(0, colonIndex), header.substring(colonIndex, header.length()));
+                currentHeaderStart = i + MultiPartMIMEUtils.CRLF_BYTE_LIST.size();
+              }
+            }
+          }
+
+          //At this point we have actual part data starting from headerEnding going forward
+          //which means we can dump everything else beforehand
+          _byteList = _byteList.subList(headerEnding, _byteList.size());
+
+          //Notify the callback that we have a new part
+          _currentSinglePartMIMEReader = new SinglePartMIMEReader(headers);
+          _clientCallback.onNewPart(_currentSinglePartMIMEReader);
           return;
-        }
-
-        //Now determine the existence of headers
-        final List<Byte> possibleHeaderArea = _byteList.subList(boundaryEnding, _byteList.size());
-        final int headerEnding = Collections.indexOfSubList(possibleHeaderArea, MultiPartMIMEUtils.CONSECUTIVE_CRLFS_BYTE_LIST);
-        if (headerEnding == -1) {
-          _rh.request(1);
-          return;
-        }
-
-        //Now we found the end
-        final List<Byte> headerByteSubList = _byteList.subList(boundaryEnding, headerEnding);
-
-        final Map<String, String> headers;
-        if (headerByteSubList.equals(MultiPartMIMEUtils.CONSECUTIVE_CRLFS_BYTE_LIST)) {
-          //we have no headers
-          headers = Collections.emptyMap();
         } else {
-          headers = new HashMap<String, String>();
-          //We have headers, lets read them in - we search using a sliding window
-          int currentHeaderStart = 0;
-          for (int i = 0; i < headerByteSubList.size() - MultiPartMIMEUtils.CRLF_BYTE_LIST.size(); i++) {
-            final List<Byte> currentWindow = headerByteSubList.subList(i, MultiPartMIMEUtils.CRLF_BYTE_LIST.size());
-            if (currentWindow.equals(MultiPartMIMEUtils.CRLF_BYTE_LIST)) {
-              //We found the end of a header. This means that from currentHeaderStart until i we have a header
-              final List<Byte> currentHeaderBytes = headerByteSubList.subList(currentHeaderStart, i);
-              final byte[] headerBytes = ArrayUtils.toPrimitive((Byte[]) currentHeaderBytes.toArray());
-              final String header = new String(headerBytes);
-              final int colonIndex = header.indexOf(":");
-              headers.put(header.substring(0, colonIndex), header.substring(colonIndex, header.length()));
-              currentHeaderStart = i + MultiPartMIMEUtils.CRLF_BYTE_LIST.size();
+          //buffer does not begin with boundary
+
+          //we only proceed forward if the reader is ready - otherwise we won't have a current single part reader
+          //to notify. In such a case we just return and move on (we already read into the buffer)
+          //since the reader can then drive the flow of future data
+          if (_readerReady) {
+            if (boundaryIndex > -1) {
+              //boundary is in buffer
+              final List<Byte> useableBytes = _byteList.subList(0, boundaryIndex);
+              _byteList = _byteList.subList(boundaryIndex, _byteList.size());
+              _currentSinglePartMIMEReader._callback
+                  .onPartDataAvailable(ByteString.copy(ArrayUtils.toPrimitive((Byte[]) useableBytes.toArray())));
+              _readerReady = false;
+              _rh.request(1); //this will call finish on this part and then create the subsequent part (if applicable)
+            } else {
+              //It doesn't exist here, so let's drain the buffer.
+              //Note that we can't fully drain the buffer because the end of the buffer may include the beginning of the boundary
+              //Therefore we grab the whole buffer but we leave the last boundaryBytes.size() number of bytes.
+              //This is so that we are guaranteed that future appends to the _byteList will result in atleast one
+              //byte available for further processing before the boundary is reached.
+              //todo think about this one more time, then do done, then do abort
+              final List<Byte> useableBytes = _byteList.subList(0, _byteList.size() - _boundaryBytes.size());
+              _byteList = _byteList.subList(_byteList.size() - _boundaryBytes.size(), _byteList.size());
+              _currentSinglePartMIMEReader._callback
+                  .onPartDataAvailable(ByteString.copy(ArrayUtils.toPrimitive((Byte[]) useableBytes.toArray())));
+              _readerReady = false;
             }
           }
         }
-
-        //At this point we have actual part data starting from headerEnding going forward
-        //which means we can dump everything else beforehand
-        _byteList = _byteList.subList(headerEnding, _byteList.size());
-
-        //Notify the callback that we have a new part
-        _currentSinglePartMIMEReader = new SinglePartMIMEReader(headers);
-        _clientCallback.onNewPart(_currentSinglePartMIMEReader);
-        _readState = ReadState.IDLE;
-        return;
       }
-
-      if (_readState == ReadState.IDLE) {
-        //Just populate our buffer. We are just picking up any potential straggling onDataAvailable()s at this point.
-        appendByteStringToList(data);
-        return;
-      }
-
-      if (_readState == ReadState.NOTIFY_PART) {
-
-        //We have to scan and make sure there is no boundary on this part.
-        //This includes any boundary that is formed by concatenating with the current buffer
-
-        final List<Byte> incomingByteList = new ArrayList<Byte>();
-        for (final byte b : data.copyBytes()) {
-          incomingByteList.add(b);
-        }
-
-        final List<Byte> tempConcatenation = new ArrayList<Byte>();
-        tempConcatenation.addAll(_byteList);
-        tempConcatenation.addAll(incomingByteList);
-
-        if(Collections.indexOfSubList(incomingByteList, _boundaryBytes) == -1) {
-          _currentSinglePartMIMEReader._callback.onPartDataAvailable(data);
-        }
-
-        //todo what if we already had a bit of it and then we got more?
-
-      }
-
-
-
-      //buffer/parse data and call the client supplied callback(s)
-      //_buffer.write(data.copyBytes());
-      //when do we reset?
-
     }
 
     @Override
@@ -205,16 +234,18 @@ public class MultiPartMIMEReader {
         _finishingBoundaryBytes.add(b); //safe to assume charset?
       }
     }
-
   }
 
   private enum ReadState {
     READING_PREAMBLE,
+    PART_READING,
+    ABORTING,
+    READING_EPILOGUE,
+    DONE,
+    //not needed:
     READING_HEADER,
     IDLE,
     NOTIFY_PART,
-    READING_EPILOGUE,
-    DONE
   }
 
   public static MultiPartMIMEReader createAndAcquireStream(final StreamRequest request,
@@ -270,6 +301,7 @@ public class MultiPartMIMEReader {
     private final Map<String, String> _headers;
     private SinglePartMIMEReaderCallback _callback = null;
     private final R2MultiPartMimeReader _r2MultiPartMimeReader;
+    private boolean _isFinished = false;
 
     //Only MultiPartMIMEReader should ever create an instance
     private SinglePartMIMEReader(Map<String, String> headers) {
@@ -308,29 +340,24 @@ public class MultiPartMIMEReader {
     //onCurrentPartSuccessfullyFinished() again.
     //6. Since this is async and we do not allow request queueing, repetitive calls will
     //result in StreamBusyException
-    public void requestPartData(int numParts)
+    //todo - consider allowing multiple parts
+    //todo - We would then have to serially provide all of them one after another
+    public void requestPartData()
         throws IllegalArgumentException, PartNotInitializedException, StreamBusyException {
-
-      if (numParts == 5000) { //todo configure
-        throw new IllegalArgumentException("Excessive parts requested");
-      }
 
       if (_callback == null) {
         throw new PartNotInitializedException();
       }
 
-      if(_r2MultiPartMimeReader._readState == ReadState.NOTIFY_PART) {
+      if (_r2MultiPartMimeReader._readState == ReadState.NOTIFY_PART) {
         //already busy fulfilling requests
         throw new StreamBusyException();
       }
 
-      //At this stage, since the r2 reader has read in all the headers before invoking onNewPart() on the top level
-      //callback, the ReadState here must be IDLE. //todo is this true?
-      _r2MultiPartMimeReader._readState = ReadState.NOTIFY_PART;
-      _r2MultiPartMimeReader._numPartsToNotify = numParts;
+      _r2MultiPartMimeReader._readerReady = true;
       //We can't request more data on behalf of the r2 reader, but we can refresh our current status and signal
       //the reader
-      _r2MultiPartMimeReader.onDataAvailable(ByteString.empty());
+      _r2MultiPartMimeReader.signalR2Reader();
     }
 
     //Abandon the current part.
