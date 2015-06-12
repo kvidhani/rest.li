@@ -1,0 +1,11 @@
+apply plugin: 'java'
+
+dependencies {
+  compile project(':r2')
+  testCompile project(':r2-int-test')
+  testCompile externalDependency.testng
+  testCompile externalDependency.mail
+  testCompile externalDependency.easymock
+  testCompile externalDependency.mockito
+  testCompile externalDependency.guava
+}
