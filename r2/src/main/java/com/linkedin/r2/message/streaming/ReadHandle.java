@@ -13,4 +13,6 @@ public interface ReadHandle
    * @param n the additional number of data chunks that the writer is permitted to write
    */
   void request(int n);
+
+  void onCancel(Throwable throwable);
 }

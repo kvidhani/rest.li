@@ -7,8 +7,8 @@ import java.io.ByteArrayOutputStream;
  */
 public class ReadableByteArrayOuputStream extends ByteArrayOutputStream {
 
-    public boolean containsByteArray(byte[] subArray) {
-
-    }
+    //public boolean containsByteArray(byte[] subArray) {
+      //  return null;
+    //}
 
 }
