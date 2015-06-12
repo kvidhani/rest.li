@@ -470,7 +470,7 @@ public class MultiPartMIMEReader {
       }
       //This should always be non-null
       _clientCallback.onStreamError(e);
-      _readState = ReadState.READER_DONE
+      _readState = ReadState.READER_DONE;
     }
 
     private void appendByteStringToBuffer(final ByteString byteString) {
