@@ -63,7 +63,7 @@ public class MultiPartMIMEReader {
           callable.call();
         } catch (Exception e) {
           //All exceptions caught here should put the reader in a non-usable state.
-          _rh.onCancel(e);
+          _rh.cancel(e);
           _readState = ReadState.READER_DONE;
         }
       }
@@ -713,8 +713,9 @@ public class MultiPartMIMEReader {
   //2. If the stream is finished, subsequent calls will throw StreamFinishedException
   //3. Since this is async and we do not allow request queueing, repetitive calls will
   //result in StreamBusyException.
+  //todo is this the right thing to do? rethink exception handling and how errors will work in all cases
   //4. If this MultiPartMIMEReader was created without a callback, and none has been registered yet
-  //then a call to abanonAllParts() will result in a ReaderNotInitializedException.
+  //then a call to abanonAllParts() will not notify on completion.
   void abandonAllParts()
       throws StreamBusyException, StreamFinishedException, ReaderNotInitializedException {
 
