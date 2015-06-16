@@ -28,7 +28,7 @@ public class MimeReaderCallables {
     }
   }
 
-  static class onFinishedCallable implements Callable<Void> {
+  static class onPartFinishedCallable implements Callable<Void> {
 
     final SinglePartMIMEReaderCallback _singlePartMIMEReaderCallback;
     @Override
@@ -37,12 +37,12 @@ public class MimeReaderCallables {
       return null; //This is ignored.
     }
 
-    onFinishedCallable(final SinglePartMIMEReaderCallback singlePartMIMEReaderCallback) {
+    onPartFinishedCallable(final SinglePartMIMEReaderCallback singlePartMIMEReaderCallback) {
       _singlePartMIMEReaderCallback = singlePartMIMEReaderCallback;
     }
   }
 
-  static class onAbandonedCallable implements Callable<Void> {
+  static class onPartAbandonedCallable implements Callable<Void> {
 
     final SinglePartMIMEReaderCallback _singlePartMIMEReaderCallback;
     @Override
@@ -51,7 +51,7 @@ public class MimeReaderCallables {
       return null; //This is ignored.
     }
 
-    onAbandonedCallable(final SinglePartMIMEReaderCallback singlePartMIMEReaderCallback) {
+    onPartAbandonedCallable(final SinglePartMIMEReaderCallback singlePartMIMEReaderCallback) {
       _singlePartMIMEReaderCallback = singlePartMIMEReaderCallback;
     }
   }
