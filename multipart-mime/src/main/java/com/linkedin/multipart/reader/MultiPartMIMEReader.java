@@ -552,6 +552,16 @@ public class MultiPartMIMEReader {
     }
   }
 
+  //Note that the reader is always in one of two states:
+  //1. Between parts. This occurs when onNewPart() is called with a SinglePartMIMEReader
+  //in the MultiPartMIMEReaderCallback. At this point the client has not committed
+  //to reading the part but has simply been notified that there is a part coming up.
+  //2. Inside of a part. If after being notified of a new part, the client then
+  //registers a IndividualPartReaderCallback with the SinglePartMIMEReader, they have then
+  //committed to consuming this part. Subsequently they can then call readPartData()
+  //on the SinglePartMIMEReader and then be notified when data is available via
+  //onPartDataAvailable().
+
   public class SinglePartMIMEReader {
 
     private final Map<String, String> _headers;
