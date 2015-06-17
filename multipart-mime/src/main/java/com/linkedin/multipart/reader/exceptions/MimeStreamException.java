@@ -5,4 +5,5 @@ package com.linkedin.multipart.reader.exceptions;
  */
 //todo all stream exceptions should extend from this
 public class MimeStreamException extends RuntimeException {
+  private static final long serialVersionUID = 1L;
 }

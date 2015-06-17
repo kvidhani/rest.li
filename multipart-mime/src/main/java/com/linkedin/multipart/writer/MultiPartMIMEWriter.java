@@ -57,7 +57,7 @@ public final class MultiPartMIMEWriter {
             //RFC states that an optional preamble can be supplied before the first boundary for the first part.
             //This is to be ignored but its helpful for non-MIME compliant readers to see what's going on
             byteArrayOutputStream.write(_preamble.getBytes(Charset.forName("US-ASCII")));
-            byteArrayOutputStream.write(MultiPartMIMEUtils.CRLF);
+            byteArrayOutputStream.write(MultiPartMIMEUtils.CRLF_BYTES);
             _preambleWritten = true;
           }
           //If we have finished all our data sources
@@ -65,7 +65,7 @@ public final class MultiPartMIMEWriter {
 
             //We write the last boundary with an extra two hyphen characters according to the RFC
             //We then write the epilogue and then we call onDone() on the WriteHandle
-            byteArrayOutputStream.write(MultiPartMIMEUtils.CRLF);
+            byteArrayOutputStream.write(MultiPartMIMEUtils.CRLF_BYTES);
             byteArrayOutputStream.write(_finalEncapsulationBoundary);
             byteArrayOutputStream.write(_epilogue.getBytes(Charset.forName("US-ASCII")));
             _writeHandle.write(ByteString.copy(byteArrayOutputStream.toByteArray()));
@@ -77,21 +77,21 @@ public final class MultiPartMIMEWriter {
 
             //Transitions to new parts will happen once the current data source has called onDone() on the DataSourceHandle
             if (_transitionToNewPart) {
-              //On each transition to a new part, write a boundary first. The CRLF before the boundary and after
+              //On each transition to a new part, write a boundaryCRLF_BYTESst. The CRLF before the boundary and after
               //the boundary is considered part of the boundary
-              byteArrayOutputStream.write(MultiPartMIMEUtils.CRLF);
+              byteArrayOutputStream.write(MultiPartMIMEUtils.CRLF_BYTES);
               byteArrayOutputStream.write(_normalEncapsulationBoundary);
-              byteArrayOutputStream.write(MultiPartMIMEUtils.CRLF);
+              byteArrayOutputStream.write(MultiPartMIMEUtils.CRLF_BYTES);
 
               if (!currentDataSource.dataSourceHeaders().isEmpty()) {
                 //Serialize the headers
                 byteArrayOutputStream.write(MultiPartMIMEUtils.serializedHeaders(currentDataSource.dataSourceHeaders()).copyBytes());
               }
 
-              //Regardless of whether or not there were headers the RFC calls for another CRLF here.
+              //Regardless of whether or not there were headers thCRLF_BYTESC calls for another CRLF here.
               //If there were no headers we end up with two CRLFs after the boundary
-              //If there were headers then we end up with one CRLF after the boundary and one after the last header
-              byteArrayOutputStream.write(MultiPartMIMEUtils.CRLF);
+              //If there were headers CRLF_BYTES we end up with one CRLF after the boundary and one after the last header
+              byteArrayOutputStream.write(MultiPartMIMEUtils.CRLF_BYTES);
 
               //Init the data source, letting them know that they are about to be called
               final DataSourceHandle dataSourceHandle =

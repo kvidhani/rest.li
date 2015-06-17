@@ -18,12 +18,16 @@ public class MultiPartMIMEUtils {
   public static final String CONTENT_TYPE_HEADER = "Content-Type";
   public static final String MULTIPART_PREFIX = "multipart/";
   public static final String BOUNDARY_PARAMETER = "boundary";
-  public static final byte[] CRLF = "\r\n".getBytes();
+
+  public static final String CRLF_STRING = "\r\n";
+  public static final byte[] CRLF_BYTES = "\r\n".getBytes();
   public static final List<Byte> CRLF_BYTE_LIST = new ArrayList<Byte>();
-  public static final byte[] CONSECUTIVE_CRLFS = "\r\n\r\n".getBytes();
+
+  public static final String CONSECUTIVE_CRLFS_STRING = "\r\n\r\n";
+  public static final byte[] CONSECUTIVE_CRLFS_BYTES = "\r\n\r\n".getBytes();
   public static final List<Byte> CONSECUTIVE_CRLFS_BYTE_LIST = new ArrayList<Byte>();
   static {
-    for (final byte b : CONSECUTIVE_CRLFS) {
+    for (final byte b : CONSECUTIVE_CRLFS_BYTES) {
       CONSECUTIVE_CRLFS_BYTE_LIST.add(b);
     }
   }
@@ -45,7 +49,7 @@ public class MultiPartMIMEUtils {
   }
 
   public static String formattedHeader(final String name, final String value) {
-    return ((name == null ? "" : name) + ": " + (null == value ? "" : value) + CRLF);
+    return ((name == null ? "" : name) + ": " + (null == value ? "" : value) + CRLF_BYTES);
   }
 
   public static String generateBoundary()
@@ -83,6 +87,7 @@ public class MultiPartMIMEUtils {
   }
 
   //todo we can only do so much validation, we need javadocs to mention we make some assumptions
+  //todo - how can clients deal with these exceptions?
   public static String extractBoundary(final String contentTypeHeader) throws IllegalArgumentException
   {
     if(!contentTypeHeader.contains(";"))
@@ -94,21 +99,42 @@ public class MultiPartMIMEUtils {
     final String[] contentTypeParameters = contentTypeHeader.split(";");
 
     //In case someone used something like bOuNdArY
+    //todo - do we want to be able to provide this as a getter inside of MultiPartMIMEReader?
     final Map<String, String> parameterMap = new TreeMap<String, String>(String.CASE_INSENSITIVE_ORDER);
     for (final String parameter : contentTypeParameters) {
+
+      //We don't need the first bit here.
+      if (parameter.startsWith(MULTIPART_PREFIX)) continue;
+
       final String trimmedParameter = parameter.trim();
-      final String[] parameterKeyValue = trimmedParameter.split("=");
-      if(parameterKeyValue.length!=2) {
-        throw new IllegalArgumentException("Invalid parameter format");
+      //According to the RFC, there could be an '=' character in the boundary so we can't just split on =.
+      //We find the first equals and then go from there. It should also be noted that the RFC does allow
+      //boundaries to start and end with quotes.
+      final int firstEquals = trimmedParameter.indexOf("=");
+      //We throw an exception if there is no equals sign, or if the equals is the first character or if the
+      //equals is the last character.
+      if (firstEquals == 0 || firstEquals == -1 || firstEquals == trimmedParameter.length() - 1) {
+        throw new IllegalArgumentException("Invalid parameter format.");
       }
-      final String parameterKey = parameterKeyValue[0].trim();
+
+      //Todo - Should we actually go through each character in the boundary and make sure it matches acceptable
+      //characters from the RFC? This may not be necessary.
+      final String parameterKey = trimmedParameter.substring(0, firstEquals);
+      String parameterValue = trimmedParameter.substring(firstEquals + 1, trimmedParameter.length());
+      if(parameterValue.charAt(0) == '"') {
+        if(parameterValue.charAt(parameterValue.length()-1) != '"') {
+          throw new IllegalArgumentException("Invalid parameter format.");
+        }
+        //Remove the leading and trailing '"'
+        parameterValue = parameterValue.substring(1, parameterValue.length()-1);
+      }
+
       if (parameterMap.containsKey(parameterKey)) {
         throw new IllegalArgumentException("Invalid parameter format. Multiple decelerations of the same parameter!");
       }
-      parameterMap.put(parameterKey, parameterKeyValue[1].trim());
+      parameterMap.put(parameterKey, parameterValue);
     }
 
-    //todo handle boundary parameters in quotes
     final String boundaryValue = parameterMap.get(BOUNDARY_PARAMETER);
 
     if (boundaryValue == null) {
