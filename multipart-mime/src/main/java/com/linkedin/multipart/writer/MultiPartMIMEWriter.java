@@ -45,6 +45,7 @@ public final class MultiPartMIMEWriter {
     }
 
     //todo would this cause a stack overflow
+    //todo change the logic so that the CRLF because the first thing in a boundary - this semantic more closely matches the RFC
     @Override
     public void onWritePossible() {
 
@@ -88,7 +89,7 @@ public final class MultiPartMIMEWriter {
                 byteArrayOutputStream.write(MultiPartMIMEUtils.serializedHeaders(currentDataSource.dataSourceHeaders()).copyBytes());
               }
 
-              //Regardless of whether or not there were headers thCRLF_BYTESC calls for another CRLF here.
+              //Regardless of whether or not there were headers the RFC calls for another CRLF here.
               //If there were no headers we end up with two CRLFs after the boundary
               //If there were headers CRLF_BYTES we end up with one CRLF after the boundary and one after the last header
               byteArrayOutputStream.write(MultiPartMIMEUtils.CRLF_BYTES);
@@ -114,7 +115,6 @@ public final class MultiPartMIMEWriter {
           onAbort(ioException); //We should clean up all of our data sources
         }
       }
-
     }
 
     @Override

@@ -38,9 +38,15 @@ public class MultiPartMIMEReader {
   private class R2MultiPartMimeReader implements Reader {
     private volatile ReadHandle _rh;
     private volatile List<Byte> _byteBuffer = new ArrayList<Byte>();
-    private final String _boundary;
+    //The reason for the first boundary vs normal boundary difference is because the first boundary MAY be missing the
+    //leading CRLF.
+    //No even though it is incorrect for a client to send a multipart/mime in this manner,
+    //the RFC states that readers should be tolerant and be able to handle such cases.
+    private final String _firstBoundary;
+    private final String _normalBoundary;
     private final String _finishingBoundary;
-    private final List<Byte> _boundaryBytes = new ArrayList<Byte>();
+    private final List<Byte> _firstBoundaryBytes = new ArrayList<Byte>();
+    private final List<Byte> _normalBoundaryBytes = new ArrayList<Byte>();
     private final List<Byte> _finishingBoundaryBytes = new ArrayList<Byte>();
     private volatile ReadState _readState;
     private volatile SinglePartMIMEReader _currentSinglePartMIMEReader;
@@ -175,12 +181,12 @@ public class MultiPartMIMEReader {
       //Read the preamble in.
       if (_readState == ReadState.READING_PREAMBLE) {
 
-        int tempLookup = Collections.indexOfSubList(_byteBuffer, _boundaryBytes);
+        //The first occurrence of the boundary doesn't begin with a CRLF.
+        int tempLookup = Collections.indexOfSubList(_byteBuffer, _firstBoundaryBytes);
         if (tempLookup > -1) {
           //The boundary has been found. Everything up until this point is the preamble.
           final List<Byte> preambleBytes = _byteBuffer.subList(0, tempLookup);
-          //todo fix this stuff
-          _preamble = new String(ArrayUtils.toPrimitive((Byte[]) preambleBytes.toArray()));
+          _preamble = new String(ArrayUtils.toPrimitive(preambleBytes.toArray(new Byte[0])));
           _byteBuffer = _byteBuffer.subList(tempLookup, _byteBuffer.size());
           //We can now transition to normal reading.
           _readState = ReadState.PART_READING;
@@ -225,124 +231,129 @@ public class MultiPartMIMEReader {
       //PART_READING represents normal part reading operation and is where most of the time will be spent.
       if (_readState == ReadState.PART_READING) {
 
-        final int boundaryIndex = Collections.indexOfSubList(_byteBuffer, _boundaryBytes);
+        //The goal of the logic here is to fully consume as much of the buffer as possible. Therefore we:
+        //1. Determine what to do with the bytes if the buffer does not begin with the boundary. The goal
+        //is to consume as much as possible, whether its aborting or notifying client for onPartData().
+        //2. Revisit the state of the boundary in the buffer. Finish up the current part (if applicable)
+        //and move onto the next part (if applicable).
 
-        if (boundaryIndex != 0) {
+        //Only proceed if the _currentSinglePartMIMEReader is not equal to null. It will only be null
+        //the very first time.
+        if(_currentSinglePartMIMEReader != null) {
+
+          final int boundaryIndex = Collections.indexOfSubList(_byteBuffer, _normalBoundaryBytes);
 
           //Buffer does not begin with boundary.
+          if (boundaryIndex != 0) {
 
-          //We only proceed forward if there is a reader ready.
-          //By ready we mean that:
-          //1. They are ready to receive requested data on their onPartDataAvailable() callback.
-          //or
-          //2. They have requested an abort and are waiting for it to finish.
-          //If the current single part reader is not ready, then we just return and move on (we already read into the buffer)
-          //since the single part reader can then drive the flow of future data.
-          //todo - I don't think this comment/statement is really required since these are guaranteed to be in one of these states at this point in time.
+            //We only proceed forward if there is a reader ready.
+            //By ready we mean that:
+            //1. They are ready to receive requested data on their onPartDataAvailable() callback.
+            //or
+            //2. They have requested an abort and are waiting for it to finish.
+            //If the current single part reader is not ready, then we just return and move on (we already read into the buffer)
+            //since the single part reader can then drive the flow of future data.
+            //todo - I don't think this comment/statement is really required since these are guaranteed to be in one of these states at this point in time.
 
-          final SingleReaderState currentState = _currentSinglePartMIMEReader._readerState.get();
+            final SingleReaderState currentState = _currentSinglePartMIMEReader._readerState.get();
 
-          if (currentState == SingleReaderState.REQUESTED_DATA || currentState == SingleReaderState.REQUESTED_ABORT) {
+            if (currentState == SingleReaderState.REQUESTED_DATA || currentState == SingleReaderState.REQUESTED_ABORT) {
 
-            //We take different action if there a boundary exists in the buffer.
-            if (boundaryIndex > -1) {
-              //Boundary is in buffer
-              final List<Byte> useableBytes = _byteBuffer.subList(0, boundaryIndex);
-              _byteBuffer = _byteBuffer.subList(boundaryIndex, _byteBuffer.size());
+              //We take different action if there a boundary exists in the buffer.
+              if (boundaryIndex > -1) {
+                //Boundary is in buffer
+                final List<Byte> useableBytes = _byteBuffer.subList(0, boundaryIndex);
+                _byteBuffer = _byteBuffer.subList(boundaryIndex, _byteBuffer.size());
 
-              if (currentState == SingleReaderState.REQUESTED_DATA) {
-                //Grab a copy of the data beforehand. Otherwise an eager thread could call requestPartData() on the single
-                //part reader mutating our byte buffer even before we have a chance to respond via onPartDataAvailable().
-                final ByteString clientData = ByteString.copy(ArrayUtils.toPrimitive((Byte[]) useableBytes.toArray()));
+                if (currentState == SingleReaderState.REQUESTED_DATA) {
+                  //Grab a copy of the data beforehand. Otherwise an eager thread could call requestPartData() on the single
+                  //part reader mutating our byte buffer even before we have a chance to respond via onPartDataAvailable().
+                  final ByteString clientData = ByteString.copy(ArrayUtils.toPrimitive((Byte[]) useableBytes.toArray()));
 
-                //We need to prevent the client from asking for more data because they are done.
-                _currentSinglePartMIMEReader._readerState.set(SingleReaderState.FINISHED);
+                  //We need to prevent the client from asking for more data because they are done.
+                  _currentSinglePartMIMEReader._readerState.set(SingleReaderState.FINISHED);
 
-                //_currentSinglePartMIMEReader._callback.onPartDataAvailable(clientData);
-                final Callable<Void> onPartDataAvailableInvocation =
-                    new MimeReaderCallables.onPartDataCallable(_currentSinglePartMIMEReader._callback, clientData);
+                  //_currentSinglePartMIMEReader._callback.onPartDataAvailable(clientData);
+                  final Callable<Void> onPartDataAvailableInvocation = new MimeReaderCallables.onPartDataCallable(_currentSinglePartMIMEReader._callback, clientData);
 
-                //Queue up this operation
-                _callbackQueue.add(onPartDataAvailableInvocation);
+                  //Queue up this operation
+                  _callbackQueue.add(onPartDataAvailableInvocation);
 
-                //If the while loop before us is in progress, we just return;
-                if (_callbackInProgress) {
-                  //We return to unwind the stack. Any queued elements will be taken care of the by the while loop
-                  //before us.
-                  return;
+                  //If the while loop before us is in progress, we just return;
+                  if (_callbackInProgress) {
+                    //We return to unwind the stack. Any queued elements will be taken care of the by the while loop
+                    //before us.
+                    return;
+                  } else {
+                    processAndInvokeCallableQueue();
+                    if (_readState == ReadState.READER_DONE) {
+                      //If invoking the callables resulting in things stopping. Then we should return;
+                      return;
+                    }
+                  }
                 } else {
-                  processAndInvokeCallableQueue();
-                  if (_readState == ReadState.READER_DONE) {
-                    //If invoking the callables resulting in things stopping. Then we should return;
+                  //drop the bytes
+                }
+                //This part is finished. Further below, our logic will now see that the buffer begins
+                //with the boundary. This will finish up this part and then make a new part.
+
+              } else {
+                //Boundary doesn't exist here, so let's drain the buffer.
+                //Note that we can't fully drain the buffer because the end of the buffer may include the partial
+                //beginning of the boundary or even the finishing boundary.
+                //Therefore we grab the whole buffer but we leave the last _finishingBoundaryBytes.size() number of bytes.
+                //This is so that we are guaranteed that future appends to the _byteBuffer will result in at least one
+                //byte available for further processing before the boundary is reached.
+                final List<Byte> useableBytes = _byteBuffer.subList(0, _byteBuffer.size() - _finishingBoundaryBytes.size());
+                _byteBuffer = _byteBuffer.subList(_byteBuffer.size() - _finishingBoundaryBytes.size(), _byteBuffer.size());
+
+                if (currentState == SingleReaderState.REQUESTED_DATA) {
+                  //Grab a copy of the data beforehand. Otherwise an eager thread could call requestPartData() on the single
+                  //part reader mutating our byte buffer even before we have a chance to respond via onPartDataAvailable().
+                  final ByteString clientData = ByteString.copy(ArrayUtils.toPrimitive((Byte[]) useableBytes.toArray()));
+                  //We must set this before we provide the data. Otherwise if the client immediately decides to requestPartData()
+                  //they will see an exception because we are still in REQUESTED_DATA.
+                  _currentSinglePartMIMEReader._readerState.set(SingleReaderState.READY);
+
+                  //_currentSinglePartMIMEReader._callback.onPartDataAvailable(clientData);
+                  final Callable<Void> onPartDataAvailableInvocation = new MimeReaderCallables.onPartDataCallable(_currentSinglePartMIMEReader._callback, clientData);
+
+                  //Queue up this operation
+                  _callbackQueue.add(onPartDataAvailableInvocation);
+
+                  //If the while loop before us is in progress, we just return;
+                  if (_callbackInProgress) {
+                    //We return to unwind the stack. Any queued elements will be taken care of the by the while loop
+                    //before us.
+                    return;
+                  } else {
+                    processAndInvokeCallableQueue();
+                    if (_readState == ReadState.READER_DONE) {
+                      //If invoking the callables resulting in things stopping. Then we should return;
+                      return;
+                    }
+                  }
+
+                  //The client single part reader can then drive forward themselves.
+                } else {
+                  //Now we need to drop the bytes since this is an abort and keep moving forward.
+                  if (_r2Done) {
+                    //If r2 has already notified we are done, then this is a problem. This means that
+                    //we have the remainder of the stream in memory and we didn't see the boundary.
+                    handleExceptions(new IllegalMimeFormatException("Malformed multipart mime request. Pemature" + " termination of multipart mime body. No more boundaries found"));
                     return;
                   }
+                  _rh.request(1);
                 }
-              } else {
-                //drop the bytes
-              }
-              //This part is finished. Further below, our logic will now see that the buffer begins
-              //with the boundary. This will finish up this part and then make a new part.
-
-            } else {
-              //Boundary doesn't exist here, so let's drain the buffer.
-              //Note that we can't fully drain the buffer because the end of the buffer may include the partial
-              //beginning of the boundary or even the finishing boundary.
-              //Therefore we grab the whole buffer but we leave the last _finishingBoundaryBytes.size() number of bytes.
-              //This is so that we are guaranteed that future appends to the _byteBuffer will result in at least one
-              //byte available for further processing before the boundary is reached.
-              final List<Byte> useableBytes =
-                  _byteBuffer.subList(0, _byteBuffer.size() - _finishingBoundaryBytes.size());
-              _byteBuffer =
-                  _byteBuffer.subList(_byteBuffer.size() - _finishingBoundaryBytes.size(), _byteBuffer.size());
-
-              if (currentState == SingleReaderState.REQUESTED_DATA) {
-                //Grab a copy of the data beforehand. Otherwise an eager thread could call requestPartData() on the single
-                //part reader mutating our byte buffer even before we have a chance to respond via onPartDataAvailable().
-                final ByteString clientData = ByteString.copy(ArrayUtils.toPrimitive((Byte[]) useableBytes.toArray()));
-                //We must set this before we provide the data. Otherwise if the client immediately decides to requestPartData()
-                //they will see an exception because we are still in REQUESTED_DATA.
-                _currentSinglePartMIMEReader._readerState.set(SingleReaderState.READY);
-
-                //_currentSinglePartMIMEReader._callback.onPartDataAvailable(clientData);
-                final Callable<Void> onPartDataAvailableInvocation =
-                    new MimeReaderCallables.onPartDataCallable(_currentSinglePartMIMEReader._callback, clientData);
-
-                //Queue up this operation
-                _callbackQueue.add(onPartDataAvailableInvocation);
-
-                //If the while loop before us is in progress, we just return;
-                if (_callbackInProgress) {
-                  //We return to unwind the stack. Any queued elements will be taken care of the by the while loop
-                  //before us.
-                  return;
-                } else {
-                  processAndInvokeCallableQueue();
-                  if (_readState == ReadState.READER_DONE) {
-                    //If invoking the callables resulting in things stopping. Then we should return;
-                    return;
-                  }
-                }
-
-                //The client single part reader can then drive forward themselves.
-              } else {
-                //Now we need to drop the bytes since this is an abort and keep moving forward.
-                if (_r2Done) {
-                  //If r2 has already notified we are done, then this is a problem. This means that
-                  //we have the remainder of the stream in memory and we didn't see the boundary.
-                  handleExceptions(new IllegalMimeFormatException("Malformed multipart mime request. Pemature"
-                      + " termination of multipart mime body. No more boundaries found"));
-                  return;
-                }
-                _rh.request(1);
               }
             }
           }
         }
 
-        final int boundaryIndexRevisited = Collections.indexOfSubList(_byteBuffer, _boundaryBytes);
+        final int boundaryIndexRevisited = Collections.indexOfSubList(_byteBuffer, _normalBoundaryBytes);
 
+        //Buffer begins with boundary.
         if (boundaryIndexRevisited == 0) {
-          //Buffer begins with boundary.
 
           //Close the current single part reader (except if this is the first boundary)
           if (_currentSinglePartMIMEReader != null) {
@@ -375,7 +386,7 @@ public class MultiPartMIMEReader {
               } //else no notification will happen since there was no callback registered.
             } else {
 
-              //This was a part that cared about its data. Let's finish him up. His state
+              //This was a part that cared about its data. Let's finish him up.
 
               //_currentSinglePartMIMEReader._callback.onFinished();
               //todo - It may be possible to invoke this without using the iterative technique
@@ -409,7 +420,7 @@ public class MultiPartMIMEReader {
           //Essentially we are looking for the first occurrence of two CRLFs after we see the boundary.
 
           //We need to make sure we can look ahead a bit here first
-          final int boundaryEnding = boundaryIndex + _boundaryBytes.size();
+          final int boundaryEnding = boundaryIndexRevisited + _normalBoundaryBytes.size();
           if ((boundaryEnding + MultiPartMIMEUtils.CONSECUTIVE_CRLFS_BYTE_LIST.size()) > _byteBuffer.size()) {
             if (_r2Done) {
               //If r2 has already notified we are done, then this is a problem. This means that
@@ -526,15 +537,21 @@ public class MultiPartMIMEReader {
 
     private R2MultiPartMimeReader(final String boundary) {
       //The RFC states that the preceeding CRLF_BYTES is a part of the boundary
-      _boundary = MultiPartMIMEUtils.CRLF_STRING + "--" + boundary;
-      _finishingBoundary = _boundary + "--";
+      _firstBoundary = "--" + boundary;
+      _normalBoundary = MultiPartMIMEUtils.CRLF_STRING + "--" + boundary;
+      _finishingBoundary = _normalBoundary + "--";
 
-      for (final byte b : _boundary.getBytes()) {
-        _boundaryBytes.add(b); //safe to assume charset?
+      //todo - safe to assume charset?
+      for (final byte b : _firstBoundary.getBytes()) {
+        _firstBoundaryBytes.add(b);
+      }
+
+      for (final byte b : _normalBoundary.getBytes()) {
+        _normalBoundaryBytes.add(b);
       }
 
       for (final byte b : _finishingBoundary.getBytes()) {
-        _finishingBoundaryBytes.add(b); //safe to assume charset?
+        _finishingBoundaryBytes.add(b);
       }
     }
   }

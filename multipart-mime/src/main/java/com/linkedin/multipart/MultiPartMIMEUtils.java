@@ -49,7 +49,7 @@ public class MultiPartMIMEUtils {
   }
 
   public static String formattedHeader(final String name, final String value) {
-    return ((name == null ? "" : name) + ": " + (null == value ? "" : value) + CRLF_BYTES);
+    return ((name == null ? "" : name) + ": " + (null == value ? "" : value) + CRLF_STRING);
   }
 
   public static String generateBoundary()
