@@ -1,6 +1,8 @@
 package com.linkedin.multipart;
 
 import com.linkedin.data.ByteString;
+import com.linkedin.multipart.reader.exceptions.IllegalMimeFormatException;
+
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
@@ -88,11 +90,11 @@ public class MultiPartMIMEUtils {
 
   //todo we can only do so much validation, we need javadocs to mention we make some assumptions
   //todo - how can clients deal with these exceptions?
-  public static String extractBoundary(final String contentTypeHeader) throws IllegalArgumentException
+  public static String extractBoundary(final String contentTypeHeader) throws IllegalMimeFormatException
   {
     if(!contentTypeHeader.contains(";"))
     {
-      throw new IllegalArgumentException("Improperly formatted Content-Type header. "
+      throw new IllegalMimeFormatException("Improperly formatted Content-Type header. "
           + "Expected at least one parameter in addition to the content type.");
     }
 
@@ -114,7 +116,7 @@ public class MultiPartMIMEUtils {
       //We throw an exception if there is no equals sign, or if the equals is the first character or if the
       //equals is the last character.
       if (firstEquals == 0 || firstEquals == -1 || firstEquals == trimmedParameter.length() - 1) {
-        throw new IllegalArgumentException("Invalid parameter format.");
+        throw new IllegalMimeFormatException("Invalid parameter format.");
       }
 
       //Todo - Should we actually go through each character in the boundary and make sure it matches acceptable
@@ -123,14 +125,14 @@ public class MultiPartMIMEUtils {
       String parameterValue = trimmedParameter.substring(firstEquals + 1, trimmedParameter.length());
       if(parameterValue.charAt(0) == '"') {
         if(parameterValue.charAt(parameterValue.length()-1) != '"') {
-          throw new IllegalArgumentException("Invalid parameter format.");
+          throw new IllegalMimeFormatException("Invalid parameter format.");
         }
         //Remove the leading and trailing '"'
         parameterValue = parameterValue.substring(1, parameterValue.length()-1);
       }
 
       if (parameterMap.containsKey(parameterKey)) {
-        throw new IllegalArgumentException("Invalid parameter format. Multiple decelerations of the same parameter!");
+        throw new IllegalMimeFormatException("Invalid parameter format. Multiple decelerations of the same parameter!");
       }
       parameterMap.put(parameterKey, parameterValue);
     }
@@ -138,10 +140,9 @@ public class MultiPartMIMEUtils {
     final String boundaryValue = parameterMap.get(BOUNDARY_PARAMETER);
 
     if (boundaryValue == null) {
-      throw new IllegalArgumentException("No boundary parameter found!");
+      throw new IllegalMimeFormatException("No boundary parameter found!");
     }
 
     return boundaryValue;
-
   }
 }

@@ -569,24 +569,24 @@ public class MultiPartMIMEReader {
   //These factories are technically not thread safe because multiple threads could call these concurrently.
   //However this is very unlikely to happen so are not going to be worried about it here.
   public static MultiPartMIMEReader createAndAcquireStream(final StreamRequest request,
-      final MultiPartMIMEReaderCallback clientCallback) {
+      final MultiPartMIMEReaderCallback clientCallback) throws IllegalMimeFormatException {
     return new MultiPartMIMEReader(request, clientCallback);
   }
 
   public static MultiPartMIMEReader createAndAcquireStream(final StreamResponse response,
-      final MultiPartMIMEReaderCallback clientCallback) {
+      final MultiPartMIMEReaderCallback clientCallback) throws IllegalMimeFormatException {
     return new MultiPartMIMEReader(response, clientCallback);
   }
 
-  public static MultiPartMIMEReader createAndAcquireStream(final StreamRequest request) {
+  public static MultiPartMIMEReader createAndAcquireStream(final StreamRequest request) throws IllegalMimeFormatException {
     return new MultiPartMIMEReader(request, null);
   }
 
-  public static MultiPartMIMEReader createAndAcquireStream(final StreamResponse response) {
+  public static MultiPartMIMEReader createAndAcquireStream(final StreamResponse response) throws IllegalMimeFormatException {
     return new MultiPartMIMEReader(response, null);
   }
 
-  private MultiPartMIMEReader(final StreamRequest request, final MultiPartMIMEReaderCallback clientCallback) {
+  private MultiPartMIMEReader(final StreamRequest request, final MultiPartMIMEReaderCallback clientCallback) throws IllegalMimeFormatException {
 
     final String contentTypeHeaderValue = request.getHeader(MultiPartMIMEUtils.CONTENT_TYPE_HEADER);
     if (contentTypeHeaderValue == null) {
@@ -602,7 +602,7 @@ public class MultiPartMIMEReader {
     }
   }
 
-  private MultiPartMIMEReader(StreamResponse response, MultiPartMIMEReaderCallback clientCallback) {
+  private MultiPartMIMEReader(StreamResponse response, MultiPartMIMEReaderCallback clientCallback) throws IllegalMimeFormatException {
 
     final String contentTypeHeaderValue = response.getHeader(MultiPartMIMEUtils.CONTENT_TYPE_HEADER);
     if (contentTypeHeaderValue == null) {
