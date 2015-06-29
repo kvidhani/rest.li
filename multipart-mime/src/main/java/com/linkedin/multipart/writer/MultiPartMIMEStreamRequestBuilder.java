@@ -34,13 +34,14 @@ public final class MultiPartMIMEStreamRequestBuilder {
   //If the client manually placed a content type header, this will override it
   public StreamRequest build() {
     final String contentTypeHeader = MultiPartMIMEUtils
-        .buildContentTypeHeader(_mimeType, _boundary, _contentTypeParameters);
+        .buildMIMEContentTypeHeader(_mimeType, _boundary, _contentTypeParameters);
     _streamRequestBuilder.addHeaderValue(MultiPartMIMEUtils.CONTENT_TYPE_HEADER, contentTypeHeader);
     return _streamRequestBuilder.build(_writer.getEntityStream());
   }
 
   public StreamRequest buildCanonical() {
-    final String contentTypeHeader = MultiPartMIMEUtils.buildContentTypeHeader(_mimeType, _boundary, _contentTypeParameters);
+    final String contentTypeHeader = MultiPartMIMEUtils.buildMIMEContentTypeHeader(_mimeType, _boundary,
+        _contentTypeParameters);
     _streamRequestBuilder.addHeaderValue(MultiPartMIMEUtils.CONTENT_TYPE_HEADER, contentTypeHeader);
     return _streamRequestBuilder.buildCanonical(_writer.getEntityStream());
   }

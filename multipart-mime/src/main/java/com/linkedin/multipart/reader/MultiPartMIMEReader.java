@@ -51,8 +51,8 @@ public class MultiPartMIMEReader {
     private volatile ReadState _readState;
     private volatile SinglePartMIMEReader _currentSinglePartMIMEReader;
 
-    //R2 reader has been notified that all data is done being sent over. This does NOT mean that our top level
-    //reader can be notified that they are done since data could still be in the buffer.
+    //A signal from the R2 reader has been notified that all data is done being sent over. This does NOT mean that our
+    //top level reader can be notified that they are done since data could still be in the buffer.
     private boolean _r2Done = false;
 
     //These are needed to support our iterative invocation of callbacks so that we don't end up with a recursive loop
@@ -61,8 +61,10 @@ public class MultiPartMIMEReader {
     private volatile boolean _callbackInProgress = false;
 
     private void processAndInvokeCallableQueue() {
-      //There is no current iterative invocation taking place. We can start one here.
+
+      //This variable indicates that there is no current iterative invocation taking place. We can start one here.
       _callbackInProgress = true;
+
       while (!_callbackQueue.isEmpty()) {
         final Callable<Void> callable = _callbackQueue.poll();
         try {
@@ -81,7 +83,7 @@ public class MultiPartMIMEReader {
       //and drop all bytes on the floor. It does not make any sense to enter this obligation when we are in
       //a non-usable state.
       //Exceptions here are indicative that there was malformed data provided to the MultiPartMIMEReader
-      //or that the client APIs threw exceptions when their callbacks were invoked.
+      //OR that the client APIs threw exceptions when their callbacks were invoked.
       //We will also invoke the appropriate callbacks here indicating there is an exception while reading.
       //It is the responsibility of the consumer of this library to catch these exceptions and return 4xx.
       _rh.cancel();
@@ -108,7 +110,8 @@ public class MultiPartMIMEReader {
     //It is for this reason we don't have to synchronize any data used within this method.
     //Also note that all exceptions thrown by asynchronous notification of client callbacks will be given back to
     //them by calling them onStreamError().
-    //Anything thrown by us will make it to R2. This should ideally never ever happen and if it happens its a bug. Regardless:
+    //Anything thrown by us will make it to R2. This should ideally never ever happen and if it happens its a bug.
+    //Regardless, if this was the case and we throw to R2 then:
     //A. In case of the server, R2 send back a 500 internal server error.
     //B. In case of the client, R2 will close the connection.
     @Override
@@ -232,9 +235,9 @@ public class MultiPartMIMEReader {
       if (_readState == ReadState.PART_READING) {
 
         //The goal of the logic here is to fully consume as much of the buffer as possible. Therefore we:
-        //1. Determine what to do with the bytes if the buffer does not begin with the boundary. The goal
+        //1. First determine what to do with the bytes if the buffer does not begin with the boundary. The goal
         //is to consume as much as possible, whether its aborting or notifying client for onPartData().
-        //2. Revisit the state of the boundary in the buffer. Finish up the current part (if applicable)
+        //2. Then we revisit the state of the boundary in the buffer. Finish up the current part (if applicable)
         //and move onto the next part (if applicable).
 
         //Only proceed if the _currentSinglePartMIMEReader is not equal to null. It will only be null
@@ -414,6 +417,8 @@ public class MultiPartMIMEReader {
             //We will now move on to notify the reader of the next part
           }
 
+          //todo - consider empty envelope
+
           //Now read until we have all the headers. Headers may or may not exist. According to the RFC:
           //If the headers do not exist, we will see two CRLFs one after another.
           //If at least one header does exist, we will see the headers followed by two CRLFs
@@ -448,7 +453,7 @@ public class MultiPartMIMEReader {
               //two consecutive CRLF_BYTES characters. This is a malformed stream.
               //MultiPartMIMEReader.this._clientCallback.onStreamError();
               handleExceptions(new IllegalMimeFormatException(
-                  "Malformed multipart mime request. Premature " + "termination of headers within a part."));
+                  "Malformed multipart mime request. Premature termination of headers within a part."));
               return;
             }
             //We need more data since the current buffer doesn't contain the CRLFs.
@@ -456,34 +461,47 @@ public class MultiPartMIMEReader {
             return;
           }
 
-          //Now we found the end. Let's make a window into the header area.
-          final List<Byte> headerByteSubList = _byteBuffer.subList(boundaryEnding, headerEnding);
+          //Let's make a window into the header area. Note that we need to include the trailing CRLF bytes
+          //because our sliding window algorithm below requires that each header ends in CRLF so we don't want to
+          //miss the last header.
+          final List<Byte> headerByteSubList = _byteBuffer.subList(boundaryEnding, headerEnding + MultiPartMIMEUtils.CRLF_BYTE_LIST.size());
 
           final Map<String, String> headers;
           if (headerByteSubList.equals(MultiPartMIMEUtils.CONSECUTIVE_CRLFS_BYTE_LIST)) {
-            //The region of bytes after the the two CRLFs is empty. Therefore we have no headers.
+            //The region of bytes after the boundary is composed of two CRLFs. Therefore we have no headers.
             headers = Collections.emptyMap();
           } else {
             headers = new HashMap<String, String>();
+
+            //todo this may need to change due to the bug you found in the sync stuff
+            //we may need to boundaryEnding + size of crlf bytes
+            //then change where i starts
+            //just compare with the sync stuff - many changes here
+
             //We have headers, lets read them in - we search using a sliding window.
             int currentHeaderStart = 0;
             for (int i = 0; i < headerByteSubList.size() - MultiPartMIMEUtils.CRLF_BYTE_LIST.size(); i++) {
-              final List<Byte> currentWindow = headerByteSubList.subList(i, MultiPartMIMEUtils.CRLF_BYTE_LIST.size());
+              final List<Byte> currentWindow = headerByteSubList.subList(i, i + MultiPartMIMEUtils.CRLF_BYTE_LIST.size());
               if (currentWindow.equals(MultiPartMIMEUtils.CRLF_BYTE_LIST)) {
                 //We found the end of a header. This means that from currentHeaderStart until i we have a header
                 final List<Byte> currentHeaderBytes = headerByteSubList.subList(currentHeaderStart, i);
-                final byte[] headerBytes = ArrayUtils.toPrimitive((Byte[]) currentHeaderBytes.toArray());
+                final byte[] headerBytes = ArrayUtils.toPrimitive(currentHeaderBytes.toArray(new Byte[0]));
                 final String header = new String(headerBytes);
                 final int colonIndex = header.indexOf(":");
-                headers.put(header.substring(0, colonIndex), header.substring(colonIndex, header.length()));
+                if (colonIndex == -1) {
+                  handleExceptions(new IllegalMimeFormatException("Malformed multipart mime request. Individual headers are "
+                      + "improperly formatted"));
+                }
+                headers.put(header.substring(0, colonIndex).trim(), header.substring(colonIndex, header.length()).trim());
                 currentHeaderStart = i + MultiPartMIMEUtils.CRLF_BYTE_LIST.size();
               }
             }
           }
 
           //At this point we have actual part data starting from headerEnding going forward
-          //which means we can dump everything else beforehand.
-          _byteBuffer = _byteBuffer.subList(headerEnding, _byteBuffer.size());
+          //which means we can dump everything else beforehand. We need to skip past the trailing consecutive CRLFs.
+          _byteBuffer = _byteBuffer.subList(headerEnding  + MultiPartMIMEUtils.CONSECUTIVE_CRLFS_BYTE_LIST.size(),
+              _byteBuffer.size());
 
           //Notify the callback that we have a new part
           _currentSinglePartMIMEReader = new SinglePartMIMEReader(headers);

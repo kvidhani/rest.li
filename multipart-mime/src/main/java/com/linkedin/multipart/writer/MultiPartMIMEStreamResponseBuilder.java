@@ -33,13 +33,14 @@ public class MultiPartMIMEStreamResponseBuilder {
   //Delegate
   public StreamResponse build() {
     final String contentTypeHeader = MultiPartMIMEUtils
-        .buildContentTypeHeader(_mimeType, _boundary, _contentTypeParameters);
+        .buildMIMEContentTypeHeader(_mimeType, _boundary, _contentTypeParameters);
     _streamResponseBuilder.addHeaderValue(MultiPartMIMEUtils.CONTENT_TYPE_HEADER, contentTypeHeader);
     return _streamResponseBuilder.build(_writer.getEntityStream());
   }
 
   public StreamResponse buildCanonical() {
-    final String contentTypeHeader = MultiPartMIMEUtils.buildContentTypeHeader(_mimeType, _boundary, _contentTypeParameters);
+    final String contentTypeHeader = MultiPartMIMEUtils.buildMIMEContentTypeHeader(_mimeType, _boundary,
+        _contentTypeParameters);
     _streamResponseBuilder.addHeaderValue(MultiPartMIMEUtils.CONTENT_TYPE_HEADER, contentTypeHeader);
     return _streamResponseBuilder.buildCanonical(_writer.getEntityStream());
   }

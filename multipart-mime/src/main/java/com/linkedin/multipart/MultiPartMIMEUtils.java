@@ -32,6 +32,10 @@ public class MultiPartMIMEUtils {
     for (final byte b : CONSECUTIVE_CRLFS_BYTES) {
       CONSECUTIVE_CRLFS_BYTE_LIST.add(b);
     }
+
+    for (final byte b :CRLF_BYTES) {
+      CRLF_BYTE_LIST.add(b);
+    }
   }
 
   private static final char[] MULTIPART_CHARS =
@@ -69,8 +73,8 @@ public class MultiPartMIMEUtils {
     return buffer.toString();
   }
 
-  public static String buildContentTypeHeader(final String mimeType, final String boundary,
-                                       final Map<String, String> contentTypeParameters) {
+  public static String buildMIMEContentTypeHeader(final String mimeType, final String boundary,
+      final Map<String, String> contentTypeParameters) {
 
     final StringBuilder contentTypeBuilder = new StringBuilder();
     contentTypeBuilder.append(MULTIPART_PREFIX).append(mimeType);
