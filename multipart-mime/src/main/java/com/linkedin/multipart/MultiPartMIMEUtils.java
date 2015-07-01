@@ -20,6 +20,8 @@ public class MultiPartMIMEUtils {
   public static final String CONTENT_TYPE_HEADER = "Content-Type";
   public static final String MULTIPART_PREFIX = "multipart/";
   public static final String BOUNDARY_PARAMETER = "boundary";
+  public static final Byte SPACE_BYTE = 32;
+  public static final Byte TAB_BYTE = 9;
 
   public static final String CRLF_STRING = "\r\n";
   public static final byte[] CRLF_BYTES = "\r\n".getBytes();

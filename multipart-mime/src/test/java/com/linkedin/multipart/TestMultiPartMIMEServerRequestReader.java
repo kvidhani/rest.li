@@ -5,6 +5,7 @@ import com.linkedin.data.ByteString;
 import com.linkedin.multipart.reader.MultiPartMIMEReader;
 import com.linkedin.multipart.reader.MultiPartMIMEReaderCallback;
 import com.linkedin.multipart.reader.SinglePartMIMEReaderCallback;
+import com.linkedin.multipart.reader.exceptions.IllegalMimeFormatException;
 import com.linkedin.r2.message.RequestContext;
 import com.linkedin.r2.message.rest.Messages;
 import com.linkedin.r2.message.rest.RestException;
@@ -39,8 +40,8 @@ import test.r2.integ.AbstractStreamTest;
 
 
 //Note that we use javax.mail's ability to create multipart mime requests to verify the integrity of our RFC implementation.
-public class TestMultiPartMIMEServerRequestReader extends AbstractStreamTest {
 
+public class TestMultiPartMIMEServerRequestReader extends AbstractStreamTest {
 
   private static final URI SERVER_URI = URI.create("/foobar");
   private MimeServerRequestHandler _mimeServerRequestHandler;
@@ -132,6 +133,7 @@ public class TestMultiPartMIMEServerRequestReader extends AbstractStreamTest {
     @Override
     public void onPartDataAvailable(ByteString b) {
       log.info("Just received " + b.length() + " byte(s) on the single part reader callback for part number " + partCounter);
+      _singlePartMIMEReader.requestPartData();
     }
 
     @Override
@@ -198,10 +200,14 @@ public class TestMultiPartMIMEServerRequestReader extends AbstractStreamTest {
     @Override
     public void handleRequest(StreamRequest request, RequestContext requestContext, final Callback<StreamResponse> callback)
     {
-      //todo assert the request has multipart content type
-      _reader = MultiPartMIMEReader.createAndAcquireStream(request);
-      final MultiPartMIMEReaderCallback testMultiPartMIMEReaderCallback = new TestMultiPartMIMEReaderCallbackImpl(callback);
-      _reader.registerReaderCallback(testMultiPartMIMEReaderCallback);
+      try {
+        //todo assert the request has multipart content type
+        _reader = MultiPartMIMEReader.createAndAcquireStream(request);
+        final MultiPartMIMEReaderCallback testMultiPartMIMEReaderCallback = new TestMultiPartMIMEReaderCallbackImpl(callback);
+        _reader.registerReaderCallback(testMultiPartMIMEReaderCallback);
+      } catch (IllegalMimeFormatException illegalMimeFormatException) {
+        RestException restException = new RestException(RestStatus.responseForError(400, illegalMimeFormatException));
+        callback.onError(restException);      }
     }
   }
 
