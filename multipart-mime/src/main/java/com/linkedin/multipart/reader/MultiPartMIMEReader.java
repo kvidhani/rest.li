@@ -662,8 +662,10 @@ public class MultiPartMIMEReader {
 
         @Override
         public void onError(Throwable e) {
+            //todo figure this out
             //R2 has informed us of an error. So we notify our readers and shut things down.
             if (_currentSinglePartMIMEReader != null) {
+
                 _currentSinglePartMIMEReader._callback.onStreamError(e);
             }
             //This should always be non-null
