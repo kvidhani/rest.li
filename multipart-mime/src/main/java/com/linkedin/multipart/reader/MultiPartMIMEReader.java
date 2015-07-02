@@ -3,6 +3,8 @@ package com.linkedin.multipart.reader;
 import com.linkedin.data.ByteString;
 import com.linkedin.multipart.MultiPartMIMEUtils;
 import com.linkedin.multipart.reader.exceptions.*;
+import com.linkedin.multipart.writer.DataSourceHandle;
+import com.linkedin.multipart.writer.MultiPartMIMEDataSource;
 import com.linkedin.r2.message.rest.StreamRequest;
 import com.linkedin.r2.message.rest.StreamResponse;
 import com.linkedin.r2.message.streaming.EntityStream;
@@ -732,7 +734,7 @@ public class MultiPartMIMEReader {
     //on the SinglePartMIMEReader and then be notified when data is available via
     //onPartDataAvailable().
 
-    public class SinglePartMIMEReader {
+    public class SinglePartMIMEReader implements MultiPartMIMEDataSource {
 
         private final Map<String, String> _headers;
         private volatile SinglePartMIMEReaderCallback _callback = null;
@@ -849,6 +851,29 @@ public class MultiPartMIMEReader {
             //We have updated our desire to be aborted. Now we signal the reader to refresh itself and forcing it
             //to read from the internal buffer as much as possible. We do this by notifying it of an empty ByteString.
             _r2MultiPartMimeReader.onDataAvailable(ByteString.empty());
+        }
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////
+        //MultiPartMIMEDataSource interface
+        
+        @Override
+        public void onInit(DataSourceHandle dataSourceHandle) {
+
+        }
+
+        @Override
+        public void onWritePossible() {
+
+        }
+
+        @Override
+        public void onAbort(Throwable e) {
+
+        }
+
+        @Override
+        public Map<String, String> dataSourceHeaders() {
+            return _headers;
         }
     }
 
