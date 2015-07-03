@@ -2,16 +2,22 @@ package com.linkedin.multipart.reader;
 
 import com.linkedin.data.ByteString;
 import com.linkedin.multipart.MultiPartMIMEUtils;
-import com.linkedin.multipart.reader.exceptions.*;
-import com.linkedin.multipart.writer.DataSourceHandle;
+import com.linkedin.multipart.reader.exceptions.IllegalMimeFormatException;
+import com.linkedin.multipart.reader.exceptions.PartBindException;
+import com.linkedin.multipart.reader.exceptions.PartFinishedException;
+import com.linkedin.multipart.reader.exceptions.PartNotInitializedException;
+import com.linkedin.multipart.reader.exceptions.ReaderNotInitializedException;
+import com.linkedin.multipart.reader.exceptions.StreamBusyException;
+import com.linkedin.multipart.reader.exceptions.StreamFinishedException;
 import com.linkedin.multipart.writer.MultiPartMIMEDataSource;
+import com.linkedin.multipart.writer.MultiPartMIMEWriter;
+import com.linkedin.multipart.writer.SinglePartMIMEReaderDataSourceCallback;
 import com.linkedin.r2.message.rest.StreamRequest;
 import com.linkedin.r2.message.rest.StreamResponse;
 import com.linkedin.r2.message.streaming.EntityStream;
 import com.linkedin.r2.message.streaming.ReadHandle;
 import com.linkedin.r2.message.streaming.Reader;
 import com.linkedin.r2.util.LinkedDeque;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -20,7 +26,6 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicReference;
-
 import org.apache.commons.lang.ArrayUtils;
 
 
@@ -855,15 +860,26 @@ public class MultiPartMIMEReader {
 
         ///////////////////////////////////////////////////////////////////////////////////////////////////
         //MultiPartMIMEDataSource interface
-        
-        @Override
-        public void onInit(DataSourceHandle dataSourceHandle) {
+        private volatile MultiPartMIMEWriter.DataSourceHandleImpl _dataSourceHandle;
 
+      //todo this being public is bad
+        @Override
+        public void onInit(MultiPartMIMEWriter.DataSourceHandleImpl dataSourceHandle) {
+          //We have been informed that this part will be treated as a data source by the MultiPartMIMEWriter.
+          //So we will prepare for this task by:
+          //1. Storing the handle to write data to.
+          //2. Creating a callback to register ourselves with.
+          _dataSourceHandle = dataSourceHandle;
+          SinglePartMIMEReaderCallback singlePartMIMEChainReaderCallback = new SinglePartMIMEReaderDataSourceCallback(_dataSourceHandle);
+          registerReaderCallback(singlePartMIMEChainReaderCallback);
         }
 
         @Override
         public void onWritePossible() {
-
+          //When we are told to produce some data we will requestPartData() on ourselves which will
+          //result in onPartDataAvailable() in SinglePartMIMEChainReaderCallback(). The result of that will write
+          //data to the data source handle which will write it further down stream.
+          requestPartData();
         }
 
         @Override
@@ -998,4 +1014,5 @@ public class MultiPartMIMEReader {
             _clientCallback.onNewPart(_reader._currentSinglePartMIMEReader);
         }
     }
+
 }

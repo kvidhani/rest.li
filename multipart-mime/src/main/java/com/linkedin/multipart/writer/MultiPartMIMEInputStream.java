@@ -25,7 +25,7 @@ public final class MultiPartMIMEInputStream implements MultiPartMIMEDataSource
   public static final int DEFAULT_MAXIMUM_BLOCKING_DURATION = 3000;
   public static final int DEFAULT_WRITE_CHUNK_SIZE = 5000;
 
-  private DataSourceHandle _dataSourceHandle;
+  private MultiPartMIMEWriter.DataSourceHandleImpl _dataSourceHandle;
   private final Map<String, String> _headers;
   private final InputStream _inputStream;
   private boolean _dataSourceFinished = false; //since there is no way to see if an InputStream has already been closed
@@ -34,7 +34,7 @@ public final class MultiPartMIMEInputStream implements MultiPartMIMEDataSource
   private final int _writeChunkSize;
 
   @Override
-  public void onInit(final DataSourceHandle dataSourceHandle)
+  public void onInit(final MultiPartMIMEWriter.DataSourceHandleImpl dataSourceHandle)
   {
     _dataSourceHandle = dataSourceHandle;
   }

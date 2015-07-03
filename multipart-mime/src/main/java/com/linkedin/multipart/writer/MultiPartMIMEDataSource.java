@@ -17,7 +17,7 @@ public interface MultiPartMIMEDataSource {
    * Note that onWritePossible() can be called immediately after onInit and if some database connection took a while to
    * setup in onInit then there may be a race condition with onWritePossible.
    */
-  void onInit(DataSourceHandle dataSourceHandle);
+  void onInit(MultiPartMIMEWriter.DataSourceHandleImpl dataSourceHandle);
 
   void onWritePossible();
 
