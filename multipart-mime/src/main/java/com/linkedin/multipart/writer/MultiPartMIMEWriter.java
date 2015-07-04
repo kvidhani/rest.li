@@ -82,8 +82,8 @@ public final class MultiPartMIMEWriter {
       _writeHandle = wh;
     }
 
-    //todo would this cause a stack overflow
     //todo change the logic so that the CRLF because the first thing in a boundary - this semantic more closely matches the RFC
+    //todo note that we need to mention that remaining()>0 thing in explicit details.
     @Override
     public void onWritePossible() {
 
@@ -94,6 +94,7 @@ public final class MultiPartMIMEWriter {
 
         byteArrayOutputStream.reset();
 
+        //We can only write once per iteration of this loop.
         try {
           if (!_preambleWritten) {
             //RFC states that an optional preamble can be supplied before the first boundary for the first part.
@@ -101,103 +102,112 @@ public final class MultiPartMIMEWriter {
             byteArrayOutputStream.write(_preamble.getBytes(Charset.forName("US-ASCII")));
             byteArrayOutputStream.write(MultiPartMIMEUtils.CRLF_BYTES);
             _preambleWritten = true;
-          }
-          //If we have finished all our data sources
-          if (_currentDataSource > _dataSources.size() - 1) {
-
-            //We write the last boundary with an extra two hyphen characters according to the RFC
-            //We then write the epilogue and then we call onDone() on the WriteHandle
-            byteArrayOutputStream.write(MultiPartMIMEUtils.CRLF_BYTES);
-            byteArrayOutputStream.write(_finalEncapsulationBoundary);
-            byteArrayOutputStream.write(_epilogue.getBytes(Charset.forName("US-ASCII")));
             _writeHandle.write(ByteString.copy(byteArrayOutputStream.toByteArray()));
-            _writeHandle.done();
           } else {
+            //If we have finished all our data sources
+            if (_currentDataSource > _dataSources.size() - 1) {
 
-            //todo fix this and APIs
-            final MultiPartMIMEDataSource currentDataSource = _dataSources.get(_currentDataSource);
-
-            if (currentDataSource instanceof MultiPartMIMEDataSource) {
-              //Transitions to new parts will happen once the current data source has called onDone() on the DataSourceHandle
-              if (_transitionToNewDataSource) {
-                //On each transition to a new part, write a boundary. The CRLF before the boundary and after
-                //the boundary is considered part of the boundary.
-                //The CRLF after the boundary is considered the beginning of the first header
-                byteArrayOutputStream.write(MultiPartMIMEUtils.CRLF_BYTES);
-                byteArrayOutputStream.write(_normalEncapsulationBoundary);
-                byteArrayOutputStream.write(MultiPartMIMEUtils.CRLF_BYTES);
-
-                if (!currentDataSource.dataSourceHeaders().isEmpty()) {
-                  //Serialize the headers
-                  byteArrayOutputStream
-                      .write(MultiPartMIMEUtils.serializedHeaders(currentDataSource.dataSourceHeaders()).copyBytes());
-                }
-
-                //Regardless of whether or not there were headers the RFC calls for another CRLF here.
-                //If there were no headers we end up with two CRLFs after the boundary
-                //If there were headers CRLF_BYTES we end up with one CRLF after the boundary and one after the last header
-                byteArrayOutputStream.write(MultiPartMIMEUtils.CRLF_BYTES);
-
-                //Init the data source, letting them know that they are about to be called
-                final DataSourceHandleImpl dataSourceHandle = new DataSourceHandleImpl(_writeHandle, this);
-                currentDataSource.onInit(dataSourceHandle);
-
-                _writeHandle.write(ByteString.copy(byteArrayOutputStream.toByteArray()));
-
-                //We are done transitioning to a new part
-                _transitionToNewDataSource = false;
-              } else {
-
-                //Now notify the data source to write to the write handle using the DataSourceHandle as a proxy.
-                //currentDataSource.onWritePossible();
-                final Callable<Void> onWritePossibleInvocation = new MimeWriterCallables.onWritePossibleCallable(currentDataSource);
-
-                //Queue up this operation
-                _callbackQueue.add(onWritePossibleInvocation);
-
-                //If the while loop before us is in progress, we just return
-                if (_callbackInProgress) {
-                  //We return to unwind the stack. Any queued elements will be taken care of the by the while loop
-                  //before us.
-                  return;
-                } else {
-                  processAndInvokeCallableQueue();
-                }
-              }
+              //We write the last boundary with an extra two hyphen characters according to the RFC
+              //We then write the epilogue and then we call onDone() on the WriteHandle
+              byteArrayOutputStream.write(MultiPartMIMEUtils.CRLF_BYTES);
+              byteArrayOutputStream.write(_finalEncapsulationBoundary);
+              byteArrayOutputStream.write(_epilogue.getBytes(Charset.forName("US-ASCII")));
+              _writeHandle.write(ByteString.copy(byteArrayOutputStream.toByteArray()));
+              _writeHandle.done();
             } else {
 
-              //current data source is a multi part mime reader
+              //todo fix this and APIs
+              //TODO - RESUME HERE
+              final MultiPartMIMEDataSource currentDataSource = _dataSources.get(_currentDataSource);
 
-              if (_transitionToNewDataSource) {
+              if (currentDataSource instanceof MultiPartMIMEDataSource) {
+                //Transitions to new parts will happen once the current data source has called onDone() on the DataSourceHandle
+                if (_transitionToNewDataSource) {
+                  //On each transition to a new part, write a boundary. The CRLF before the boundary and after
+                  //the boundary is considered part of the boundary.
+                  //The CRLF after the boundary is considered the beginning of the first header
+                  byteArrayOutputStream.write(MultiPartMIMEUtils.CRLF_BYTES);
+                  byteArrayOutputStream.write(_normalEncapsulationBoundary);
+                  byteArrayOutputStream.write(MultiPartMIMEUtils.CRLF_BYTES);
 
-                final MultiPartMIMEReader reader = (MultiPartMIMEReader) currentDataSource;
-                final DataSourceHandleImpl dataSourceHandle = new DataSourceHandleImpl(_writeHandle, this);
-                _currentMultiPartMIMEReaderCallback = new MultiPartMIMEChainReaderCallback(dataSourceHandle, _normalEncapsulationBoundary);
-                //Since this is not a MultiPartMIMEDataSource we can't use the regular mechanism for reading data.
-                //Instead of create a new callback that will use write to the writeHandle using the SinglePartMIMEReader
+                  if (!currentDataSource.dataSourceHeaders().isEmpty()) {
+                    //Serialize the headers
+                    byteArrayOutputStream
+                            .write(MultiPartMIMEUtils.serializedHeaders(currentDataSource.dataSourceHeaders()).copyBytes());
+                  }
 
-                reader.registerReaderCallback(_currentMultiPartMIMEReaderCallback);
-                //Note that by registering here, this will eventually lead to onNewPart() which will then requestPartData()
-                //which will eventually lead to onPartDataAvailable() which will then write to the writeHandle thereby
-                //honoring the original request here to write data. This initial write here will write out the boundary that this
-                //writer is using followed by the headers. This is similar to _transitionToNewDataSource except within
-                //a MultiPartMIMEReader.
+                  //Regardless of whether or not there were headers the RFC calls for another CRLF here.
+                  //If there were no headers we end up with two CRLFs after the boundary
+                  //If there were headers CRLF_BYTES we end up with one CRLF after the boundary and one after the last header
+                  byteArrayOutputStream.write(MultiPartMIMEUtils.CRLF_BYTES);
 
-                _transitionToNewDataSource = false;
-              } else {
-                //_currentMultiPartMIMEReaderCallback.getCurrentSinglePartReader().onWritePossible();
-                final Callable<Void> onWritePossibleInvocation = new MimeWriterCallables.onWritePossibleCallable(_currentMultiPartMIMEReaderCallback.getCurrentSinglePartReader());
+                  //Init the data source, letting them know that they are about to be called
+                  final DataSourceHandleImpl dataSourceHandle = new DataSourceHandleImpl(_writeHandle, this);
+                  currentDataSource.onInit(dataSourceHandle);
 
-                //Queue up this operation
-                _callbackQueue.add(onWritePossibleInvocation);
+                  _writeHandle.write(ByteString.copy(byteArrayOutputStream.toByteArray()));
 
-                //If the while loop before us is in progress, we just return
-                if (_callbackInProgress) {
-                  //We return to unwind the stack. Any queued elements will be taken care of the by the while loop
-                  //before us.
-                  return;
+                  //We are done transitioning to a new part
+                  _transitionToNewDataSource = false;
                 } else {
-                  processAndInvokeCallableQueue();
+
+                  //Now notify the data source to write to the write handle using the DataSourceHandle as a proxy.
+                  //currentDataSource.onWritePossible();
+                  final Callable<Void> onWritePossibleInvocation = new MimeWriterCallables.onWritePossibleCallable(currentDataSource);
+
+                  //Queue up this operation
+                  _callbackQueue.add(onWritePossibleInvocation);
+
+                  //If the while loop before us is in progress, we just return
+                  if (_callbackInProgress) {
+                    //We return to unwind the stack. Any queued elements will be taken care of the by the while loop
+                    //before us.
+                    return;
+                  } else {
+                    processAndInvokeCallableQueue();
+                  }
+                  return; //We return. We will come back to this method when the write we just scheduled
+                  //has finished.
+                }
+              } else {
+
+                //current data source is a multi part mime reader
+
+                if (_transitionToNewDataSource) {
+
+                  final MultiPartMIMEReader reader = (MultiPartMIMEReader) currentDataSource;
+                  final DataSourceHandleImpl dataSourceHandle = new DataSourceHandleImpl(_writeHandle, this);
+                  _currentMultiPartMIMEReaderCallback = new MultiPartMIMEChainReaderCallback(dataSourceHandle, _normalEncapsulationBoundary);
+                  //Since this is not a MultiPartMIMEDataSource we can't use the regular mechanism for reading data.
+                  //Instead of create a new callback that will use write to the writeHandle using the SinglePartMIMEReader
+
+                  reader.registerReaderCallback(_currentMultiPartMIMEReaderCallback);
+                  //Note that by registering here, this will eventually lead to onNewPart() which will then requestPartData()
+                  //which will eventually lead to onPartDataAvailable() which will then write to the writeHandle thereby
+                  //honoring the original request here to write data. This initial write here will write out the boundary that this
+                  //writer is using followed by the headers. This is similar to _transitionToNewDataSource except within
+                  //a MultiPartMIMEReader.
+
+                  _transitionToNewDataSource = false;
+                  return; //We return. We will come back to this method when the write we just scheduled
+                  //has finished.
+                } else {
+                  //_currentMultiPartMIMEReaderCallback.getCurrentSinglePartReader().onWritePossible();
+                  final Callable<Void> onWritePossibleInvocation = new MimeWriterCallables.onWritePossibleCallable(_currentMultiPartMIMEReaderCallback.getCurrentSinglePartReader());
+
+                  //Queue up this operation
+                  _callbackQueue.add(onWritePossibleInvocation);
+
+                  //If the while loop before us is in progress, we just return
+                  if (_callbackInProgress) {
+                    //We return to unwind the stack. Any queued elements will be taken care of the by the while loop
+                    //before us.
+                    return;
+                  } else {
+                    processAndInvokeCallableQueue();
+                  }
+                  return; //We return. We will come back to this method when the write we just scheduled
+                  //has finished.
                 }
               }
             }
@@ -322,8 +332,10 @@ public final class MultiPartMIMEWriter {
     {
       _state = HandleState.CLOSED;
       _writeHandle.error(throwable);
-      MultiPartMIMEWriter.this.abortAllDataSources(throwable); //If this data source has encountered an error
-      //everyone else in front of them needs to know
+      //If this data source has encountered an error everyone else in front of them needs to know.
+      //Also note that exceptions thrown here
+      //todo what happens if exceptions thrown here
+      MultiPartMIMEWriter.this.abortAllDataSources(throwable);
     }
 
 

@@ -61,7 +61,7 @@ public class TestMultiPartMIMEServerRequestReader extends AbstractStreamTest {
   protected Map<String, String> getClientProperties()
   {
     Map<String, String> clientProperties = new HashMap<String, String>();
-    clientProperties.put(HttpClientFactory.HTTP_REQUEST_TIMEOUT, "30000");
+    clientProperties.put(HttpClientFactory.HTTP_REQUEST_TIMEOUT, "300000");
     return clientProperties;
   }
 
@@ -78,7 +78,9 @@ public class TestMultiPartMIMEServerRequestReader extends AbstractStreamTest {
     multi.addBodyPart(dataPart);
     final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     multi.writeTo(byteArrayOutputStream);
-    final ByteStringWriter byteStringWriter = new ByteStringWriter(ByteString.copy(byteArrayOutputStream.toByteArray()));
+    log.info("The request we are sending is: " + new String(byteArrayOutputStream.toByteArray()));
+    //final ByteStringWriter byteStringWriter = new ByteStringWriter(ByteString.copy(byteArrayOutputStream.toByteArray()));
+    final VariableByteStringWriter byteStringWriter = new VariableByteStringWriter(ByteString.copy(byteArrayOutputStream.toByteArray()));
     EntityStream entityStream = EntityStreams.newEntityStream(byteStringWriter);
     StreamRequestBuilder builder = new StreamRequestBuilder(Bootstrap.createHttpURI(PORT, SERVER_URI));
     StreamRequest request = builder.setMethod("POST").setHeader(HEADER_CONTENT_TYPE, multi.getContentType()) .build(entityStream);
@@ -93,6 +95,7 @@ public class TestMultiPartMIMEServerRequestReader extends AbstractStreamTest {
     //Assert.assertNotNull(reader);
     //Assert.assertEquals(totalBytes, reader.getTotalBytes());
     //Assert.assertTrue(reader.allBytesCorrect());
+    //todo make sure all callbacks are invoked
   }
 
 

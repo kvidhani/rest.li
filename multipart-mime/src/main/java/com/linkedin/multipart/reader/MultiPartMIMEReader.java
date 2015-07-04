@@ -133,6 +133,7 @@ public class MultiPartMIMEReader {
                 if (_r2Done) {
                     //If r2 has already notified we are done, we can wrap up. There is no need to use our
                     //iterative technique to call this callback because a client cannot possibly invoke us again.
+                    _readState = ReadState.READER_DONE;
                     try {
                         //This can throw so we need to notify the client that their APIs threw an exception when we invoked them.
                         MultiPartMIMEReader.this._clientCallback.onFinished();
@@ -152,6 +153,7 @@ public class MultiPartMIMEReader {
                     //If r2 has already notified we are done, we can wrap up. No need to look at remaining bytes in buffer.
                     //Also there is no need to use our iterative technique to call this callback because a client cannot
                     //possibly invoke us again.
+                    _readState = ReadState.READER_DONE;
                     try {
                         //This can throw so we need to notify the client that their APIs threw an exception when we invoked them.
                         MultiPartMIMEReader.this._clientCallback.onAbandoned();
@@ -166,28 +168,10 @@ public class MultiPartMIMEReader {
             }
 
             ///////////////////////////////////////////////////////////////////////////////////////////////////
-            //Read data into our local buffer for further processing.
+            //Read data into our local buffer for further processing. All subsequent operations require this.
 
             appendByteStringToBuffer(data);
 
-            //We buffer forward a bit if we have is less then the finishing boundary size.
-            //This is so that we don't confuse a middle boundary vs the end boundary.
-            //We need to look forward as large as the bytes in _finishingBoundaryBytes.
-            if (_byteBuffer.size() < _finishingBoundaryBytes.size()) {
-
-                //If this happens and r2 has not notified us that we are done, then this is a problem. This means that
-                //r2 has already notified that we are done and we didn't see the finishing boundary.
-                //This should never happen.
-                if (_r2Done) {
-                    //Notify the reader of the issue.
-                    handleExceptions(new IllegalMimeFormatException("Malformed multipart mime request. Finishing boundary missing!"));
-                    return;
-                }
-
-                //Otherwise we need to read in some more data.
-                _rh.request(1);
-                return;
-            }
 
             ///////////////////////////////////////////////////////////////////////////////////////////////////
             //Read the preamble in.
@@ -239,6 +223,29 @@ public class MultiPartMIMEReader {
 
 
             ///////////////////////////////////////////////////////////////////////////////////////////////////
+            //Verify we have enough data in our buffer before proceeding
+
+            //We buffer forward a bit if we have is less then the finishing boundary size.
+            //Since the buffer begins with the boundary we want to make sure that its not a
+            //finishing boundary.
+            if (_byteBuffer.size() < _finishingBoundaryBytes.size()) {
+
+                //If this happens and r2 has not notified us that we are done, then this is a problem. This means that
+                //r2 has already notified that we are done and we didn't see the finishing boundary.
+                //This should never happen.
+                if (_r2Done) {
+                    //Notify the reader of the issue.
+                    handleExceptions(new IllegalMimeFormatException("Malformed multipart mime request. Finishing boundary missing!"));
+                    return;
+                }
+
+                //Otherwise we need to read in some more data.
+                _rh.request(1);
+                return;
+            }
+
+
+            ///////////////////////////////////////////////////////////////////////////////////////////////////
             //PART_READING represents normal part reading operation and is where most of the time will be spent.
             if (_readState == ReadState.PART_READING) {
 
@@ -262,6 +269,27 @@ public class MultiPartMIMEReader {
 
                 //Buffer does not begin with boundary.
                 if (boundaryIndex != 0) {
+
+                    //We buffer forward a bit if we have is less or equal to the finishing boundary size.
+                    //We want atleast one byte more then what the size of the finishing boundary is.
+                    //We know the buffer doesn't begin with a boundary, but the second byte
+                    //in ther buffer may be the beginning. Therefore we need to be guaranteed to have atleast
+                    //one possible byte to write to the client.
+                    if (_byteBuffer.size() <= _finishingBoundaryBytes.size()) {
+
+                        //If this happens and r2 has not notified us that we are done, then this is a problem. This means that
+                        //r2 has already notified that we are done and we didn't see the finishing boundary.
+                        //This should never happen.
+                        if (_r2Done) {
+                            //Notify the reader of the issue.
+                            handleExceptions(new IllegalMimeFormatException("Malformed multipart mime request. Finishing boundary missing!"));
+                            return;
+                        }
+
+                        //Otherwise we need to read in some more data.
+                        _rh.request(1);
+                        return;
+                    }
 
                     //Only proceed if the _currentSinglePartMIMEReader is not equal to null. It will only be null
                     //the very first time.
@@ -311,16 +339,15 @@ public class MultiPartMIMEReader {
                                         return;
                                     } else {
                                         processAndInvokeCallableQueue();
-                                        if (_readState == ReadState.READER_DONE) {
-                                            //If invoking the callables resulting in things stopping. Then we should return;
-                                            return;
-                                        }
+                                        //If invoking the callables resulting in things stopping, we will return anyway.
+
                                     }
 
                                     //The client single part reader can then drive forward themselves.
                                 } else {
                                     //This is an abort operation, so we need to drop the bytes and keep moving forward.
                                     _rh.request(1);
+                                    //No need to explicitly return here.
                                 }
 
                             } else {
@@ -351,10 +378,7 @@ public class MultiPartMIMEReader {
                                         return;
                                     } else {
                                         processAndInvokeCallableQueue();
-                                        if (_readState == ReadState.READER_DONE) {
-                                            //If invoking the callables resulting in things stopping. Then we should return;
-                                            return;
-                                        }
+                                        //If invoking the callables resulting in things stopping, we will return anyway.
                                     }
                                 } else {
                                     //drop the bytes
@@ -367,6 +391,56 @@ public class MultiPartMIMEReader {
                 } else {
                     //The beginning of the buffer contains a boundary.
 
+                    //Close the current single part reader (except if this is the first boundary)
+                    if (_currentSinglePartMIMEReader != null) {
+
+                        //If this was a single part reader waiting to be notified of an abort
+                        if (_currentSinglePartMIMEReader._readerState.get() == SingleReaderState.REQUESTED_ABORT) {
+                            //If they cared to be notified of the abandonment.
+                            if (_currentSinglePartMIMEReader._callback != null) {
+
+                                //We need to prevent the client from asking for more data because they are done.
+                                _currentSinglePartMIMEReader._readerState.set(SingleReaderState.FINISHED);
+
+                                //Note we do not need to use our iterative invocation technique here because
+                                //the client can't request more data.
+                                //Also it is important to note that we CANNOT use the iterative technique.
+                                //This is because the iterative technique will not return back here (to this line of
+                                //code) which does not guarantee us proceeding forward from here.
+                                try {
+                                    _currentSinglePartMIMEReader._callback.onAbandoned();
+                                } catch (Exception clientCallbackException) {
+                                    //This could throw so handle appropriately.
+                                    handleExceptions(clientCallbackException);
+                                }
+
+                            } //else no notification will happen since there was no callback registered.
+                        } else {
+
+                            //This was a part that cared about its data. Let's finish him up.
+
+                            //We need to prevent the client from asking for more data because they are done.
+                            _currentSinglePartMIMEReader._readerState.set(SingleReaderState.FINISHED);
+
+
+                            //Note we do not need to use our iterative invocation technique here because
+                            //the client can't request more data.
+                            //Also it is important to note that we CANNOT use the iterative technique.
+                            //This is because the iterative technique will not return back here (to this line of
+                            //code) which does not guarantee us proceeding forward from here.
+                            try {
+                                _currentSinglePartMIMEReader._callback.onFinished();
+                            } catch (Exception clientCallbackException) {
+
+                                //This could throw so handle appropriately.
+                                handleExceptions(clientCallbackException);
+                            }
+                        }
+                        _currentSinglePartMIMEReader = null;
+                        //We will now move on to notify the reader of the next part
+                    }
+
+
                     //Before continuing verify that this isn't the final boundary in front of us.
                     final int lastBoundaryLookup = Collections.indexOfSubList(_byteBuffer, _finishingBoundaryBytes);
                     if (lastBoundaryLookup == 0) {
@@ -375,6 +449,7 @@ public class MultiPartMIMEReader {
                         //sitting in our byteBuffer that haven't been consumed. These bytes must be the epilogue
                         //bytes so we can safely ignore them.
                         if (_r2Done) {
+                            _readState = ReadState.READER_DONE;
                             //There is no need to use our iterative technique to call this callback because a
                             //client cannot possibly invoke us again.
                             try {
@@ -388,71 +463,6 @@ public class MultiPartMIMEReader {
                         //Keep on reading bytes and dropping them.
                         _rh.request(1);
                         return;
-                    }
-
-                    //Close the current single part reader (except if this is the first boundary)
-                    if (_currentSinglePartMIMEReader != null) {
-
-                        //If this was a single part reader waiting to be notified of an abort
-                        if (_currentSinglePartMIMEReader._readerState.get() == SingleReaderState.REQUESTED_ABORT) {
-                            //If they cared to be notified of the abandonment.
-                            if (_currentSinglePartMIMEReader._callback != null) {
-
-                                //We need to prevent the client from asking for more data because they are done.
-                                _currentSinglePartMIMEReader._readerState.set(SingleReaderState.FINISHED);
-
-                                //_currentSinglePartMIMEReader._callback.onAbandoned();
-                                //todo - It may be possible to invoke this without using the iterative technique
-                                final Callable<Void> abandonedInvocation =
-                                        new MimeReaderCallables.onPartAbandonedCallable(_currentSinglePartMIMEReader._callback);
-
-                                //Queue up this operation
-                                _callbackQueue.add(abandonedInvocation);
-
-                                //If the while loop before us is in progress, we just return
-                                if (_callbackInProgress) {
-                                    //We return to unwind the stack. Any queued elements will be taken care of the by the while loop
-                                    //before us.
-                                    return;
-                                } else {
-                                    processAndInvokeCallableQueue();
-                                    if (_readState == ReadState.READER_DONE) {
-                                        //If invoking the callables resulting in things stopping. Then we should return;
-                                        return;
-                                    }
-                                }
-                            } //else no notification will happen since there was no callback registered.
-                        } else {
-
-                            //This was a part that cared about its data. Let's finish him up.
-
-                            //We need to prevent the client from asking for more data because they are done.
-                            _currentSinglePartMIMEReader._readerState.set(SingleReaderState.FINISHED);
-
-                            //_currentSinglePartMIMEReader._callback.onFinished();
-                            //todo - It may be possible to invoke this without using the iterative technique
-                            final Callable<Void> onFinishedInvocation =
-                                    new MimeReaderCallables.onPartFinishedCallable(_currentSinglePartMIMEReader._callback);
-
-                            //Queue up this operation
-                            _callbackQueue.add(onFinishedInvocation);
-
-                            //If the while loop before us is in progress, we just return
-                            if (_callbackInProgress) {
-                                //We return to unwind the stack. Any queued elements will be taken care of the by the while loop
-                                //before us.
-                                return;
-                            } else {
-                                processAndInvokeCallableQueue();
-                                if (_readState == ReadState.READER_DONE) {
-                                    //If invoking the callables resulting in things stopping. Then we should return;
-                                    return;
-                                }
-                            }
-
-                        }
-                        _currentSinglePartMIMEReader = null;
-                        //We will now move on to notify the reader of the next part
                     }
 
                     //Now read in headers:
@@ -617,7 +627,7 @@ public class MultiPartMIMEReader {
                         return;
                     } else {
                         processAndInvokeCallableQueue();
-                        //if (_readState == ReadState.READER_DONE) after this call we end up returning anyway.
+                        //No need to explicitly return here even if this invocation results in an exception.
                     }
 
                 }

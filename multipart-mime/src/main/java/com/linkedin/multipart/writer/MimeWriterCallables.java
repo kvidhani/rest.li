@@ -8,6 +8,8 @@ import java.util.concurrent.Callable;
  */
 //Function pointer to use in our iterative callback invocation scheme in MultiPartMIMEWriter
 //to avoid stack overflows.
+  //todo note that these won't return to the same bit of code when called!!
+  //remember the bug you had
 public class MimeWriterCallables {
 
   //MultiPartMIMEDataSource callable wrappers:
