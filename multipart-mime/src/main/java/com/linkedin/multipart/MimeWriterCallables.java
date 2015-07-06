@@ -1,4 +1,4 @@
-package com.linkedin.multipart.writer;
+package com.linkedin.multipart;
 
 import java.util.concurrent.Callable;
 

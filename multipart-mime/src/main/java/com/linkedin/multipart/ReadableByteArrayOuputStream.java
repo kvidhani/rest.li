@@ -1,4 +1,4 @@
-package com.linkedin.multipart.reader;
+package com.linkedin.multipart;
 
 import java.io.ByteArrayOutputStream;
 

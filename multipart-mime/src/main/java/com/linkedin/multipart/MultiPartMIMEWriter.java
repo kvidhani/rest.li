@@ -1,8 +1,6 @@
-package com.linkedin.multipart.writer;
+package com.linkedin.multipart;
 
 import com.linkedin.data.ByteString;
-import com.linkedin.multipart.MultiPartMIMEUtils;
-import com.linkedin.multipart.reader.MultiPartMIMEReader;
 import com.linkedin.r2.message.streaming.EntityStream;
 import com.linkedin.r2.message.streaming.EntityStreams;
 import com.linkedin.r2.message.streaming.WriteHandle;
@@ -11,6 +9,7 @@ import com.linkedin.r2.util.LinkedDeque;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.Charset;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Queue;
@@ -22,12 +21,12 @@ import java.util.concurrent.Callable;
  */
 //todo mention thread safety for all of this
 //todo redo javadocs
-
+//todo evaluate all sitautions where callbacks can throw....ALL CALLBACKS CAN THROW POTENTIALLY!
 public final class MultiPartMIMEWriter {
 
   private final R2MultiPartMIMEWriter _writer;
   private final EntityStream _entityStream;
-  private final List<MultiPartMIMEDataSource> _dataSources;
+  private final List<Object> _allDataSources;
   private final String _rawBoundary;
   private final byte[] _normalEncapsulationBoundary;
   private final byte[] _finalEncapsulationBoundary;
@@ -36,23 +35,24 @@ public final class MultiPartMIMEWriter {
 
   private volatile int _currentDataSource = 0;
   private volatile boolean _transitionToNewDataSource = true;
+  //The current MultiPartMIMEChainReaderCallback in the case that our data source is a MultiPartMIMEReader. If our
+  //current data source is a MultiPartMIMEReader then we will potentially walk through many SinglePartMIMEReaders.
+  //If this happens, we will need to know the current SinglePartMIMEReader (similar to how we need to know the current
+  //MultiPartMIMEDataSource). Therefore we need to keep track of the current MultiPartMIMEReaderCallback because it is
+  //this callback that maintains a reference to the current SinglePartMIMEReader. We need this reference so that we
+  //can ask it to read the data and then write the result of that read to the writeHandle.
+  private volatile MultiPartMIMEChainReaderCallback _currentMultiPartMIMEReaderCallback;
+
 
   //Our implementation of a R2 writer
   private class R2MultiPartMIMEWriter implements Writer {
 
-    //A flag to indicate whethr or not the preamble has been written
+    //A flag to indicate whether or not the preamble has been written
     private boolean _preambleWritten = false;
     //The write handle to write to that will be provided by R2
     private WriteHandle _writeHandle;
     //The mutable byte array we use to create the ByteString which we will end up writing
     private final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-    //The current MultiPartMIMEChainReaderCallback in the case that our data source is a MultiPartMIMEReader. If our
-    //current data source is a MultiPartMIMEReader then we will potentially walk through many SinglePartMIMEReaders.
-    //If this happens, we will need to know the current SinglePartMIMEReader (similar to how we need to know the current
-    //MultiPartMIMEDataSource). Therefore we need to keep track of the current MultiPartMIMEReaderCallback because it is
-    //this callback that maintains a reference to the current SinglePartMIMEReader. We need this reference so that we
-    //can ask it to read the data and then write the result of that read to the writeHandle.
-    private volatile MultiPartMIMEChainReaderCallback _currentMultiPartMIMEReaderCallback;
 
     //These are needed to support our iterative invocation of onWritePossible so that we don't end up with a recursive loop
     //which would lead to a stack overflow. This could happen if R2 asks us to write many chunks.
@@ -105,7 +105,7 @@ public final class MultiPartMIMEWriter {
             _writeHandle.write(ByteString.copy(byteArrayOutputStream.toByteArray()));
           } else {
             //If we have finished all our data sources
-            if (_currentDataSource > _dataSources.size() - 1) {
+            if (_currentDataSource > _allDataSources.size() - 1) {
 
               //We write the last boundary with an extra two hyphen characters according to the RFC
               //We then write the epilogue and then we call onDone() on the WriteHandle
@@ -116,11 +116,10 @@ public final class MultiPartMIMEWriter {
               _writeHandle.done();
             } else {
 
-              //todo fix this and APIs
-              //TODO - RESUME HERE
-              final MultiPartMIMEDataSource currentDataSource = _dataSources.get(_currentDataSource);
+              final Object currentDataSource = _allDataSources.get(_currentDataSource);
 
               if (currentDataSource instanceof MultiPartMIMEDataSource) {
+                final MultiPartMIMEDataSource _currentSingleDataSource = (MultiPartMIMEDataSource) currentDataSource;
                 //Transitions to new parts will happen once the current data source has called onDone() on the DataSourceHandle
                 if (_transitionToNewDataSource) {
                   //On each transition to a new part, write a boundary. The CRLF before the boundary and after
@@ -130,10 +129,10 @@ public final class MultiPartMIMEWriter {
                   byteArrayOutputStream.write(_normalEncapsulationBoundary);
                   byteArrayOutputStream.write(MultiPartMIMEUtils.CRLF_BYTES);
 
-                  if (!currentDataSource.dataSourceHeaders().isEmpty()) {
+                  if (!_currentSingleDataSource.dataSourceHeaders().isEmpty()) {
                     //Serialize the headers
                     byteArrayOutputStream
-                            .write(MultiPartMIMEUtils.serializedHeaders(currentDataSource.dataSourceHeaders()).copyBytes());
+                            .write(MultiPartMIMEUtils.serializedHeaders(_currentSingleDataSource.dataSourceHeaders()).copyBytes());
                   }
 
                   //Regardless of whether or not there were headers the RFC calls for another CRLF here.
@@ -143,7 +142,7 @@ public final class MultiPartMIMEWriter {
 
                   //Init the data source, letting them know that they are about to be called
                   final DataSourceHandleImpl dataSourceHandle = new DataSourceHandleImpl(_writeHandle, this);
-                  currentDataSource.onInit(dataSourceHandle);
+                  _currentSingleDataSource.onInit(dataSourceHandle);
 
                   _writeHandle.write(ByteString.copy(byteArrayOutputStream.toByteArray()));
 
@@ -153,7 +152,7 @@ public final class MultiPartMIMEWriter {
 
                   //Now notify the data source to write to the write handle using the DataSourceHandle as a proxy.
                   //currentDataSource.onWritePossible();
-                  final Callable<Void> onWritePossibleInvocation = new MimeWriterCallables.onWritePossibleCallable(currentDataSource);
+                  final Callable<Void> onWritePossibleInvocation = new MimeWriterCallables.onWritePossibleCallable(_currentSingleDataSource);
 
                   //Queue up this operation
                   _callbackQueue.add(onWritePossibleInvocation);
@@ -171,17 +170,17 @@ public final class MultiPartMIMEWriter {
                 }
               } else {
 
-                //current data source is a multi part mime reader
-
+                //Current data source is a multi part mime reader
                 if (_transitionToNewDataSource) {
 
-                  final MultiPartMIMEReader reader = (MultiPartMIMEReader) currentDataSource;
+                  final MultiPartMIMEReader _currentMultiPartDataSource = (MultiPartMIMEReader) currentDataSource;
                   final DataSourceHandleImpl dataSourceHandle = new DataSourceHandleImpl(_writeHandle, this);
-                  _currentMultiPartMIMEReaderCallback = new MultiPartMIMEChainReaderCallback(dataSourceHandle, _normalEncapsulationBoundary);
+                  _currentMultiPartMIMEReaderCallback = new MultiPartMIMEChainReaderCallback(dataSourceHandle,
+                          _currentMultiPartDataSource, _normalEncapsulationBoundary);
                   //Since this is not a MultiPartMIMEDataSource we can't use the regular mechanism for reading data.
                   //Instead of create a new callback that will use write to the writeHandle using the SinglePartMIMEReader
 
-                  reader.registerReaderCallback(_currentMultiPartMIMEReaderCallback);
+                  _currentMultiPartDataSource.registerReaderCallback(_currentMultiPartMIMEReaderCallback);
                   //Note that by registering here, this will eventually lead to onNewPart() which will then requestPartData()
                   //which will eventually lead to onPartDataAvailable() which will then write to the writeHandle thereby
                   //honoring the original request here to write data. This initial write here will write out the boundary that this
@@ -193,7 +192,8 @@ public final class MultiPartMIMEWriter {
                   //has finished.
                 } else {
                   //_currentMultiPartMIMEReaderCallback.getCurrentSinglePartReader().onWritePossible();
-                  final Callable<Void> onWritePossibleInvocation = new MimeWriterCallables.onWritePossibleCallable(_currentMultiPartMIMEReaderCallback.getCurrentSinglePartReader());
+                  final Callable<Void> onWritePossibleInvocation =
+                          new MimeWriterCallables.onWritePossibleCallable(_currentMultiPartMIMEReaderCallback.getCurrentSinglePartReaderDataSource());
 
                   //Queue up this operation
                   _callbackQueue.add(onWritePossibleInvocation);
@@ -233,23 +233,87 @@ public final class MultiPartMIMEWriter {
   void abortAllDataSources(final Throwable throwable)
   {
     //Abort all data sources from the current data source going forward
-    for (int i = _currentDataSource; i<_dataSources.size(); i++)
+    for (int i = _currentDataSource; i< _allDataSources.size(); i++)
     {
-      _dataSources.get(i).onAbort(throwable);
+      final Object dataSource = _allDataSources.get(i);
+      //todo what happens if these throw?
+      if (dataSource instanceof MultiPartMIMEDataSource) {
+        final MultiPartMIMEDataSource currentDataSource = (MultiPartMIMEDataSource) dataSource;
+        currentDataSource.onAbort(throwable);
+      } else {
+        //We have to notify the current single part reader we are reading from if the data source
+        //is a multipartmimereader. This will lead to the the multipartmimecall back also notified
+        //of the stream error.
+        _currentMultiPartMIMEReaderCallback.getCurrentSinglePartReaderDataSource().onAbort(throwable);
+        //then finish all chaining logic
+        //then a couple of writer tests
+        //finish comment in multipart mime reader
+      }
     }
 
     //Note that a consumer could continue to use the DataSourceHandle to call write(), onDone() or error()
     //These will work as they did pre-abort, but r2 will just silently ignore them since the stream has already been aborted.
   }
 
-  public MultiPartMIMEWriter(final MultiPartMIMEDataSource dataSource, final String preamble, final String epilogue) {
-    this(Arrays.asList(dataSource), preamble, epilogue);
+
+  public static class MultiPartMIMEWriterBuilder {
+
+    private List<Object> _allDataSources = new ArrayList<Object>();
+    private final String _preamble;
+    private final String _epilogue;
+
+    public MultiPartMIMEWriterBuilder(final String preamble, final String epilogue) {
+      _preamble = preamble;
+      _epilogue = epilogue;
+    }
+
+    public MultiPartMIMEWriterBuilder() {
+     this("", "");
+    }
+
+    public MultiPartMIMEWriterBuilder appendDataSource(final MultiPartMIMEDataSource dataSource) {
+      _allDataSources.add(dataSource);
+      return this;
+    }
+
+    public MultiPartMIMEWriterBuilder appendSinglePartDataSource(final MultiPartMIMEReader.SinglePartMIMEReader singlePartMIMEReader) {
+      _allDataSources.add(new MultiPartMIMEReader.SinglePartMIMEReaderDataSource(singlePartMIMEReader));
+      return this;
+    }
+
+    public MultiPartMIMEWriterBuilder appendMultiPartDataSource(final MultiPartMIMEReader multiPartMIMEReader) {
+      _allDataSources.add(multiPartMIMEReader);
+      return this;
+    }
+
+    public MultiPartMIMEWriterBuilder appendDataSources(final List<MultiPartMIMEDataSource> dataSources) {
+      _allDataSources.addAll(dataSources);
+      return this;
+    }
+
+    public MultiPartMIMEWriterBuilder appendSinglePartDataSources(final List<MultiPartMIMEReader.SinglePartMIMEReader> singlePartMIMEReaders) {
+      for (MultiPartMIMEReader.SinglePartMIMEReader singlePartMIMEReader : singlePartMIMEReaders) {
+        appendSinglePartDataSource(singlePartMIMEReader);
+      }
+      return this;
+    }
+
+    public MultiPartMIMEWriterBuilder appendMultiPartDataSources(final List<MultiPartMIMEReader> multiPartMIMEReaders) {
+      _allDataSources.addAll(multiPartMIMEReaders);
+      return this;
+    }
+
+    public MultiPartMIMEWriter build() {
+      return new MultiPartMIMEWriter(_allDataSources, _preamble, _epilogue);
+    }
+
   }
 
-  public MultiPartMIMEWriter(final List<MultiPartMIMEDataSource> dataSources, final String preamble,
+  private MultiPartMIMEWriter(final List<Object> allDataSources,
+                              final String preamble,
       final String epilogue) {
 
-    _dataSources = dataSources;
+    _allDataSources = allDataSources;
     _writer = new R2MultiPartMIMEWriter();
     _entityStream = EntityStreams.newEntityStream(_writer);
     _preamble = preamble;
@@ -331,7 +395,8 @@ public final class MultiPartMIMEWriter {
     public void error(Throwable throwable)
     {
       _state = HandleState.CLOSED;
-      _writeHandle.error(throwable);
+      _writeHandle.error(throwable); //Verify with zhenkai that this will just send the stream as is
+      //i.e this is a prematurely ended body
       //If this data source has encountered an error everyone else in front of them needs to know.
       //Also note that exceptions thrown here
       //todo what happens if exceptions thrown here

@@ -1,6 +1,5 @@
-package com.linkedin.multipart.writer;
+package com.linkedin.multipart;
 
-import com.linkedin.multipart.MultiPartMIMEUtils;
 import com.linkedin.r2.message.rest.StreamResponse;
 import com.linkedin.r2.message.rest.StreamResponseBuilder;
 import java.util.List;

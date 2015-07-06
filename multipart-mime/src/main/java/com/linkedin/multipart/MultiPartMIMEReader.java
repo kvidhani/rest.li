@@ -1,7 +1,6 @@
-package com.linkedin.multipart.reader;
+package com.linkedin.multipart;
 
 import com.linkedin.data.ByteString;
-import com.linkedin.multipart.MultiPartMIMEUtils;
 import com.linkedin.multipart.reader.exceptions.IllegalMimeFormatException;
 import com.linkedin.multipart.reader.exceptions.PartBindException;
 import com.linkedin.multipart.reader.exceptions.PartFinishedException;
@@ -9,9 +8,6 @@ import com.linkedin.multipart.reader.exceptions.PartNotInitializedException;
 import com.linkedin.multipart.reader.exceptions.ReaderNotInitializedException;
 import com.linkedin.multipart.reader.exceptions.StreamBusyException;
 import com.linkedin.multipart.reader.exceptions.StreamFinishedException;
-import com.linkedin.multipart.writer.MultiPartMIMEDataSource;
-import com.linkedin.multipart.writer.MultiPartMIMEWriter;
-import com.linkedin.multipart.writer.SinglePartMIMEReaderDataSourceCallback;
 import com.linkedin.r2.message.rest.StreamRequest;
 import com.linkedin.r2.message.rest.StreamResponse;
 import com.linkedin.r2.message.streaming.EntityStream;
@@ -32,17 +28,29 @@ import org.apache.commons.lang.ArrayUtils;
 /**
  * Created by kvidhani on 5/18/15.
  */
+
+
+//Note that the reader is always in one of two states:
+//1. Between parts. This occurs when onNewPart() is called with a SinglePartMIMEReader
+//in the MultiPartMIMEReaderCallback. At this point the client has not committed
+//to reading the part but has simply been notified that there is a part coming up.
+//2. Inside of a part. If after being notified of a new part, the client then
+//registers a IndividualPartReaderCallback with the SinglePartMIMEReader, they have then
+//committed to consuming this part. Subsequently they can then call readPartData()
+//on the SinglePartMIMEReader and then be notified when data is available via
+//onPartDataAvailable().
+
 public class MultiPartMIMEReader {
 
     //Hide the reader
-    private final R2MultiPartMimeReader _reader;
+    private final R2MultiPartMIMEReader _reader;
     //Note that the reader callback will only be allowed to change if there is a downstream
     //writer that needs to take this stream over and read from it.
     private volatile MultiPartMIMEReaderCallback _clientCallback;
     private final EntityStream _entityStream;
     private volatile String _preamble;
 
-    private class R2MultiPartMimeReader implements Reader {
+    class R2MultiPartMIMEReader implements Reader {
         private volatile ReadHandle _rh;
         private volatile List<Byte> _byteBuffer = new ArrayList<Byte>();
         //The reason for the first boundary vs normal boundary difference is because the first boundary MAY be missing the
@@ -83,7 +91,7 @@ public class MultiPartMIMEReader {
             _callbackInProgress = false;
         }
 
-        private void handleExceptions(final Throwable throwable) {
+        void handleExceptions(final Throwable throwable) {
             //All exceptions caught here should put the reader in a non-usable state. Continuing from this point forward
             //is not feasible.
             //We also will cancel here and have R2 read and drop all bytes on the floor. Otherwise we are obliged to read
@@ -256,6 +264,24 @@ public class MultiPartMIMEReader {
                 //2. Otherwise if the buffer does start with boundary then we wrap up the previous part and
                 //begin the new one.
 
+                //Another invariant to note is that the result of this logic below will result in ONE of the
+                //following (assumingi there are no error conditions):
+                //1. onPartDataAvailable()
+                //OR
+                //2. OnAbandoned() on SinglePartCallback followed by onNewPart() on MultiPartCallback
+                //OR
+                //3. OnFinished() on SinglePartCallback followed by onNewPart() on MultiPartCallback
+                //OR
+                //4. OnAbandoned() on SinglePartCallback followed by onFinished() on MultiPartCallback
+                //OR
+                //5. OnFinished() on SinglePartCallback followed by onFinished() on MultiPartCallback
+                //
+                //Note that onPartDataAvailable() and onNewPart() are never called one after another in the logic
+                //below because upon invocation of these callbacks, clients may come back to us immediately
+                //and it can potentially lead to very confusing states. Furthermore its also more intuitive
+                //to answer each client's request with only one callback.
+
+
                 //todo clean this up
                 final int boundaryIndex;
                 final int boundarySize;
@@ -273,7 +299,7 @@ public class MultiPartMIMEReader {
                     //We buffer forward a bit if we have is less or equal to the finishing boundary size.
                     //We want atleast one byte more then what the size of the finishing boundary is.
                     //We know the buffer doesn't begin with a boundary, but the second byte
-                    //in ther buffer may be the beginning. Therefore we need to be guaranteed to have atleast
+                    //in the buffer may be the beginning. Therefore we need to be guaranteed to have atleast
                     //one possible byte to write to the client.
                     if (_byteBuffer.size() <= _finishingBoundaryBytes.size()) {
 
@@ -383,8 +409,9 @@ public class MultiPartMIMEReader {
                                 } else {
                                     //drop the bytes
                                 }
-                                //This part is finished. Further below, our logic will now see that the buffer begins
-                                //with the boundary. This will finish up this part and then make a new part.
+                                //This part is finished. Subsequently when the client asks for more data our logic will below
+                                //will now see that the buffer begins with the boundary. This will finish up this part
+                                //and then make a new part.
                             }
                         }
                     }
@@ -421,7 +448,6 @@ public class MultiPartMIMEReader {
 
                             //We need to prevent the client from asking for more data because they are done.
                             _currentSinglePartMIMEReader._readerState.set(SingleReaderState.FINISHED);
-
 
                             //Note we do not need to use our iterative invocation technique here because
                             //the client can't request more data.
@@ -656,7 +682,7 @@ public class MultiPartMIMEReader {
             }
         }
 
-        private R2MultiPartMimeReader(final String boundary) {
+        private R2MultiPartMIMEReader(final String boundary) {
             //The RFC states that the preceeding CRLF_BYTES is a part of the boundary
             _firstBoundary = "--" + boundary;
             _normalBoundary = MultiPartMIMEUtils.CRLF_STRING + "--" + boundary;
@@ -714,7 +740,7 @@ public class MultiPartMIMEReader {
             throw new IllegalArgumentException("No Content-Type header in this request");
         }
 
-        _reader = new R2MultiPartMimeReader(MultiPartMIMEUtils.extractBoundary(contentTypeHeaderValue));
+        _reader = new R2MultiPartMIMEReader(MultiPartMIMEUtils.extractBoundary(contentTypeHeaderValue));
         _entityStream = request.getEntityStream();
         _reader._readState = ReadState.CREATED;
         if (clientCallback != null) {
@@ -730,7 +756,7 @@ public class MultiPartMIMEReader {
             throw new IllegalArgumentException("No Content-Type header in this response");
         }
 
-        _reader = new R2MultiPartMimeReader(MultiPartMIMEUtils.extractBoundary(contentTypeHeaderValue));
+        _reader = new R2MultiPartMIMEReader(MultiPartMIMEUtils.extractBoundary(contentTypeHeaderValue));
         _entityStream = response.getEntityStream();
         _reader._readState = ReadState.CREATED;
         if (clientCallback != null) {
@@ -739,27 +765,18 @@ public class MultiPartMIMEReader {
         }
     }
 
-    //Note that the reader is always in one of two states:
-    //1. Between parts. This occurs when onNewPart() is called with a SinglePartMIMEReader
-    //in the MultiPartMIMEReaderCallback. At this point the client has not committed
-    //to reading the part but has simply been notified that there is a part coming up.
-    //2. Inside of a part. If after being notified of a new part, the client then
-    //registers a IndividualPartReaderCallback with the SinglePartMIMEReader, they have then
-    //committed to consuming this part. Subsequently they can then call readPartData()
-    //on the SinglePartMIMEReader and then be notified when data is available via
-    //onPartDataAvailable().
 
-    public class SinglePartMIMEReader implements MultiPartMIMEDataSource {
+    public class SinglePartMIMEReader {
 
         private final Map<String, String> _headers;
         private volatile SinglePartMIMEReaderCallback _callback = null;
-        private final R2MultiPartMimeReader _r2MultiPartMimeReader;
+        private final R2MultiPartMIMEReader _r2MultiPartMIMEReader;
         private volatile AtomicReference<SingleReaderState> _readerState =
                 new AtomicReference<SingleReaderState>(SingleReaderState.CREATED);
 
         //Only MultiPartMIMEReader should ever create an instance
         private SinglePartMIMEReader(Map<String, String> headers) {
-            _r2MultiPartMimeReader = MultiPartMIMEReader.this._reader;
+            _r2MultiPartMIMEReader = MultiPartMIMEReader.this._reader;
             _headers = headers;
         }
 
@@ -796,7 +813,7 @@ public class MultiPartMIMEReader {
         public void requestPartData()
                 throws PartNotInitializedException, PartFinishedException, StreamBusyException, StreamFinishedException {
 
-            if (_r2MultiPartMimeReader._readState == ReadState.READER_DONE) {
+            if (_r2MultiPartMIMEReader._readState == ReadState.READER_DONE) {
                 throw new StreamFinishedException();
             }
 
@@ -822,7 +839,7 @@ public class MultiPartMIMEReader {
 
             //We have updated our desire to be notified of data. Now we signal the reader to refresh itself and forcing it
             //to read from the internal buffer as much as possible. We do this by notifying it of an empty ByteString.
-            _r2MultiPartMimeReader.onDataAvailable(ByteString.empty());
+            _r2MultiPartMIMEReader.onDataAvailable(ByteString.empty());
 
             //Note that there is no stack overflow here due to the iterative callback invocation technique we are using.
         }
@@ -838,7 +855,7 @@ public class MultiPartMIMEReader {
         public void abandonPart()
                 throws PartFinishedException, StreamBusyException, StreamFinishedException {
 
-            if (_r2MultiPartMimeReader._readState == ReadState.READER_DONE) {
+            if (_r2MultiPartMIMEReader._readState == ReadState.READER_DONE) {
                 throw new StreamFinishedException();
             }
 
@@ -865,41 +882,83 @@ public class MultiPartMIMEReader {
 
             //We have updated our desire to be aborted. Now we signal the reader to refresh itself and forcing it
             //to read from the internal buffer as much as possible. We do this by notifying it of an empty ByteString.
-            _r2MultiPartMimeReader.onDataAvailable(ByteString.empty());
+            _r2MultiPartMIMEReader.onDataAvailable(ByteString.empty());
         }
 
         ///////////////////////////////////////////////////////////////////////////////////////////////////
-        //MultiPartMIMEDataSource interface
+        // Chaining interface implementation. Note that we can't implement MultiPartMIMEDataSource because
+        // then the methods below would become public and we do not want this. There is no way around this
+        // so therefore we don't implement the formal interface. Even if MultiPartMIMEDataSource was an
+        // abstract class with public abstract methods its not possible to reduce the visibility
+        // of these methods in subclasses.
+        // The only suitable alternative is to create a wrapper class that hides the interface implementation
+        // and delegates.
         private volatile MultiPartMIMEWriter.DataSourceHandleImpl _dataSourceHandle;
 
-      //todo this being public is bad
+         void onInit(MultiPartMIMEWriter.DataSourceHandleImpl dataSourceHandle) {
+            //We have been informed that this part will be treated as a data source by the MultiPartMIMEWriter.
+            //So we will prepare for this task by:
+            //1. Storing the handle to write data to.
+            //2. Creating a callback to register ourselves with.
+            _dataSourceHandle = dataSourceHandle;
+            SinglePartMIMEReaderCallback singlePartMIMEChainReaderCallback = new SinglePartMIMEReaderDataSourceCallback(_dataSourceHandle);
+            registerReaderCallback(singlePartMIMEChainReaderCallback);
+        }
+
+        void onWritePossible() {
+            //When we are told to produce some data we will requestPartData() on ourselves which will
+            //result in onPartDataAvailable() in SinglePartMIMEChainReaderCallback(). The result of that will write
+            //data to the data source handle which will write it further down stream.
+            requestPartData();
+        }
+
+        void onAbort(Throwable e) {
+            //If we send a part off to someone else and it gets aborted when they are told to write
+            //this indicates an error in reading.
+            //Note that this could occur in one of two cases:
+            //1. This was an individual part as a SinglePartMIMEReader specified to be sent out. In this case the application
+            //developer can gracefully recover after being called onStreamError().
+            //2. This was an individual part from a MultiPartMIMEReader data source specified to be sent out. In this case
+            //the application developer has given up control on being able to handle this gracefully. In this case
+            //onStreamError() will be called on MultiPartMIMEChainReaderCallback which will effectively shutdown the
+            //MultiPartMIMEReader from reading. This behavior is similar to what would happen if there was an error reading
+            //(i.e there was an invalid multipart mime body).
+
+           MultiPartMIMEReader.this._clientCallback.onStreamError(e);
+        }
+
+        Map<String, String> dataSourceHeaders() {
+            return _headers;
+        }
+
+    }
+
+    static class SinglePartMIMEReaderDataSource implements MultiPartMIMEDataSource
+    {
+        private final SinglePartMIMEReader _singlePartMIMEReader;
+
+        SinglePartMIMEReaderDataSource(final SinglePartMIMEReader singlePartMIMEReader) {
+            _singlePartMIMEReader = singlePartMIMEReader;
+        }
+
         @Override
         public void onInit(MultiPartMIMEWriter.DataSourceHandleImpl dataSourceHandle) {
-          //We have been informed that this part will be treated as a data source by the MultiPartMIMEWriter.
-          //So we will prepare for this task by:
-          //1. Storing the handle to write data to.
-          //2. Creating a callback to register ourselves with.
-          _dataSourceHandle = dataSourceHandle;
-          SinglePartMIMEReaderCallback singlePartMIMEChainReaderCallback = new SinglePartMIMEReaderDataSourceCallback(_dataSourceHandle);
-          registerReaderCallback(singlePartMIMEChainReaderCallback);
+            _singlePartMIMEReader.onInit(dataSourceHandle);
         }
 
         @Override
         public void onWritePossible() {
-          //When we are told to produce some data we will requestPartData() on ourselves which will
-          //result in onPartDataAvailable() in SinglePartMIMEChainReaderCallback(). The result of that will write
-          //data to the data source handle which will write it further down stream.
-          requestPartData();
+            _singlePartMIMEReader.onWritePossible();
         }
 
         @Override
         public void onAbort(Throwable e) {
-
+            _singlePartMIMEReader.onAbort(e);
         }
 
         @Override
         public Map<String, String> dataSourceHeaders() {
-            return _headers;
+            return _singlePartMIMEReader.dataSourceHeaders();
         }
     }
 
@@ -1023,6 +1082,10 @@ public class MultiPartMIMEReader {
             //However this is clearly a client bug so we will not account for it here.
             _clientCallback.onNewPart(_reader._currentSinglePartMIMEReader);
         }
+    }
+
+    R2MultiPartMIMEReader getR2MultiPartMIMEReader() {
+        return _reader;
     }
 
 }

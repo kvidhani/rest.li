@@ -1,4 +1,4 @@
-package com.linkedin.multipart.reader;
+package com.linkedin.multipart;
 
 /**
  * Created by kvidhani on 6/5/15.

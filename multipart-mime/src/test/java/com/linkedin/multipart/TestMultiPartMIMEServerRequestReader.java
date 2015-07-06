@@ -2,9 +2,6 @@ package com.linkedin.multipart;
 
 import com.linkedin.common.callback.Callback;
 import com.linkedin.data.ByteString;
-import com.linkedin.multipart.reader.MultiPartMIMEReader;
-import com.linkedin.multipart.reader.MultiPartMIMEReaderCallback;
-import com.linkedin.multipart.reader.SinglePartMIMEReaderCallback;
 import com.linkedin.multipart.reader.exceptions.IllegalMimeFormatException;
 import com.linkedin.r2.message.RequestContext;
 import com.linkedin.r2.message.rest.Messages;
@@ -14,7 +11,6 @@ import com.linkedin.r2.message.rest.RestStatus;
 import com.linkedin.r2.message.rest.StreamRequest;
 import com.linkedin.r2.message.rest.StreamRequestBuilder;
 import com.linkedin.r2.message.rest.StreamResponse;
-import com.linkedin.r2.message.streaming.ByteStringWriter;
 import com.linkedin.r2.message.streaming.EntityStream;
 import com.linkedin.r2.message.streaming.EntityStreams;
 import com.linkedin.r2.sample.Bootstrap;

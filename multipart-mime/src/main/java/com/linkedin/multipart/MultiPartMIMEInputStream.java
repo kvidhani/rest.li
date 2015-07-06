@@ -1,4 +1,4 @@
-package com.linkedin.multipart.writer;
+package com.linkedin.multipart;
 
 import com.linkedin.data.ByteString;
 import java.io.IOException;
@@ -20,7 +20,7 @@ import java.util.concurrent.TimeoutException;
 //2. There was an exception reading the stream, so we then close the stream and call error on write handle
 //3. The write was aborted, in which case we also close the stream.
 
-public final class MultiPartMIMEInputStream implements MultiPartMIMEDataSource
+public final class MultiPartMIMEInputStream extends MultiPartMIMEDataSource
 {
   public static final int DEFAULT_MAXIMUM_BLOCKING_DURATION = 3000;
   public static final int DEFAULT_WRITE_CHUNK_SIZE = 5000;
