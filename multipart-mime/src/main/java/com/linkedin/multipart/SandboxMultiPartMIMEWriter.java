@@ -173,7 +173,7 @@ public class SandboxMultiPartMIMEWriter {
       //This will be invoked if R2 tells the composite writer to abort which will then tell this Writer to abort.
       //In this case there is no way to notify the application developer that the MultiPartMIMEReader
       //they provided as a data source has seen a problem.
-      //Therefore we will treat this scenario as if an exception occurred while reading (which did happen).
+      //Therefore we will treat this scenario as if an exception occurred while reading.
 
       //We need to have behavior similar to handleExceptions() so that everything is cancelled
       //If there were potentially multiple chains across different servers, then all the readers

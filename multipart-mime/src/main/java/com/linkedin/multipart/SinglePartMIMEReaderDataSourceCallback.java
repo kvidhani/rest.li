@@ -35,8 +35,10 @@ public class SinglePartMIMEReaderDataSourceCallback implements SinglePartMIMERea
 
   @Override
   public void onStreamError(Throwable e) {
-    //If there was an error while this single part was being read then we notify the parent callback
+    //If there was an error while this single part was being read then we notify the parent callback,
+    //then we notify the writeHandle
     _multiPartMIMEReaderCallback.onStreamError(e);
+    _writeHandle.error(e);
   }
 
   public SinglePartMIMEReaderDataSourceCallback(final WriteHandle writeHandle,
