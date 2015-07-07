@@ -1,11 +1,9 @@
 package com.linkedin.multipart;
 
 import com.linkedin.data.ByteString;
-import com.linkedin.r2.filter.R2Constants;
 import com.linkedin.r2.message.streaming.WriteHandle;
 import com.linkedin.r2.message.streaming.Writer;
 import com.linkedin.util.ArgumentUtil;
-
 import java.util.Random;
 
 /**
@@ -17,10 +15,6 @@ public class VariableByteStringWriter implements Writer {
     private WriteHandle _wh;
     private static final Random _random = new Random();
     private final NumberBytesToWrite _numberBytesToWrite;
-
-    public VariableByteStringWriter(ByteString content) {
-        this(content, NumberBytesToWrite.ONE);
-    }
 
     public VariableByteStringWriter(ByteString content, NumberBytesToWrite numberBytesToWrite) {
         ArgumentUtil.notNull(content, "content");
