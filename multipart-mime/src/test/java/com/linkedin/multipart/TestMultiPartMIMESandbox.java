@@ -13,6 +13,7 @@ import com.linkedin.r2.message.rest.StreamRequestBuilder;
 import com.linkedin.r2.message.rest.StreamResponse;
 import com.linkedin.r2.message.streaming.EntityStream;
 import com.linkedin.r2.message.streaming.EntityStreams;
+import com.linkedin.r2.message.streaming.WriteHandle;
 import com.linkedin.r2.sample.Bootstrap;
 import com.linkedin.r2.transport.common.StreamRequestHandler;
 import com.linkedin.r2.transport.common.bridge.server.TransportDispatcher;
@@ -37,11 +38,11 @@ import test.r2.integ.AbstractStreamTest;
 
 //Note that we use javax.mail's ability to create multipart mime requests to verify the integrity of our RFC implementation.
 
-public class TestMultiPartMIMEServerRequestReader extends AbstractStreamTest {
+public class TestMultiPartMIMESandbox extends AbstractStreamTest {
 
   private static final URI SERVER_URI = URI.create("/foobar");
   private MimeServerRequestHandler _mimeServerRequestHandler;
-  private static final Logger log = LoggerFactory.getLogger(TestMultiPartMIMEServerRequestReader.class);
+  private static final Logger log = LoggerFactory.getLogger(TestMultiPartMIMESandbox.class);
   private static final String HEADER_CONTENT_TYPE = "Content-Type";
 
   @Override
@@ -62,8 +63,72 @@ public class TestMultiPartMIMEServerRequestReader extends AbstractStreamTest {
   }
 
 
+
+
+
+  //TODO RESUME HERE
   @Test
-  public void testSimpleRequest() throws Exception
+  public void testSimpleWriterRequest() throws Exception
+  {
+    
+    //todo construct an in memory data source too for convineinece
+    MultiPartMIMEDataSource dataSource = new MultiPartMIMEDataSource() {
+      @Override
+      public Map<String, String> dataSourceHeaders() {
+        return null;
+      }
+
+      @Override
+      public void onInit(WriteHandle wh) {
+
+      }
+
+      @Override
+      public void onWritePossible() {
+
+      }
+
+      @Override
+      public void onAbort(Throwable e) {
+
+      }
+    }
+    MultiPartMIMEWriter writer =  new MultiPartMIMEWriter.MultiPartMIMEWriterBuilder()
+
+    //Create a simple multi part mime request with just one part
+    MimeMultipart multi = new MimeMultipart();
+    MimeBodyPart dataPart = new MimeBodyPart();
+    ContentType contentType = new ContentType("text/plain");
+    dataPart.setContent("Some bytes for some body", contentType.getBaseType());
+    dataPart.setHeader(HEADER_CONTENT_TYPE, "test/plain");
+    multi.addBodyPart(dataPart);
+    final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    multi.writeTo(byteArrayOutputStream);
+    log.info("The request we are sending is: " + new String(byteArrayOutputStream.toByteArray()));
+    //final ByteStringWriter byteStringWriter = new ByteStringWriter(ByteString.copy(byteArrayOutputStream.toByteArray()));
+    final VariableByteStringWriter byteStringWriter = new VariableByteStringWriter(ByteString.copy(byteArrayOutputStream.toByteArray()));
+    EntityStream entityStream = EntityStreams.newEntityStream(byteStringWriter);
+    StreamRequestBuilder builder = new StreamRequestBuilder(Bootstrap.createHttpURI(PORT, SERVER_URI));
+    StreamRequest request = builder.setMethod("POST").setHeader(HEADER_CONTENT_TYPE, multi.getContentType()) .build(entityStream);
+
+    final AtomicInteger status = new AtomicInteger(-1);
+    final CountDownLatch latch = new CountDownLatch(1);
+    Callback<StreamResponse> callback = expectSuccessCallback(latch, status);
+    _client.streamRequest(request, callback);
+    latch.await(60000, TimeUnit.MILLISECONDS);
+    Assert.assertEquals(status.get(), RestStatus.OK);
+    //BytesReader reader = _checkRequestHandler.getReader();
+    //Assert.assertNotNull(reader);
+    //Assert.assertEquals(totalBytes, reader.getTotalBytes());
+    //Assert.assertTrue(reader.allBytesCorrect());
+    //todo make sure all callbacks are invoked
+  }
+
+
+
+
+  @Test
+  public void testSimpleReaderRequest() throws Exception
   {
     //Create a simple multi part mime request with just one part
     MimeMultipart multi = new MimeMultipart();

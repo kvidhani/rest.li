@@ -13,7 +13,7 @@ import java.io.IOException;
 public class MultiPartMIMEChainReaderCallback implements MultiPartMIMEReaderCallback
 {
   private final WriteHandle _writeHandle;
-  private final MultiPartMIMEReader _multiPartMIMEReader;
+  //private final MultiPartMIMEReader _multiPartMIMEReader;
   private MultiPartMIMEReader.SinglePartMIMEReader _currentSinglePartReader;
   private final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
   private final byte[] _normalEncapsulationBoundary;
@@ -21,8 +21,7 @@ public class MultiPartMIMEChainReaderCallback implements MultiPartMIMEReaderCall
   @Override
   public void onNewPart(MultiPartMIMEReader.SinglePartMIMEReader singlePartMIMEReader) {
     final SinglePartMIMEReaderCallback singlePartMIMEChainReader =
-        new SinglePartMIMEReaderDataSourceCallback(_writeHandle, singlePartMIMEReader, this);
-    //Wrap the SinglePartReader in the proxy class which implements the MultiPartMIMEDataSource interface
+        new SinglePartMIMEChainReaderCallback(_writeHandle, singlePartMIMEReader);
     _currentSinglePartReader = singlePartMIMEReader;
     singlePartMIMEReader.registerReaderCallback(singlePartMIMEChainReader);
 
@@ -44,8 +43,7 @@ public class MultiPartMIMEChainReaderCallback implements MultiPartMIMEReaderCall
       //If there were headers CRLF_BYTES we end up with one CRLF after the boundary and one after the last header
       byteArrayOutputStream.write(MultiPartMIMEUtils.CRLF_BYTES);
     } catch (IOException ioException) {
-      _writeHandle.error(ioException); //Should never happen
-      //todo what to place here
+      onStreamError(ioException); //Should never happen
     }
 
     _writeHandle.write(ByteString.copy(byteArrayOutputStream.toByteArray()));
@@ -68,19 +66,24 @@ public class MultiPartMIMEChainReaderCallback implements MultiPartMIMEReaderCall
 
   @Override
   public void onStreamError(Throwable e) {
-    //There was a problem reading, so therefore there is a problem writing.
-    _writeHandle.error(e);
-    //This reader is now in an unus
-    //RESUME HERE TODO AND FIGURE ALL THIS OUT
 
+    //If there was an error reading then we notify the writeHandle.
+    //Note that the MultiPartMIMEReader and SinglePartMIMEReader have already been rendered
+    //inoperable due to this. We just need to let the writeHandle know of this problem.
+
+    //Also note that there may or may not be a current SinglePartMIMEReader. If there was
+    //then it already invoked _writeHandle.error(). See SinglePartMIMEReaderDataSourceCallback.
+    //Regardless its safe to do it again in case this did not happen.
+
+    //Lastly note there is no way to let an application developer know that they MultiPartMIMEReader
+    //they sent further downstream had an error.
+    _writeHandle.error(e);
     //TODO - open a JIRA so that we can invoke client callbacks of the result of their chaining
   }
 
   public MultiPartMIMEChainReaderCallback(final WriteHandle writeHandle,
-                                          final MultiPartMIMEReader multiPartMIMEReader,
       final byte[] normalEncapsulationBoundary) {
     _writeHandle = writeHandle;
-    _multiPartMIMEReader = multiPartMIMEReader;
     _normalEncapsulationBoundary = normalEncapsulationBoundary;
   }
 

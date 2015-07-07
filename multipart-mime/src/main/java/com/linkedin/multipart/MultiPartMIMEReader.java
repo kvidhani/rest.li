@@ -263,7 +263,7 @@ public class MultiPartMIMEReader {
         //begin the new one.
 
         //Another invariant to note is that the result of this logic below will result in ONE of the
-        //following (assumingi there are no error conditions):
+        //following (assuming there are no error conditions):
         //1. onPartDataAvailable()
         //OR
         //2. OnAbandoned() on SinglePartCallback followed by onNewPart() on MultiPartCallback
@@ -640,7 +640,7 @@ public class MultiPartMIMEReader {
           //todo make this logic cleaner
           _byteBuffer = _byteBuffer
               .subList(boundarySize + headerEnding + MultiPartMIMEUtils.CONSECUTIVE_CRLFS_BYTE_LIST.size(),
-                  _byteBuffer.size());
+                      _byteBuffer.size());
 
           //Notify the callback that we have a new part
           _currentSinglePartMIMEReader = new SinglePartMIMEReader(headers);
@@ -820,6 +820,7 @@ public class MultiPartMIMEReader {
     //result in StreamBusyException
     //4. If the r2 reader is done, either through an error or a proper finish. Calls to
     //requestPartData() will throw StreamFinishedException.
+    //todo don't be fancy and just make all this synchronized
     public void requestPartData()
         throws PartNotInitializedException, PartFinishedException, StreamBusyException, StreamFinishedException {
 
@@ -912,7 +913,7 @@ public class MultiPartMIMEReader {
       //2. Creating a callback to register ourselves with.
       _writeHandle = writeHandle;
       SinglePartMIMEReaderCallback singlePartMIMEChainReaderCallback =
-          new SinglePartMIMEReaderDataSourceCallback(writeHandle, this, MultiPartMIMEReader.this._clientCallback);
+          new SinglePartMIMEChainReaderCallback(writeHandle, this);
       registerReaderCallback(singlePartMIMEChainReaderCallback);
     }
 
@@ -926,18 +927,9 @@ public class MultiPartMIMEReader {
     void onAbort(Throwable e) {
       //If we send a part off to someone else and it gets aborted when they are told to write
       //this indicates an error in reading.
-      //Note that this could occur in one of two cases:
-      //1. This was an individual part as a SinglePartMIMEReader specified to be sent out. In this case the application
-      //developer can gracefully recover after being called onStreamError().
-      //2. This was an individual part from a MultiPartMIMEReader data source specified to be sent out. In this case
-      //the application developer has given up control on being able to handle this gracefully. In this case
-      //onStreamError() will be called on MultiPartMIMEChainReaderCallback which will effectively shutdown the
-      //MultiPartMIMEReader from reading. This behavior is similar to what would happen if there was an error reading
-      //(i.e there was an invalid multipart mime body).
-
+      //Note that this could only occur if this was an individual part as a SinglePartMIMEReader specified to be sent out. In this case the application
+      //developer can gracefully recover after being called onStreamError() on the MultiPartMIMEReaderCallback.
       MultiPartMIMEReader.this._clientCallback.onStreamError(e);
-
-      //todo consider opening a JIRA for this (point 2 above)
     }
 
     Map<String, String> dataSourceHeaders() {
@@ -945,7 +937,7 @@ public class MultiPartMIMEReader {
     }
   }
 
-  static class SinglePartMIMEReaderDataSource implements SandboxMultiPartMIMEDataSource {
+  static class SinglePartMIMEReaderDataSource implements MultiPartMIMEDataSource {
     private final SinglePartMIMEReader _singlePartMIMEReader;
 
     SinglePartMIMEReaderDataSource(final SinglePartMIMEReader singlePartMIMEReader) {
