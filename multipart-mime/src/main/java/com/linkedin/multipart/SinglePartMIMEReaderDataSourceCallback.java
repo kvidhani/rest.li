@@ -1,6 +1,7 @@
 package com.linkedin.multipart;
 
 import com.linkedin.data.ByteString;
+import com.linkedin.r2.message.streaming.WriteHandle;
 
 
 /**
@@ -8,16 +9,22 @@ import com.linkedin.data.ByteString;
  */
 public class SinglePartMIMEReaderDataSourceCallback implements SinglePartMIMEReaderCallback {
 
-  private final MultiPartMIMEWriter.DataSourceHandleImpl _dataSourceHandle;
+  private final WriteHandle _writeHandle;
+  private final MultiPartMIMEReader.SinglePartMIMEReader _singlePartMIMEReader;
+  private final MultiPartMIMEReaderCallback _multiPartMIMEReaderCallback;
 
   @Override
   public void onPartDataAvailable(ByteString b) {
-    _dataSourceHandle.write(b);
+    _writeHandle.write(b);
+    if(_writeHandle.remaining() > 0) {
+      //No danger of a stack overflow due to the iterative invocation technique in MultiPartMIMEReader
+      _singlePartMIMEReader.requestPartData();
+    }
   }
 
   @Override
   public void onFinished() {
-    _dataSourceHandle.done(ByteString.empty());
+    _writeHandle.done();
   }
 
   @Override
@@ -28,12 +35,15 @@ public class SinglePartMIMEReaderDataSourceCallback implements SinglePartMIMERea
 
   @Override
   public void onStreamError(Throwable e) {
-    //If there was an error while this single part was being read then we pass then on to the write handle
-    //as we write.
-    _dataSourceHandle.error(e);
+    //If there was an error while this single part was being read then we notify the parent callback
+    _multiPartMIMEReaderCallback.onStreamError(e);
   }
 
-  public SinglePartMIMEReaderDataSourceCallback(final MultiPartMIMEWriter.DataSourceHandleImpl dataSourceHandle) {
-    _dataSourceHandle = dataSourceHandle;
+  public SinglePartMIMEReaderDataSourceCallback(final WriteHandle writeHandle,
+      final MultiPartMIMEReader.SinglePartMIMEReader singlePartMIMEReader,
+      final MultiPartMIMEReaderCallback multiPartMIMEReaderCallback) {
+    _singlePartMIMEReader = singlePartMIMEReader;
+    _writeHandle = writeHandle;
+    _multiPartMIMEReaderCallback = multiPartMIMEReaderCallback;
   }
 }

@@ -22,5 +22,6 @@ public interface MultiPartMIMEReaderCallback {
     void onAbandoned();
 
     //When there is an error reading from the stream.
+    //todo mention that this may be called when chaining a single part
     void onStreamError(Throwable e);
 }

@@ -1,6 +1,7 @@
 package com.linkedin.multipart;
 
 import com.linkedin.data.ByteString;
+import com.linkedin.r2.message.streaming.WriteHandle;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.HashMap;
@@ -20,12 +21,12 @@ import java.util.concurrent.TimeoutException;
 //2. There was an exception reading the stream, so we then close the stream and call error on write handle
 //3. The write was aborted, in which case we also close the stream.
 
-public final class MultiPartMIMEInputStream extends MultiPartMIMEDataSource
+public final class MultiPartMIMEInputStream implements SandboxMultiPartMIMEDataSource
 {
   public static final int DEFAULT_MAXIMUM_BLOCKING_DURATION = 3000;
   public static final int DEFAULT_WRITE_CHUNK_SIZE = 5000;
 
-  private MultiPartMIMEWriter.DataSourceHandleImpl _dataSourceHandle;
+  private WriteHandle _writeHandle;
   private final Map<String, String> _headers;
   private final InputStream _inputStream;
   private boolean _dataSourceFinished = false; //since there is no way to see if an InputStream has already been closed
@@ -34,32 +35,34 @@ public final class MultiPartMIMEInputStream extends MultiPartMIMEDataSource
   private final int _writeChunkSize;
 
   @Override
-  public void onInit(final MultiPartMIMEWriter.DataSourceHandleImpl dataSourceHandle)
+  public void onInit(final WriteHandle writeHandle)
   {
-    _dataSourceHandle = dataSourceHandle;
+    _writeHandle = writeHandle;
   }
 
   @Override
   public void onWritePossible() {
 
-    final CountDownLatch latch = new CountDownLatch(1);
+    while (_writeHandle.remaining() > 0) {
+      final CountDownLatch latch = new CountDownLatch(1);
 
-    //We use two threads from the client provided thread pool. We must use this technique
-    //because if the read from the input stream hangs, there is no way to recover.
-    //Therefore we have a reader thread and a boss thread that waits for the reader to complete.
+      //We use two threads from the client provided thread pool. We must use this technique
+      //because if the read from the input stream hangs, there is no way to recover.
+      //Therefore we have a reader thread and a boss thread that waits for the reader to complete.
 
-    //We want to invoke the callback on only one (boss) thread because:
-    //1. It makes the threading model more complicated if the reader thread invokes the callbacks as well as
-    //the boss thread.
-    //2. In cases where there is a timeout, meaning the read took too long, we want to close the
-    //input stream on the boss thread to unblock the reader thread pool thread. In such cases it is indeterminate
-    //as to what the behavior is when the aforementioned blocked thread wakes up. This thread could receive an IOException
-    //or come back with a few bytes. Due to this indeterminate behavior we don't want to trust the reader thread
-    //to invoke any callbacks. We want our boss thread to explicitly invoke error() in such cases.
-    final InputStreamReader inputStreamReader = new InputStreamReader(latch);
-    final InputStreamReaderManager inputStreamReaderManager = new InputStreamReaderManager(inputStreamReader, latch);
-    _executorService.submit(inputStreamReader);
-    _executorService.submit(inputStreamReaderManager);
+      //We want to invoke the callback on only one (boss) thread because:
+      //1. It makes the threading model more complicated if the reader thread invokes the callbacks as well as
+      //the boss thread.
+      //2. In cases where there is a timeout, meaning the read took too long, we want to close the
+      //input stream on the boss thread to unblock the reader thread pool thread. In such cases it is indeterminate
+      //as to what the behavior is when the aforementioned blocked thread wakes up. This thread could receive an IOException
+      //or come back with a few bytes. Due to this indeterminate behavior we don't want to trust the reader thread
+      //to invoke any callbacks. We want our boss thread to explicitly invoke error() in such cases.
+      final InputStreamReader inputStreamReader = new InputStreamReader(latch);
+      final InputStreamReaderManager inputStreamReaderManager = new InputStreamReaderManager(inputStreamReader, latch);
+      _executorService.submit(inputStreamReader);
+      _executorService.submit(inputStreamReaderManager);
+    }
   }
 
   /**
@@ -145,7 +148,8 @@ public final class MultiPartMIMEInputStream extends MultiPartMIMEDataSource
           if (_inputStreamReader._result != null) {
             //If the call went through, extract the info and write
             if (_dataSourceFinished) {
-              _dataSourceHandle.done(_inputStreamReader._result);
+              _writeHandle.write(_inputStreamReader._result);
+              _writeHandle.done();
               //Close the stream and shutdown the engine, since we won't be invoked again
               try {
                 _inputStream.close();
@@ -156,7 +160,7 @@ public final class MultiPartMIMEInputStream extends MultiPartMIMEDataSource
               }
             } else {
               //Just a normal write
-              _dataSourceHandle.write(_inputStreamReader._result);
+              _writeHandle.write(_inputStreamReader._result);
             }
           } else {
             //This means the result is null which implies
@@ -170,7 +174,7 @@ public final class MultiPartMIMEInputStream extends MultiPartMIMEDataSource
               //make its way down as an error...
             }
             //Now mark is it an error using the correct throwable
-            _dataSourceHandle.error(_inputStreamReader._error);
+            _writeHandle.error(_inputStreamReader._error);
           }
         } else {
           //there was a timeout
@@ -181,7 +185,7 @@ public final class MultiPartMIMEInputStream extends MultiPartMIMEDataSource
           } catch (IOException ioException) {
             //Safe to swallow
           }
-          _dataSourceHandle.error(new TimeoutException("InputStream reading timed out"));
+          _writeHandle.error(new TimeoutException("InputStream reading timed out"));
         }
       } catch (InterruptedException exception) {
 
@@ -192,7 +196,7 @@ public final class MultiPartMIMEInputStream extends MultiPartMIMEDataSource
         } catch (IOException ioException) {
           //Safe to swallow
         }
-        _dataSourceHandle.error(exception);
+        _writeHandle.error(exception);
       }
     }
   }

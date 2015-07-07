@@ -10,7 +10,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.Callable;
@@ -322,9 +321,9 @@ public final class MultiPartMIMEWriter {
     //Create the boundary.
     _rawBoundary = MultiPartMIMEUtils.generateBoundary();
     //As per the RFC there must two preceding hyphen characters on each boundary between each parts
-    _normalEncapsulationBoundary = ("--" + _rawBoundary).getBytes(Charset.forName("US-ASCII"));
+    _normalEncapsulationBoundary = (MultiPartMIMEUtils.CRLF_STRING + "--" + _rawBoundary).getBytes(Charset.forName("US-ASCII"));
     //As per the RFC the final boundary has two extra hyphens at the end
-    _finalEncapsulationBoundary = ("--" + _rawBoundary + "--").getBytes(Charset.forName("US-ASCII"));
+    _finalEncapsulationBoundary = (MultiPartMIMEUtils.CRLF_STRING + "--" + _rawBoundary + "--").getBytes(Charset.forName("US-ASCII"));
   }
 
   public EntityStream getEntityStream() {

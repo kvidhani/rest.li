@@ -2,6 +2,7 @@ package com.linkedin.multipart;
 
 import com.linkedin.data.ByteString;
 
+import com.linkedin.r2.message.streaming.WriteHandle;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
@@ -11,31 +12,31 @@ import java.io.IOException;
  */
 public class MultiPartMIMEChainReaderCallback implements MultiPartMIMEReaderCallback
 {
-  private final MultiPartMIMEWriter.DataSourceHandleImpl _dataSourceHandle;
+  private final WriteHandle _writeHandle;
   private final MultiPartMIMEReader _multiPartMIMEReader;
   private MultiPartMIMEReader.SinglePartMIMEReaderDataSource _currentSinglePartReaderDataSource;
   private final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
   private final byte[] _normalEncapsulationBoundary;
 
   @Override
-  public void onNewPart(MultiPartMIMEReader.SinglePartMIMEReader singleParMIMEReader) {
-    final SinglePartMIMEReaderCallback singlePartMIMEChainReader = new SinglePartMIMEReaderDataSourceCallback(_dataSourceHandle);
+  public void onNewPart(MultiPartMIMEReader.SinglePartMIMEReader singlePartMIMEReader) {
+    final SinglePartMIMEReaderCallback singlePartMIMEChainReader =
+        new SinglePartMIMEReaderDataSourceCallback(_writeHandle, singlePartMIMEReader, this);
     //Wrap the SinglePartReader in the proxy class which implements the MultiPartMIMEDataSource interface
-    _currentSinglePartReaderDataSource = new MultiPartMIMEReader.SinglePartMIMEReaderDataSource(singleParMIMEReader);
-    singleParMIMEReader.registerReaderCallback(singlePartMIMEChainReader);
+    _currentSinglePartReaderDataSource = new MultiPartMIMEReader.SinglePartMIMEReaderDataSource(singlePartMIMEReader);
+    singlePartMIMEReader.registerReaderCallback(singlePartMIMEChainReader);
 
     byteArrayOutputStream.reset();
 
     try {
       //Write the headers out for this new part
-      byteArrayOutputStream.write(MultiPartMIMEUtils.CRLF_BYTES);
       byteArrayOutputStream.write(_normalEncapsulationBoundary);
       byteArrayOutputStream.write(MultiPartMIMEUtils.CRLF_BYTES);
 
-      if (!singleParMIMEReader.dataSourceHeaders().isEmpty()) {
+      if (!singlePartMIMEReader.dataSourceHeaders().isEmpty()) {
         //Serialize the headers
         byteArrayOutputStream
-            .write(MultiPartMIMEUtils.serializedHeaders(singleParMIMEReader.dataSourceHeaders()).copyBytes());
+            .write(MultiPartMIMEUtils.serializedHeaders(singlePartMIMEReader.dataSourceHeaders()).copyBytes());
       }
 
       //Regardless of whether or not there were headers the RFC calls for another CRLF here.
@@ -43,16 +44,20 @@ public class MultiPartMIMEChainReaderCallback implements MultiPartMIMEReaderCall
       //If there were headers CRLF_BYTES we end up with one CRLF after the boundary and one after the last header
       byteArrayOutputStream.write(MultiPartMIMEUtils.CRLF_BYTES);
     } catch (IOException ioException) {
-      _dataSourceHandle.error(ioException); //Should never happen
+      _writeHandle.error(ioException); //Should never happen
+      //todo what to place here
     }
 
-    _dataSourceHandle.write(ByteString.copy(byteArrayOutputStream.toByteArray()));
+    _writeHandle.write(ByteString.copy(byteArrayOutputStream.toByteArray()));
+    if (_writeHandle.remaining() > 0) {
+      singlePartMIMEReader.requestPartData();
+    }
   }
 
   @Override
   public void onFinished() {
-    //This can be ignored. This is if the MultiPartMIMEReader this is registered to is passed as a data source to the writer
-    //and the writer finishes consuming all the parts.
+    //This particular entity stream is done
+    _writeHandle.done();
   }
 
   @Override
@@ -63,24 +68,18 @@ public class MultiPartMIMEChainReaderCallback implements MultiPartMIMEReaderCall
 
   @Override
   public void onStreamError(Throwable e) {
-    //This will be invoked if any part within this MultiPartMIMEReader was told to abort.
-    //This allows clients who sent this MultiPartMIMEReader to a writer as a data source to be notified
-    //and potentially clean up.
+    //There was a problem reading, so therefore there is a problem writing.
+    _writeHandle.error(e);
+    //This reader is now in an unus
+    //RESUME HERE TODO AND FIGURE ALL THIS OUT
 
-    //We need to have behavior similar to handleExceptions() so that everything is cancelled
-    //If there were potentially multiple chains across different servers, then all the readers
-    //in the chain need to be shut down.
-    //This is in contrast to the case where if one SinglePartReader was sent down as a data source. In that
-    //case we notify the custom client MultiPartMIMEReaderCallback and they can recover.
-
-    //todo test this! todo is this really correct behavior
-    _multiPartMIMEReader.getR2MultiPartMIMEReader().handleExceptions(e);
+    //TODO - open a JIRA so that we can invoke client callbacks of the result of their chaining
   }
 
-  public MultiPartMIMEChainReaderCallback(final MultiPartMIMEWriter.DataSourceHandleImpl dataSourceHandle,
+  public MultiPartMIMEChainReaderCallback(final WriteHandle writeHandle,
                                           final MultiPartMIMEReader multiPartMIMEReader,
       final byte[] normalEncapsulationBoundary) {
-    _dataSourceHandle = dataSourceHandle;
+    _writeHandle = writeHandle;
     _multiPartMIMEReader = multiPartMIMEReader;
     _normalEncapsulationBoundary = normalEncapsulationBoundary;
   }
