@@ -162,6 +162,7 @@ public class SandboxMultiPartMIMEWriter {
       //writer is using followed by the headers. This is similar to _transitionToNewDataSource except within
       //a MultiPartMIMEReader.
       } else {
+        //This is a bit odd. We are calling R2 apis ourselves....TODO REUME AND FIGURE THIS OUT
         _multiPartMIMEChainReaderCallback.getCurrentSinglePartReaderDataSource().onWritePossible();
       }
 
