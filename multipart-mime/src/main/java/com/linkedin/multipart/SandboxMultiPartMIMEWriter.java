@@ -163,7 +163,7 @@ public class SandboxMultiPartMIMEWriter {
       //a MultiPartMIMEReader.
       } else {
         //This is a bit odd. We are calling R2 apis ourselves....TODO REUME AND FIGURE THIS OUT
-        _multiPartMIMEChainReaderCallback.getCurrentSinglePartReaderDataSource().onWritePossible();
+        _multiPartMIMEChainReaderCallback.getCurrentSinglePartReader().requestPartData();
       }
 
     }

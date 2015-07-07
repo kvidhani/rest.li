@@ -14,7 +14,7 @@ public class MultiPartMIMEChainReaderCallback implements MultiPartMIMEReaderCall
 {
   private final WriteHandle _writeHandle;
   private final MultiPartMIMEReader _multiPartMIMEReader;
-  private MultiPartMIMEReader.SinglePartMIMEReaderDataSource _currentSinglePartReaderDataSource;
+  private MultiPartMIMEReader.SinglePartMIMEReader _currentSinglePartReader;
   private final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
   private final byte[] _normalEncapsulationBoundary;
 
@@ -23,7 +23,7 @@ public class MultiPartMIMEChainReaderCallback implements MultiPartMIMEReaderCall
     final SinglePartMIMEReaderCallback singlePartMIMEChainReader =
         new SinglePartMIMEReaderDataSourceCallback(_writeHandle, singlePartMIMEReader, this);
     //Wrap the SinglePartReader in the proxy class which implements the MultiPartMIMEDataSource interface
-    _currentSinglePartReaderDataSource = new MultiPartMIMEReader.SinglePartMIMEReaderDataSource(singlePartMIMEReader);
+    _currentSinglePartReader = singlePartMIMEReader;
     singlePartMIMEReader.registerReaderCallback(singlePartMIMEChainReader);
 
     byteArrayOutputStream.reset();
@@ -84,7 +84,7 @@ public class MultiPartMIMEChainReaderCallback implements MultiPartMIMEReaderCall
     _normalEncapsulationBoundary = normalEncapsulationBoundary;
   }
 
-  MultiPartMIMEReader.SinglePartMIMEReaderDataSource getCurrentSinglePartReaderDataSource() {
-    return _currentSinglePartReaderDataSource;
+  MultiPartMIMEReader.SinglePartMIMEReader getCurrentSinglePartReader() {
+    return _currentSinglePartReader;
   }
 }
