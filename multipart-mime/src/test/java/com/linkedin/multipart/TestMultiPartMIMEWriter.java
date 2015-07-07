@@ -11,6 +11,7 @@ import com.linkedin.r2.message.rest.RestStatus;
 import com.linkedin.r2.message.rest.StreamRequest;
 import com.linkedin.r2.message.rest.StreamRequestBuilder;
 import com.linkedin.r2.message.rest.StreamResponse;
+import com.linkedin.r2.message.streaming.ByteStringWriter;
 import com.linkedin.r2.message.streaming.EntityStream;
 import com.linkedin.r2.message.streaming.EntityStreams;
 import com.linkedin.r2.sample.Bootstrap;
@@ -81,9 +82,7 @@ public class TestMultiPartMIMEWriter extends AbstractStreamTest {
     final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     multi.writeTo(byteArrayOutputStream);
     log.info("The request we are sending is: " + new String(byteArrayOutputStream.toByteArray()));
-    //final ByteStringWriter byteStringWriter = new ByteStringWriter(ByteString.copy(byteArrayOutputStream.toByteArray()));
-    final VariableByteStringWriter byteStringWriter = new VariableByteStringWriter(
-        ByteString.copy(byteArrayOutputStream.toByteArray()));
+    final ByteStringWriter byteStringWriter = new ByteStringWriter(ByteString.copy(byteArrayOutputStream.toByteArray()));
     EntityStream entityStream = EntityStreams.newEntityStream(byteStringWriter);
     StreamRequestBuilder builder = new StreamRequestBuilder(Bootstrap.createHttpURI(PORT, SERVER_URI));
     StreamRequest request = builder.setMethod("POST").setHeader(HEADER_CONTENT_TYPE, multi.getContentType()) .build(entityStream);

@@ -118,11 +118,12 @@ public class TestMultiPartMIMEReader extends AbstractStreamTest {
     _client.streamRequest(request, callback);
     latch.await(60000, TimeUnit.MILLISECONDS);
     Assert.assertEquals(status.get(), RestStatus.OK);
-    _mimeServerRequestHandler._reader.???
-    //BytesReader reader = _checkRequestHandler.getReader();
-    //Assert.assertNotNull(reader);
-    //Assert.assertEquals(totalBytes, reader.getTotalBytes());
-    //Assert.assertTrue(reader.allBytesCorrect());
+
+    List<TestSinglePartMIMEReaderCallbackImpl> singlePartMIMEReaderCallbacks =
+        _mimeServerRequestHandler._testMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks;
+    Assert.assertEquals(singlePartMIMEReaderCallbacks.size(), 1);
+    final ByteString expectedData = ByteString.copy("Some bytes for some body".getBytes());
+    Assert.assertEquals(singlePartMIMEReaderCallbacks.get(0)._finishedData, expectedData);
     //todo make sure all callbacks are invoked
   }
 
@@ -156,7 +157,6 @@ public class TestMultiPartMIMEReader extends AbstractStreamTest {
     final MultiPartMIMEReader.SinglePartMIMEReader _singlePartMIMEReader;
     final ByteArrayOutputStream _byteArrayOutputStream = new ByteArrayOutputStream();
     ByteString _finishedData;
-
     int partCounter = 0;
 
     TestSinglePartMIMEReaderCallbackImpl(final MultiPartMIMEReaderCallback topLevelCallback, final
@@ -202,14 +202,14 @@ public class TestMultiPartMIMEReader extends AbstractStreamTest {
   private static class TestMultiPartMIMEReaderCallbackImpl implements MultiPartMIMEReaderCallback {
 
     final Callback<StreamResponse> _r2callback;
-    final List<MultiPartMIMEReader.SinglePartMIMEReader> _singlePartMIMEReaderList =
-        new ArrayList<MultiPartMIMEReader.SinglePartMIMEReader>();
+    final List<TestSinglePartMIMEReaderCallbackImpl> _singlePartMIMEReaderCallbacks =
+        new ArrayList<TestSinglePartMIMEReaderCallbackImpl>();
 
     @Override
     public void onNewPart(MultiPartMIMEReader.SinglePartMIMEReader singleParMIMEReader) {
-      _singlePartMIMEReaderList.add(singleParMIMEReader);
-      SinglePartMIMEReaderCallback singlePartMIMEReaderCallback = new TestSinglePartMIMEReaderCallbackImpl(this, singleParMIMEReader);
+      TestSinglePartMIMEReaderCallbackImpl singlePartMIMEReaderCallback = new TestSinglePartMIMEReaderCallbackImpl(this, singleParMIMEReader);
       singleParMIMEReader.registerReaderCallback(singlePartMIMEReaderCallback);
+      _singlePartMIMEReaderCallbacks.add(singlePartMIMEReaderCallback);
       singleParMIMEReader.requestPartData();
     }
 
@@ -240,7 +240,7 @@ public class TestMultiPartMIMEReader extends AbstractStreamTest {
 
   private static class MimeServerRequestHandler implements StreamRequestHandler
   {
-    private MultiPartMIMEReader _reader;
+    private TestMultiPartMIMEReaderCallbackImpl _testMultiPartMIMEReaderCallback;
 
     MimeServerRequestHandler()
     {}
@@ -248,14 +248,20 @@ public class TestMultiPartMIMEReader extends AbstractStreamTest {
     @Override
     public void handleRequest(StreamRequest request, RequestContext requestContext, final Callback<StreamResponse> callback)
     {
-      try {
+      try
+      {
         //todo assert the request has multipart content type
-        _reader = MultiPartMIMEReader.createAndAcquireStream(request);
-        final MultiPartMIMEReaderCallback testMultiPartMIMEReaderCallback = new TestMultiPartMIMEReaderCallbackImpl(callback);
-        _reader.registerReaderCallback(testMultiPartMIMEReaderCallback);
-      } catch (IllegalMimeFormatException illegalMimeFormatException) {
+        MultiPartMIMEReader reader = MultiPartMIMEReader.createAndAcquireStream(request);
+        _testMultiPartMIMEReaderCallback  = new TestMultiPartMIMEReaderCallbackImpl(callback);
+        reader.registerReaderCallback(_testMultiPartMIMEReaderCallback);
+      }
+      catch (IllegalMimeFormatException illegalMimeFormatException)
+      {
         RestException restException = new RestException(RestStatus.responseForError(400, illegalMimeFormatException));
-        callback.onError(restException);      }
+        callback.onError(restException);
+      }
     }
+
+
   }
 }
