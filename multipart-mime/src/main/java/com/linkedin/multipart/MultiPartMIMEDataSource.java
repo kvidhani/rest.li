@@ -7,6 +7,8 @@ import java.util.Map;
 /**
  * Created by kvidhani on 7/6/15.
  */
+//todo javadoc indicating to consumers that they should write a good deal of bytes...as many as possible really without taking a perf hit
+  //otherwise the other side will just get a few bytes over and over
 public interface MultiPartMIMEDataSource extends Writer {
 
   /**

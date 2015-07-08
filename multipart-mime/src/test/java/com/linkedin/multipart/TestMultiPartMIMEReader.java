@@ -12,7 +12,6 @@ import com.linkedin.r2.message.rest.RestStatus;
 import com.linkedin.r2.message.rest.StreamRequest;
 import com.linkedin.r2.message.rest.StreamRequestBuilder;
 import com.linkedin.r2.message.rest.StreamResponse;
-import com.linkedin.r2.message.streaming.ByteStringWriter;
 import com.linkedin.r2.message.streaming.EntityStream;
 import com.linkedin.r2.message.streaming.EntityStreams;
 import com.linkedin.r2.message.streaming.Writer;
@@ -24,20 +23,23 @@ import com.linkedin.r2.transport.http.client.HttpClientFactory;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.URI;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import javax.mail.BodyPart;
+import javax.mail.Header;
 import javax.mail.internet.ContentType;
 import javax.mail.internet.MimeBodyPart;
 import javax.mail.internet.MimeMultipart;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.Assert;
+import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 import test.r2.integ.AbstractStreamTest;
@@ -78,6 +80,24 @@ public class TestMultiPartMIMEReader extends AbstractStreamTest {
   private static final Logger log = LoggerFactory.getLogger(TestMultiPartMIMEReader.class);
   private static final String HEADER_CONTENT_TYPE = "Content-Type";
 
+  private static MimeBodyPart _tinyDataSource;
+
+
+  @BeforeClass
+  public void dataSourceSetup() throws Exception {
+
+    //Tiny body
+    {
+      final String body = "A tiny body";
+      MimeBodyPart dataPart = new MimeBodyPart();
+      ContentType contentType = new ContentType("text/plain");
+      dataPart.setContent(body, contentType.getBaseType());
+      dataPart.setHeader(HEADER_CONTENT_TYPE, "text/plain");
+      _tinyDataSource = dataPart;
+    }
+
+  }
+
   @Override
   protected TransportDispatcher getTransportDispatcher()
   {
@@ -99,31 +119,27 @@ public class TestMultiPartMIMEReader extends AbstractStreamTest {
   @DataProvider(name = "tinySingleBodyDataSource")
   public Object[][] tinySingleBodyDataSource() throws Exception
   {
-    final String body = "A tiny body";
-    final ByteString bodyByteString = ByteString.copyString(body, StandardCharsets.UTF_8);
     MimeMultipart multiPartMimeBody = new MimeMultipart();
-    MimeBodyPart dataPart = new MimeBodyPart();
-    ContentType contentType = new ContentType("text/plain");
-    dataPart.setContent(body, contentType.getBaseType());
-    dataPart.setHeader(HEADER_CONTENT_TYPE, "test/plain");
-    multiPartMimeBody.addBodyPart(dataPart);
+
+    //Add your body parts
+    multiPartMimeBody.addBodyPart(_tinyDataSource);
     final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     multiPartMimeBody.writeTo(byteArrayOutputStream);
-    log.info("The request body we are sending is: " + new String(byteArrayOutputStream.toByteArray()));
     final ByteString requestPayload = ByteString.copy(byteArrayOutputStream.toByteArray());
 
     return new Object[][] {
-            { new VariableByteStringWriter(requestPayload, 1), multiPartMimeBody, bodyByteString },
-            { new VariableByteStringWriter(requestPayload, R2Constants.DEFAULT_DATA_CHUNK_SIZE), multiPartMimeBody, bodyByteString }
+            { new VariableByteStringWriter(requestPayload, 1), multiPartMimeBody  },
+            { new VariableByteStringWriter(requestPayload, R2Constants.DEFAULT_DATA_CHUNK_SIZE), multiPartMimeBody }
     };
   }
 
-  @Test(dataProvider = "tinyBodyDataSource")
-  public void testSimpleReaderRequest(final Writer dataSourceWriter, final MimeMultipart multipart, final ByteString ) throws Exception
+  @Test(dataProvider = "tinySingleBodyDataSource")
+  public void testTinySingleBodyDataSource(final Writer dataSourceWriter, final MimeMultipart mimeMultipart) throws Exception
   {
     final EntityStream entityStream = EntityStreams.newEntityStream(dataSourceWriter);
     final StreamRequestBuilder builder = new StreamRequestBuilder(Bootstrap.createHttpURI(PORT, SERVER_URI));
-    StreamRequest request = builder.setMethod("POST").setHeader(HEADER_CONTENT_TYPE, multi.getContentType()) .build(entityStream);
+    StreamRequest request = builder.setMethod("POST").setHeader(HEADER_CONTENT_TYPE, mimeMultipart.getContentType()).build(
+        entityStream);
 
     final AtomicInteger status = new AtomicInteger(-1);
     final CountDownLatch latch = new CountDownLatch(1);
@@ -134,22 +150,37 @@ public class TestMultiPartMIMEReader extends AbstractStreamTest {
 
     List<TestSinglePartMIMEReaderCallbackImpl> singlePartMIMEReaderCallbacks =
         _mimeServerRequestHandler._testMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks;
-    Assert.assertEquals(singlePartMIMEReaderCallbacks.size(), 1);
-    final ByteString expectedData = ByteString.copy(body.getBytes());
-    Assert.assertEquals(singlePartMIMEReaderCallbacks.get(0)._finishedData, expectedData);
+    Assert.assertEquals(singlePartMIMEReaderCallbacks.size(), mimeMultipart.getCount());
+    for (int i = 0; i<singlePartMIMEReaderCallbacks.size();i++)
+    {
+      //Actual
+      final TestSinglePartMIMEReaderCallbackImpl currentCallback = singlePartMIMEReaderCallbacks.get(i);
+      //Expected
+      final BodyPart currentExpectedPart = mimeMultipart.getBodyPart(i);
+
+      //Construct expected headers
+      final Map<String, String> expectedHeaders = new HashMap<String, String>();
+      final Enumeration allHeaders = currentExpectedPart.getAllHeaders();
+      while (allHeaders.hasMoreElements())
+      {
+        final Header header = (Header) allHeaders.nextElement();
+        expectedHeaders.put(header.getName(), header.getValue());
+      }
+      Assert.assertEquals(currentCallback._headers, expectedHeaders);
+      Assert.assertEquals(currentCallback._finishedData, serializedBody);
+    }
   }
+
+
 
   //todo epligous and prologus and all the stuff
   //test with a bigger body that's bigger then the boundary size
   //test with all sorts of payloads
   //test aborting single parts and all parts
   //paramteriez on single byte, individual parts on write and entire too
+  //todo try a body part with bytes too
 
 
-
-//  final VariableByteStringWriter byteStringWriter =
-  //    new VariableByteStringWriter(ByteString.copy(byteArrayOutputStream.toByteArray()),
-    //      VariableByteStringWriter.NumberBytesToWrite.ONE);
 
   private static Callback<StreamResponse> expectSuccessCallback(final CountDownLatch latch, final AtomicInteger status)
   {
@@ -175,7 +206,10 @@ public class TestMultiPartMIMEReader extends AbstractStreamTest {
     final MultiPartMIMEReaderCallback _topLevelCallback;
     final MultiPartMIMEReader.SinglePartMIMEReader _singlePartMIMEReader;
     final ByteArrayOutputStream _byteArrayOutputStream = new ByteArrayOutputStream();
-    ByteString _finishedData;
+    Map<String, String> _headers;
+    //We can always compare strings for assertions, even if the payload is binary.
+    //resume here todo
+    String _finishedData;
     int partCounter = 0;
 
     TestSinglePartMIMEReaderCallbackImpl(final MultiPartMIMEReaderCallback topLevelCallback, final
@@ -184,6 +218,7 @@ public class TestMultiPartMIMEReader extends AbstractStreamTest {
       _singlePartMIMEReader = singlePartMIMEReader;
       log.info("The headers for the current part " + partCounter + " are: ");
       log.info(singlePartMIMEReader.getHeaders().toString());
+      _headers = singlePartMIMEReader.getHeaders();
     }
 
     @Override
