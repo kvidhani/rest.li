@@ -3,6 +3,7 @@ package com.linkedin.multipart;
 import com.linkedin.common.callback.Callback;
 import com.linkedin.data.ByteString;
 import com.linkedin.multipart.reader.exceptions.IllegalMimeFormatException;
+import com.linkedin.r2.filter.R2Constants;
 import com.linkedin.r2.message.RequestContext;
 import com.linkedin.r2.message.rest.Messages;
 import com.linkedin.r2.message.rest.RestException;
@@ -14,6 +15,7 @@ import com.linkedin.r2.message.rest.StreamResponse;
 import com.linkedin.r2.message.streaming.ByteStringWriter;
 import com.linkedin.r2.message.streaming.EntityStream;
 import com.linkedin.r2.message.streaming.EntityStreams;
+import com.linkedin.r2.message.streaming.Writer;
 import com.linkedin.r2.sample.Bootstrap;
 import com.linkedin.r2.transport.common.StreamRequestHandler;
 import com.linkedin.r2.transport.common.bridge.server.TransportDispatcher;
@@ -22,6 +24,7 @@ import com.linkedin.r2.transport.http.client.HttpClientFactory;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -35,6 +38,7 @@ import javax.mail.internet.MimeMultipart;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.Assert;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 import test.r2.integ.AbstractStreamTest;
 
@@ -91,24 +95,33 @@ public class TestMultiPartMIMEReader extends AbstractStreamTest {
     return clientProperties;
   }
 
-  //todo epligous and prologus and all the stuff
 
-
-  @Test
-  public void testSimpleReaderRequest() throws Exception
+  @DataProvider(name = "tinySingleBodyDataSource")
+  public Object[][] tinySingleBodyDataSource() throws Exception
   {
-    //Create a simple multi part mime request with just one part that is provided in full
-    MimeMultipart multi = new MimeMultipart();
+    final String body = "A tiny body";
+    final ByteString bodyByteString = ByteString.copyString(body, StandardCharsets.UTF_8);
+    MimeMultipart multiPartMimeBody = new MimeMultipart();
     MimeBodyPart dataPart = new MimeBodyPart();
     ContentType contentType = new ContentType("text/plain");
-    dataPart.setContent("Some bytes for some body", contentType.getBaseType());
+    dataPart.setContent(body, contentType.getBaseType());
     dataPart.setHeader(HEADER_CONTENT_TYPE, "test/plain");
-    multi.addBodyPart(dataPart);
+    multiPartMimeBody.addBodyPart(dataPart);
     final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-    multi.writeTo(byteArrayOutputStream);
-    log.info("The request we are sending is: " + new String(byteArrayOutputStream.toByteArray()));
-    final ByteStringWriter byteStringWriter = new ByteStringWriter(ByteString.copy(byteArrayOutputStream.toByteArray()));
-    final EntityStream entityStream = EntityStreams.newEntityStream(byteStringWriter);
+    multiPartMimeBody.writeTo(byteArrayOutputStream);
+    log.info("The request body we are sending is: " + new String(byteArrayOutputStream.toByteArray()));
+    final ByteString requestPayload = ByteString.copy(byteArrayOutputStream.toByteArray());
+
+    return new Object[][] {
+            { new VariableByteStringWriter(requestPayload, 1), multiPartMimeBody, bodyByteString },
+            { new VariableByteStringWriter(requestPayload, R2Constants.DEFAULT_DATA_CHUNK_SIZE), multiPartMimeBody, bodyByteString }
+    };
+  }
+
+  @Test(dataProvider = "tinyBodyDataSource")
+  public void testSimpleReaderRequest(final Writer dataSourceWriter, final MimeMultipart multipart, final ByteString ) throws Exception
+  {
+    final EntityStream entityStream = EntityStreams.newEntityStream(dataSourceWriter);
     final StreamRequestBuilder builder = new StreamRequestBuilder(Bootstrap.createHttpURI(PORT, SERVER_URI));
     StreamRequest request = builder.setMethod("POST").setHeader(HEADER_CONTENT_TYPE, multi.getContentType()) .build(entityStream);
 
@@ -122,10 +135,16 @@ public class TestMultiPartMIMEReader extends AbstractStreamTest {
     List<TestSinglePartMIMEReaderCallbackImpl> singlePartMIMEReaderCallbacks =
         _mimeServerRequestHandler._testMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks;
     Assert.assertEquals(singlePartMIMEReaderCallbacks.size(), 1);
-    final ByteString expectedData = ByteString.copy("Some bytes for some body".getBytes());
+    final ByteString expectedData = ByteString.copy(body.getBytes());
     Assert.assertEquals(singlePartMIMEReaderCallbacks.get(0)._finishedData, expectedData);
-    //todo make sure all callbacks are invoked
   }
+
+  //todo epligous and prologus and all the stuff
+  //test with a bigger body that's bigger then the boundary size
+  //test with all sorts of payloads
+  //test aborting single parts and all parts
+  //paramteriez on single byte, individual parts on write and entire too
+
 
 
 //  final VariableByteStringWriter byteStringWriter =
