@@ -189,7 +189,7 @@ public class TestMultiPartMIMEReader extends AbstractStreamTest {
     MimeMultipart multiPartMimeBody = new MimeMultipart();
 
     //Add your body parts
-    //multiPartMimeBody.addBodyPart(_largeDataSource);
+    multiPartMimeBody.addBodyPart(_largeDataSource);
     multiPartMimeBody.addBodyPart(_smallDataSource);
     multiPartMimeBody.addBodyPart(_largeDataSource);
     multiPartMimeBody.addBodyPart(_smallDataSource);

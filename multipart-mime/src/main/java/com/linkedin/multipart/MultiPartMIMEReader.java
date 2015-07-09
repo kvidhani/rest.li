@@ -66,6 +66,7 @@ public class MultiPartMIMEReader {
     private final List<Byte> _finishingBoundaryBytes = new ArrayList<Byte>();
     private volatile ReadState _readState;
     private volatile SinglePartMIMEReader _currentSinglePartMIMEReader;
+    private volatile boolean _firstBoundaryEvaluated = false;
 
     //A signal from the R2 reader has been notified that all data is done being sent over. This does NOT mean that our
     //top level reader can be notified that they are done since data could still be in the buffer.
@@ -252,73 +253,77 @@ public class MultiPartMIMEReader {
         return;
       }
 
-      ///////////////////////////////////////////////////////////////////////////////////////////////////
-      //PART_READING represents normal part reading operation and is where most of the time will be spent.
-      if (_readState == ReadState.PART_READING) {
+        ///////////////////////////////////////////////////////////////////////////////////////////////////
+        //PART_READING represents normal part reading operation and is where most of the time will be spent.
+        if (_readState == ReadState.PART_READING) {
 
-        //The goal of the logic here is the following:
-        //1. If the buffer does not start with the boundary, then we fully consume as much of the buffer as possible.
-        //We notify clients of as much data we can drain. These can possibly be the last bits of data they need.
-        //Subsequent invocations of requestPartData() would then lead to the buffer starting with the boundary.
-        //2. Otherwise if the buffer does start with boundary then we wrap up the previous part and
-        //begin the new one.
+          //The goal of the logic here is the following:
+          //1. If the buffer does not start with the boundary, then we fully consume as much of the buffer as possible.
+          //We notify clients of as much data we can drain. These can possibly be the last bits of data they need.
+          //Subsequent invocations of requestPartData() would then lead to the buffer starting with the boundary.
+          //2. Otherwise if the buffer does start with boundary then we wrap up the previous part and
+          //begin the new one.
 
-        //Another invariant to note is that the result of this logic below will result in ONE of the
-        //following (assuming there are no error conditions):
-        //1. onPartDataAvailable()
-        //OR
-        //2. OnAbandoned() on SinglePartCallback followed by onNewPart() on MultiPartCallback
-        //OR
-        //3. OnFinished() on SinglePartCallback followed by onNewPart() on MultiPartCallback
-        //OR
-        //4. OnAbandoned() on SinglePartCallback followed by onFinished() on MultiPartCallback
-        //OR
-        //5. OnFinished() on SinglePartCallback followed by onFinished() on MultiPartCallback
-        //
-        //Note that onPartDataAvailable() and onNewPart() are never called one after another in the logic
-        //below because upon invocation of these callbacks, clients may come back to us immediately
-        //and it can potentially lead to very confusing states. Furthermore its also more intuitive
-        //to answer each client's request with only one callback.
+          //Another invariant to note is that the result of this logic below will result in ONE of the
+          //following (assuming there are no error conditions):
+          //1. onPartDataAvailable()
+          //OR
+          //2. OnAbandoned() on SinglePartCallback followed by onNewPart() on MultiPartCallback
+          //OR
+          //3. OnFinished() on SinglePartCallback followed by onNewPart() on MultiPartCallback
+          //OR
+          //4. OnAbandoned() on SinglePartCallback followed by onFinished() on MultiPartCallback
+          //OR
+          //5. OnFinished() on SinglePartCallback followed by onFinished() on MultiPartCallback
+          //
+          //Note that onPartDataAvailable() and onNewPart() are never called one after another in the logic
+          //below because upon invocation of these callbacks, clients may come back to us immediately
+          //and it can potentially lead to very confusing states. Furthermore its also more intuitive
+          //to answer each client's request with only one callback.
 
-        //todo clean this up
-        final int boundaryIndex;
-        final int boundarySize;
-        if (_currentSinglePartMIMEReader == null) {
-          boundaryIndex = Collections.indexOfSubList(_byteBuffer, _firstBoundaryBytes);
-          boundarySize = _firstBoundaryBytes.size();
-        } else {
-          boundaryIndex = Collections.indexOfSubList(_byteBuffer, _normalBoundaryBytes);
-          boundarySize = _normalBoundaryBytes.size();
-        }
+          //todo clean this up
+          final int boundaryIndex;
+          final int boundarySize;
+          if (_firstBoundaryEvaluated == false) {
+            //Immediately after the preamble, i.e the first part we are seeing
+            boundaryIndex = Collections.indexOfSubList(_byteBuffer, _firstBoundaryBytes);
+            boundarySize = _firstBoundaryBytes.size();
+          } else {
+            boundaryIndex = Collections.indexOfSubList(_byteBuffer, _normalBoundaryBytes);
+            boundarySize = _normalBoundaryBytes.size();
+          }
 
-        //Buffer does not begin with boundary.
-        if (boundaryIndex != 0) {
+          //Buffer does not begin with boundary.
+          if (boundaryIndex != 0) {
 
-          //We buffer forward a bit if we have is less or equal to the finishing boundary size.
-          //We want atleast one byte more then what the size of the finishing boundary is.
-          //We know the buffer doesn't begin with a boundary, but the second byte
-          //in the buffer may be the beginning. Therefore we need to be guaranteed to have atleast
-          //one possible byte to write to the client.
-          if (_byteBuffer.size() <= _finishingBoundaryBytes.size()) {
+            //We buffer forward a bit if we have is less or equal to the finishing boundary size.
+            //We want atleast one byte more then what the size of the finishing boundary is.
+            //We know the buffer doesn't begin with a boundary, but the second byte
+            //in the buffer may be the beginning. Therefore we need to be guaranteed to have atleast
+            //one possible byte to write to the client.
+            if (_byteBuffer.size() <= _finishingBoundaryBytes.size()) {
 
-            //If this happens and r2 has not notified us that we are done, then this is a problem. This means that
-            //r2 has already notified that we are done and we didn't see the finishing boundary.
-            //This should never happen.
-            if (_r2Done) {
-              //Notify the reader of the issue.
-              handleExceptions(
-                  new IllegalMimeFormatException("Malformed multipart mime request. Finishing boundary missing!"));
+              //If this happens and r2 has not notified us that we are done, then this is a problem. This means that
+              //r2 has already notified that we are done and we didn't see the finishing boundary.
+              //This should never happen.
+              if (_r2Done) {
+                //Notify the reader of the issue.
+                handleExceptions(
+                        new IllegalMimeFormatException("Malformed multipart mime request. Finishing boundary missing!"));
+                return;
+              }
+
+              //Otherwise we need to read in some more data.
+              _rh.request(1);
               return;
             }
 
-            //Otherwise we need to read in some more data.
-            _rh.request(1);
-            return;
-          }
+            //todo change this commenet - at this point _currentSingelPartMIMEReader is guaranteed to be
+            //non null
 
-          //Only proceed if the _currentSinglePartMIMEReader is not equal to null. It will only be null
-          //the very first time.
-          if (_currentSinglePartMIMEReader != null) {
+            //Only proceed if the _currentSinglePartMIMEReader is not equal to null. It will only be null
+            //the very first time.
+            // if (_currentSinglePartMIMEReader != null) {
 
             //We only proceed forward if there is a reader ready.
             //By ready we mean that:
@@ -341,22 +346,22 @@ public class MultiPartMIMEReader {
                 //beginning of the next boundary or even the finishing boundary.
                 //Therefore we grab the whole buffer but we leave the last _finishingBoundaryBytes.size()-1 number of bytes.
                 final List<Byte> useableBytes =
-                    _byteBuffer.subList(0, _byteBuffer.size() - _finishingBoundaryBytes.size());
+                        _byteBuffer.subList(0, _byteBuffer.size() - _finishingBoundaryBytes.size());
                 _byteBuffer =
-                    _byteBuffer.subList(_byteBuffer.size() - _finishingBoundaryBytes.size(), _byteBuffer.size());
+                        _byteBuffer.subList(_byteBuffer.size() - _finishingBoundaryBytes.size(), _byteBuffer.size());
 
                 if (currentState == SingleReaderState.REQUESTED_DATA) {
                   //Grab a copy of the data beforehand. Otherwise an eager thread could call requestPartData() on the single
                   //part reader mutating our byte buffer even before we have a chance to respond via onPartDataAvailable().
                   final ByteString clientData =
-                      ByteString.copy(ArrayUtils.toPrimitive(useableBytes.toArray(new Byte[0])));
+                          ByteString.copy(ArrayUtils.toPrimitive(useableBytes.toArray(new Byte[0])));
                   //We must set this before we provide the data. Otherwise if the client immediately decides to requestPartData()
                   //they will see an exception because we are still in REQUESTED_DATA.
                   _currentSinglePartMIMEReader._readerState.set(SingleReaderState.READY);
 
                   //_currentSinglePartMIMEReader._callback.onPartDataAvailable(clientData);
                   final Callable<Void> onPartDataAvailableInvocation =
-                      new MimeReaderCallables.onPartDataCallable(_currentSinglePartMIMEReader._callback, clientData);
+                          new MimeReaderCallables.onPartDataCallable(_currentSinglePartMIMEReader._callback, clientData);
 
                   //Queue up this operation
                   _callbackQueue.add(onPartDataAvailableInvocation);
@@ -388,7 +393,7 @@ public class MultiPartMIMEReader {
                   //Grab a copy of the data beforehand. Otherwise an eager thread could call requestPartData() on the single
                   //part reader mutating our byte buffer even before we have a chance to respond via onPartDataAvailable().
                   final ByteString clientData =
-                      ByteString.copy(ArrayUtils.toPrimitive(useableBytes.toArray(new Byte[0])));
+                          ByteString.copy(ArrayUtils.toPrimitive(useableBytes.toArray(new Byte[0])));
 
                   //We must set this before we provide the data. Otherwise if the client immediately decides to requestPartData()
                   //they will see an exception because we are still in REQUESTED_DATA.
@@ -396,7 +401,7 @@ public class MultiPartMIMEReader {
 
                   //_currentSinglePartMIMEReader._callback.onPartDataAvailable(clientData);
                   final Callable<Void> onPartDataAvailableInvocation =
-                      new MimeReaderCallables.onPartDataCallable(_currentSinglePartMIMEReader._callback, clientData);
+                          new MimeReaderCallables.onPartDataCallable(_currentSinglePartMIMEReader._callback, clientData);
 
                   //Queue up this operation
                   _callbackQueue.add(onPartDataAvailableInvocation);
@@ -418,17 +423,36 @@ public class MultiPartMIMEReader {
                 //and then make a new part.
               }
             }
-          }
-        } else {
-          //The beginning of the buffer contains a boundary.
+            // }
+          } else {
+            //The beginning of the buffer contains a boundary.
 
-          //Close the current single part reader (except if this is the first boundary)
-          if (_currentSinglePartMIMEReader != null) {
+            //Close the current single part reader (except if this is the first boundary)
+            if (_currentSinglePartMIMEReader != null) {
 
-            //If this was a single part reader waiting to be notified of an abort
-            if (_currentSinglePartMIMEReader._readerState.get() == SingleReaderState.REQUESTED_ABORT) {
-              //If they cared to be notified of the abandonment.
-              if (_currentSinglePartMIMEReader._callback != null) {
+              //If this was a single part reader waiting to be notified of an abort
+              if (_currentSinglePartMIMEReader._readerState.get() == SingleReaderState.REQUESTED_ABORT) {
+                //If they cared to be notified of the abandonment.
+                if (_currentSinglePartMIMEReader._callback != null) {
+
+                  //We need to prevent the client from asking for more data because they are done.
+                  _currentSinglePartMIMEReader._readerState.set(SingleReaderState.FINISHED);
+
+                  //Note we do not need to use our iterative invocation technique here because
+                  //the client can't request more data.
+                  //Also it is important to note that we CANNOT use the iterative technique.
+                  //This is because the iterative technique will not return back here (to this line of
+                  //code) which does not guarantee us proceeding forward from here.
+                  try {
+                    _currentSinglePartMIMEReader._callback.onAbandoned();
+                  } catch (Exception clientCallbackException) {
+                    //This could throw so handle appropriately.
+                    handleExceptions(clientCallbackException);
+                  }
+                } //else no notification will happen since there was no callback registered.
+              } else {
+
+                //This was a part that cared about its data. Let's finish him up.
 
                 //We need to prevent the client from asking for more data because they are done.
                 _currentSinglePartMIMEReader._readerState.set(SingleReaderState.FINISHED);
@@ -439,232 +463,217 @@ public class MultiPartMIMEReader {
                 //This is because the iterative technique will not return back here (to this line of
                 //code) which does not guarantee us proceeding forward from here.
                 try {
-                  _currentSinglePartMIMEReader._callback.onAbandoned();
+                  _currentSinglePartMIMEReader._callback.onFinished();
                 } catch (Exception clientCallbackException) {
+
                   //This could throw so handle appropriately.
                   handleExceptions(clientCallbackException);
+                  //todo return here? i think so
                 }
-              } //else no notification will happen since there was no callback registered.
+              }
+              _currentSinglePartMIMEReader = null;
+              //We will now move on to notify the reader of the next part
+            }
+
+            //Before continuing verify that this isn't the final boundary in front of us.
+            final int lastBoundaryLookup = Collections.indexOfSubList(_byteBuffer, _finishingBoundaryBytes);
+            if (lastBoundaryLookup == 0) {
+              _readState = ReadState.READING_EPILOGUE;
+              //If r2 has already notified we are done, we can wrap up. Note that there still may be bytes
+              //sitting in our byteBuffer that haven't been consumed. These bytes must be the epilogue
+              //bytes so we can safely ignore them.
+              if (_r2Done) {
+                _readState = ReadState.READER_DONE;
+                //There is no need to use our iterative technique to call this callback because a
+                //client cannot possibly invoke us again.
+                try {
+                  //This can throw so we need to notify the client that their APIs threw an exception when we invoked them.
+                  MultiPartMIMEReader.this._clientCallback.onFinished();
+                } catch (Exception clientCallbackException) {
+                  handleExceptions(clientCallbackException);
+                }
+                return;
+              }
+              //Keep on reading bytes and dropping them.
+              _rh.request(1);
+              return;
+            }
+
+            //Now read in headers:
+            //Now read until we have all the headers. Headers may or may not exist. According to the RFC:
+            //If the headers do not exist, we will see two CRLFs one after another.
+            //If at least one header does exist, we will see the headers followed by two CRLFs
+            //Essentially we are looking for the first occurrence of two CRLFs after we see the boundary.
+
+            //We need to make sure we can look ahead a bit here first. The minimum size of the buffer must be
+            //the size of the normal boundary plus consecutive CRLFs. This would be the bare minimum as it conveys
+            //empty headers.
+            if ((boundarySize + MultiPartMIMEUtils.CONSECUTIVE_CRLFS_BYTE_LIST.size()) > _byteBuffer.size()) {
+              if (_r2Done) {
+                //If r2 has already notified we are done, then this is a problem. This means that
+                //we have the remainder of the stream in memory and we see a non-finishing boundary that terminates
+                //immediately without a CRLF_BYTES. This is a sign of a stream that was prematurely terminated.
+                //MultiPartMIMEReader.this._clientCallback.onStreamError();
+                handleExceptions(new IllegalMimeFormatException("Malformed multipart mime request. Premature"
+                        + " termination of multipart mime body due to a boundary without a subsequent consecutive CRLF."));
+                return;
+              }
+              _rh.request(1);
+              return;
+            }
+
+            //Now we will determine the existence of headers.
+            //In order to do this we construct a window to look into. We will look inside of the buffer starting at the
+            //end of the boundary until the end of the buffer.
+            final List<Byte> possibleHeaderArea = _byteBuffer.subList(boundarySize, _byteBuffer.size());
+
+            //Find the two consecutive CRLFs.
+            final int headerEnding =
+                    Collections.indexOfSubList(possibleHeaderArea, MultiPartMIMEUtils.CONSECUTIVE_CRLFS_BYTE_LIST);
+            if (headerEnding == -1) {
+              if (_r2Done) {
+                //If r2 has already notified us we are done, then this is a problem. This means that we saw a
+                //a boundary followed by a potential header area. This header area does not contain
+                //two consecutive CRLF_BYTES characters. This is a malformed stream.
+                //MultiPartMIMEReader.this._clientCallback.onStreamError();
+                handleExceptions(new IllegalMimeFormatException(
+                        "Malformed multipart mime request. Premature termination of headers within a part."));
+                return;
+              }
+              //We need more data since the current buffer doesn't contain the CRLFs.
+              _rh.request(1);
+              return;
+            }
+
+            //At this point, headerEnding represents the location of the first occurrence of consecutive CRLFs.
+            //It is important to note that it is possible for a malformed stream to not end its headers with consecutive
+            //CRLFs. In such a case, everything up until the first occurrence of the consecutive CRLFs will be considered
+            //part of the header area.
+
+            //Let's make a window into the header area. Note that we need to include the trailing consecutive CRLF bytes
+            //because we need to verify if the header area is empty, meaning it contains only consecutive CRLF bytes.
+            final List<Byte> headerByteSubList =
+                    possibleHeaderArea.subList(0, headerEnding + MultiPartMIMEUtils.CONSECUTIVE_CRLFS_BYTE_LIST.size());
+
+            final Map<String, String> headers;
+            if (headerByteSubList.equals(MultiPartMIMEUtils.CONSECUTIVE_CRLFS_BYTE_LIST)) {
+              //The region of bytes after the boundary is composed of two CRLFs. Therefore we have no headers.
+              headers = Collections.emptyMap();
             } else {
+              headers = new HashMap<String, String>();
 
-              //This was a part that cared about its data. Let's finish him up.
+              //We have headers, lets read them in - we search using a sliding window.
 
-              //We need to prevent the client from asking for more data because they are done.
-              _currentSinglePartMIMEReader._readerState.set(SingleReaderState.FINISHED);
-
-              //Note we do not need to use our iterative invocation technique here because
-              //the client can't request more data.
-              //Also it is important to note that we CANNOT use the iterative technique.
-              //This is because the iterative technique will not return back here (to this line of
-              //code) which does not guarantee us proceeding forward from here.
-              try {
-                _currentSinglePartMIMEReader._callback.onFinished();
-              } catch (Exception clientCallbackException) {
-
-                //This could throw so handle appropriately.
-                handleExceptions(clientCallbackException);
-                //todo return here? i think so
+              //Currently our buffer is sitting just past the end of the boundary. Beyond this boundary
+              //there should be a CRLF followed by the first header. We will verify that this is indeed a CRLF
+              //and then we will skip it below.
+              final List<Byte> leadingBytes = headerByteSubList.subList(0, MultiPartMIMEUtils.CRLF_BYTE_LIST.size());
+              if (!leadingBytes.equals(MultiPartMIMEUtils.CRLF_BYTE_LIST)) {
+                handleExceptions(new IllegalMimeFormatException(
+                        "Malformed multipart mime request. Headers are improperly constructed."));
+                return;
               }
-            }
-            _currentSinglePartMIMEReader = null;
-            //We will now move on to notify the reader of the next part
-          }
 
-          //Before continuing verify that this isn't the final boundary in front of us.
-          final int lastBoundaryLookup = Collections.indexOfSubList(_byteBuffer, _finishingBoundaryBytes);
-          if (lastBoundaryLookup == 0) {
-            _readState = ReadState.READING_EPILOGUE;
-            //If r2 has already notified we are done, we can wrap up. Note that there still may be bytes
-            //sitting in our byteBuffer that haven't been consumed. These bytes must be the epilogue
-            //bytes so we can safely ignore them.
-            if (_r2Done) {
-              _readState = ReadState.READER_DONE;
-              //There is no need to use our iterative technique to call this callback because a
-              //client cannot possibly invoke us again.
-              try {
-                //This can throw so we need to notify the client that their APIs threw an exception when we invoked them.
-                MultiPartMIMEReader.this._clientCallback.onFinished();
-              } catch (Exception clientCallbackException) {
-                handleExceptions(clientCallbackException);
-              }
-              return;
-            }
-            //Keep on reading bytes and dropping them.
-            _rh.request(1);
-            return;
-          }
+              //The sliding-window-header-split technique here works because we are essentially splitting the buffer
+              //by looking at occurrences of CRLF bytes. This is analogous to splitting a String in Java but instead
+              //we are splitting a byte array.
 
-          //Now read in headers:
-          //Now read until we have all the headers. Headers may or may not exist. According to the RFC:
-          //If the headers do not exist, we will see two CRLFs one after another.
-          //If at least one header does exist, we will see the headers followed by two CRLFs
-          //Essentially we are looking for the first occurrence of two CRLFs after we see the boundary.
+              //We start at an offset of i and currentHeaderStart because we need to skip the first CRLF.
+              int currentHeaderStart = MultiPartMIMEUtils.CRLF_BYTE_LIST.size();
+              final StringBuffer runningFoldedHeader = new StringBuffer(); //For folded headers. See below for details.
 
-          //We need to make sure we can look ahead a bit here first. The minimum size of the buffer must be
-          //the size of the normal boundary plus consecutive CRLFs. This would be the bare minimum as it conveys
-          //empty headers.
-          if ((boundarySize + MultiPartMIMEUtils.CONSECUTIVE_CRLFS_BYTE_LIST.size()) > _byteBuffer.size()) {
-            if (_r2Done) {
-              //If r2 has already notified we are done, then this is a problem. This means that
-              //we have the remainder of the stream in memory and we see a non-finishing boundary that terminates
-              //immediately without a CRLF_BYTES. This is a sign of a stream that was prematurely terminated.
-              //MultiPartMIMEReader.this._clientCallback.onStreamError();
-              handleExceptions(new IllegalMimeFormatException("Malformed multipart mime request. Premature"
-                  + " termination of multipart mime body due to a boundary without a subsequent consecutive CRLF."));
-              return;
-            }
-            _rh.request(1);
-            return;
-          }
+              //Note that the end of the buffer we are sliding through is composed of two consecutive CRLFs.
+              //Our sliding window algorithm here will NOT evaluate the very last CRLF bytes (which would otherwise
+              //erroneously result in an empty header).
+              for (int i = MultiPartMIMEUtils.CRLF_BYTE_LIST.size();
+                   i < headerByteSubList.size() - MultiPartMIMEUtils.CRLF_BYTE_LIST.size(); i++) {
+                final List<Byte> currentWindow =
+                        headerByteSubList.subList(i, i + MultiPartMIMEUtils.CRLF_BYTE_LIST.size());
+                if (currentWindow.equals(MultiPartMIMEUtils.CRLF_BYTE_LIST)) {
+                  final List<Byte> currentHeaderBytes = headerByteSubList.subList(currentHeaderStart, i);
+                  //At this point we MAY have found the end of a header because the current window is a CRLF.
+                  //This could POTENTIALLY mean that from currentHeaderStart until i is a header.
 
-          //Now we will determine the existence of headers.
-          //In order to do this we construct a window to look into. We will look inside of the buffer starting at the
-          //end of the boundary until the end of the buffer.
-          final List<Byte> possibleHeaderArea = _byteBuffer.subList(boundarySize, _byteBuffer.size());
+                  //However before we can reach this conclusion we must check for header folding. Header folding is described
+                  //in RFC 822 which states that headers may take up multiple lines (therefore delimited by CRLFs).
+                  //This rule only holds true if there is exactly one CRLF followed by atleast one LWSP (linear white space).
+                  //A LWSP can be composed of multiple spaces, tabs or newlines. However most implementations only use
+                  //spaces or tabs. Therefore our reading of folded headers will support only CRLFs followed by atleast one
+                  //space or tab.
+                  //Furthermore this syntax is deprecated so there is no need for us to formally support the RFC here as
+                  //long as we cover interoperability with major libraries.
 
-          //Find the two consecutive CRLFs.
-          final int headerEnding =
-              Collections.indexOfSubList(possibleHeaderArea, MultiPartMIMEUtils.CONSECUTIVE_CRLFS_BYTE_LIST);
-          if (headerEnding == -1) {
-            if (_r2Done) {
-              //If r2 has already notified us we are done, then this is a problem. This means that we saw a
-              //a boundary followed by a potential header area. This header area does not contain
-              //two consecutive CRLF_BYTES characters. This is a malformed stream.
-              //MultiPartMIMEReader.this._clientCallback.onStreamError();
-              handleExceptions(new IllegalMimeFormatException(
-                  "Malformed multipart mime request. Premature termination of headers within a part."));
-              return;
-            }
-            //We need more data since the current buffer doesn't contain the CRLFs.
-            _rh.request(1);
-            return;
-          }
+                  //Therefore we have two options here:
+                  //1. If the character in front of us IS a tab or a white space, we must consider this the first part of a
+                  //multi line header value. In such a case we have to keep going forward and append the current header value.
+                  //2. Otherwise the character in front of us is NOT a tab or a white space. We can then consider the current
+                  //header bytes to compose a header that fits on a single line.
 
-          //At this point, headerEnding represents the location of the first occurrence of consecutive CRLFs.
-          //It is important to note that it is possible for a malformed stream to not end its headers with consecutive
-          //CRLFs. In such a case, everything up until the first occurrence of the consecutive CRLFs will be considered
-          //part of the header area.
+                  final byte[] headerBytes = ArrayUtils.toPrimitive(currentHeaderBytes.toArray(new Byte[0]));
+                  String header = new String(headerBytes);
 
-          //Let's make a window into the header area. Note that we need to include the trailing consecutive CRLF bytes
-          //because we need to verify if the header area is empty, meaning it contains only consecutive CRLF bytes.
-          final List<Byte> headerByteSubList =
-              possibleHeaderArea.subList(0, headerEnding + MultiPartMIMEUtils.CONSECUTIVE_CRLFS_BYTE_LIST.size());
+                  if (headerByteSubList.get(i + MultiPartMIMEUtils.CRLF_BYTE_LIST.size()) == MultiPartMIMEUtils.SPACE_BYTE
+                          || headerByteSubList.get(i + MultiPartMIMEUtils.CRLF_BYTE_LIST.size())
+                          == MultiPartMIMEUtils.TAB_BYTE) {
+                    //Append the running concatenation of the folded header. We need to preserve the original header so
+                    //we also include the CRLF. The subsequent LWSP(s) will be also preserved because we don't trim here.
+                    runningFoldedHeader.append(header + MultiPartMIMEUtils.CRLF_STRING);
+                  } else {
+                    //This is a single line header OR we arrived at the last line of a folded header.
+                    if (runningFoldedHeader.length() != 0) {
+                      runningFoldedHeader.append(header);
+                      header = runningFoldedHeader.toString();
+                      runningFoldedHeader.setLength(0); //Clear the buffer for future folded headers in this part
+                    }
 
-          final Map<String, String> headers;
-          if (headerByteSubList.equals(MultiPartMIMEUtils.CONSECUTIVE_CRLFS_BYTE_LIST)) {
-            //The region of bytes after the boundary is composed of two CRLFs. Therefore we have no headers.
-            headers = Collections.emptyMap();
-          } else {
-            headers = new HashMap<String, String>();
-
-            //We have headers, lets read them in - we search using a sliding window.
-
-            //Currently our buffer is sitting just past the end of the boundary. Beyond this boundary
-            //there should be a CRLF followed by the first header. We will verify that this is indeed a CRLF
-            //and then we will skip it below.
-            final List<Byte> leadingBytes = headerByteSubList.subList(0, MultiPartMIMEUtils.CRLF_BYTE_LIST.size());
-            if (!leadingBytes.equals(MultiPartMIMEUtils.CRLF_BYTE_LIST)) {
-              handleExceptions(new IllegalMimeFormatException(
-                  "Malformed multipart mime request. Headers are improperly constructed."));
-              return;
-            }
-
-            //The sliding-window-header-split technique here works because we are essentially splitting the buffer
-            //by looking at occurrences of CRLF bytes. This is analogous to splitting a String in Java but instead
-            //we are splitting a byte array.
-
-            //We start at an offset of i and currentHeaderStart because we need to skip the first CRLF.
-            int currentHeaderStart = MultiPartMIMEUtils.CRLF_BYTE_LIST.size();
-            final StringBuffer runningFoldedHeader = new StringBuffer(); //For folded headers. See below for details.
-
-            //Note that the end of the buffer we are sliding through is composed of two consecutive CRLFs.
-            //Our sliding window algorithm here will NOT evaluate the very last CRLF bytes (which would otherwise
-            //erroneously result in an empty header).
-            for (int i = MultiPartMIMEUtils.CRLF_BYTE_LIST.size();
-                i < headerByteSubList.size() - MultiPartMIMEUtils.CRLF_BYTE_LIST.size(); i++) {
-              final List<Byte> currentWindow =
-                  headerByteSubList.subList(i, i + MultiPartMIMEUtils.CRLF_BYTE_LIST.size());
-              if (currentWindow.equals(MultiPartMIMEUtils.CRLF_BYTE_LIST)) {
-                final List<Byte> currentHeaderBytes = headerByteSubList.subList(currentHeaderStart, i);
-                //At this point we MAY have found the end of a header because the current window is a CRLF.
-                //This could POTENTIALLY mean that from currentHeaderStart until i is a header.
-
-                //However before we can reach this conclusion we must check for header folding. Header folding is described
-                //in RFC 822 which states that headers may take up multiple lines (therefore delimited by CRLFs).
-                //This rule only holds true if there is exactly one CRLF followed by atleast one LWSP (linear white space).
-                //A LWSP can be composed of multiple spaces, tabs or newlines. However most implementations only use
-                //spaces or tabs. Therefore our reading of folded headers will support only CRLFs followed by atleast one
-                //space or tab.
-                //Furthermore this syntax is deprecated so there is no need for us to formally support the RFC here as
-                //long as we cover interoperability with major libraries.
-
-                //Therefore we have two options here:
-                //1. If the character in front of us IS a tab or a white space, we must consider this the first part of a
-                //multi line header value. In such a case we have to keep going forward and append the current header value.
-                //2. Otherwise the character in front of us is NOT a tab or a white space. We can then consider the current
-                //header bytes to compose a header that fits on a single line.
-
-                final byte[] headerBytes = ArrayUtils.toPrimitive(currentHeaderBytes.toArray(new Byte[0]));
-                String header = new String(headerBytes);
-
-                if (headerByteSubList.get(i + MultiPartMIMEUtils.CRLF_BYTE_LIST.size()) == MultiPartMIMEUtils.SPACE_BYTE
-                    || headerByteSubList.get(i + MultiPartMIMEUtils.CRLF_BYTE_LIST.size())
-                    == MultiPartMIMEUtils.TAB_BYTE) {
-                  //Append the running concatenation of the folded header. We need to preserve the original header so
-                  //we also include the CRLF. The subsequent LWSP(s) will be also preserved because we don't trim here.
-                  runningFoldedHeader.append(header + MultiPartMIMEUtils.CRLF_STRING);
-                } else {
-                  //This is a single line header OR we arrived at the last line of a folded header.
-                  if (runningFoldedHeader.length() != 0) {
-                    runningFoldedHeader.append(header);
-                    header = runningFoldedHeader.toString();
-                    runningFoldedHeader.setLength(0); //Clear the buffer for future folded headers in this part
+                    //Note that according to the RFC that header values may contain semi colons but header names may not.
+                    //Therefore it is acceptable to split on semicolon here and derive the header name from 0 -> semicolonIndex.
+                    final int colonIndex = header.indexOf(":");
+                    if (colonIndex == -1) {
+                      handleExceptions(new IllegalMimeFormatException(
+                              "Malformed multipart mime request. Individual headers are " + "improperly formatted"));
+                      return;
+                    }
+                    headers.put(header.substring(0, colonIndex).trim(),
+                            header.substring(colonIndex + 1, header.length()).trim());
                   }
-
-                  //Note that according to the RFC that header values may contain semi colons but header names may not.
-                  //Therefore it is acceptable to split on semicolon here and derive the header name from 0 -> semicolonIndex.
-                  final int colonIndex = header.indexOf(":");
-                  if (colonIndex == -1) {
-                    handleExceptions(new IllegalMimeFormatException(
-                        "Malformed multipart mime request. Individual headers are " + "improperly formatted"));
-                    return;
-                  }
-                  headers.put(header.substring(0, colonIndex).trim(),
-                      header.substring(colonIndex + 1, header.length()).trim());
+                  currentHeaderStart = i + MultiPartMIMEUtils.CRLF_BYTE_LIST.size();
                 }
-                currentHeaderStart = i + MultiPartMIMEUtils.CRLF_BYTE_LIST.size();
               }
             }
-          }
 
-          //At this point we have actual part data starting from headerEnding going forward
-          //which means we can dump everything else beforehand. We need to skip past the trailing consecutive CRLFs.
-          //todo make this logic cleaner
-          _byteBuffer = _byteBuffer
-              .subList(boundarySize + headerEnding + MultiPartMIMEUtils.CONSECUTIVE_CRLFS_BYTE_LIST.size(),
-                      _byteBuffer.size());
+            //At this point we have actual part data starting from headerEnding going forward
+            //which means we can dump everything else beforehand. We need to skip past the trailing consecutive CRLFs.
+            //todo make this logic cleaner
+            _byteBuffer = _byteBuffer
+                    .subList(boundarySize + headerEnding + MultiPartMIMEUtils.CONSECUTIVE_CRLFS_BYTE_LIST.size(),
+                            _byteBuffer.size());
 
-          //Notify the callback that we have a new part
-          _currentSinglePartMIMEReader = new SinglePartMIMEReader(headers);
+            //Notify the callback that we have a new part
+            _currentSinglePartMIMEReader = new SinglePartMIMEReader(headers);
 
-          //_clientCallback.onNewPart(_currentSinglePartMIMEReader);
-          final Callable<Void> onNewPartInvocation =
-              new MimeReaderCallables.onNewPartCallable(_clientCallback, _currentSinglePartMIMEReader);
+            //_clientCallback.onNewPart(_currentSinglePartMIMEReader);
+            final Callable<Void> onNewPartInvocation =
+                    new MimeReaderCallables.onNewPartCallable(_clientCallback, _currentSinglePartMIMEReader);
 
-          //Queue up this operation
-          _callbackQueue.add(onNewPartInvocation);
+            //Queue up this operation
+            _callbackQueue.add(onNewPartInvocation);
 
-          //If the while loop before us is in progress, we just return
-          if (_callbackInProgress) {
-            //We return to unwind the stack. Any queued elements will be taken care of the by the while loop
-            //before us.
-            return;
-          } else {
-            processAndInvokeCallableQueue();
-            //No need to explicitly return here even if this invocation results in an exception.
+            //We can now switch to absorbing the normal boundary
+            _firstBoundaryEvaluated = true;
+
+            //If the while loop before us is in progress, we just return
+            if (_callbackInProgress) {
+              //We return to unwind the stack. Any queued elements will be taken care of the by the while loop
+              //before us.
+              return;
+            } else {
+              processAndInvokeCallableQueue();
+              //No need to explicitly return here even if this invocation results in an exception.
+            }
           }
         }
-      }
+
     }
 
     @Override
