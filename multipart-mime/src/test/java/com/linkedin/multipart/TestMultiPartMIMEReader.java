@@ -80,20 +80,34 @@ public class TestMultiPartMIMEReader extends AbstractStreamTest {
   private static final Logger log = LoggerFactory.getLogger(TestMultiPartMIMEReader.class);
   private static final String HEADER_CONTENT_TYPE = "Content-Type";
 
-  private static MimeBodyPart _tinyDataSource;
+  private static MimeBodyPart _smallDataSource;
+  private static MimeBodyPart _largeDataSource;
 
 
   @BeforeClass
   public void dataSourceSetup() throws Exception {
 
-    //Tiny body
+    //Small body
     {
       final String body = "A tiny body";
       MimeBodyPart dataPart = new MimeBodyPart();
       ContentType contentType = new ContentType("text/plain");
       dataPart.setContent(body, contentType.getBaseType());
       dataPart.setHeader(HEADER_CONTENT_TYPE, "text/plain");
-      _tinyDataSource = dataPart;
+      _smallDataSource = dataPart;
+    }
+
+    //Large body. Something bigger then the size of the boundary
+    {
+      final String body = "Has at possim tritani laoreet, vis te meis verear. Vel no vero quando oblique, "
+          + "eu blandit placerat nec, vide facilisi recusabo nec te. Veri labitur sensibus eum id. Quo omnis "
+          + "putant erroribus ad, nonumes copiosae percipit in qui, id cibo meis clita pri. An brute "
+          + "mundi quaerendum duo, eu aliquip facilisis sea, eruditi invidunt dissentiunt eos ea.";
+      MimeBodyPart dataPart = new MimeBodyPart();
+      ContentType contentType = new ContentType("text/plain");
+      dataPart.setContent(body, contentType.getBaseType());
+      dataPart.setHeader(HEADER_CONTENT_TYPE, "text/plain");
+      _largeDataSource = dataPart;
     }
 
   }
@@ -148,6 +162,11 @@ public class TestMultiPartMIMEReader extends AbstractStreamTest {
     latch.await(60000, TimeUnit.MILLISECONDS);
     Assert.assertEquals(status.get(), RestStatus.OK);
 
+    assertDataMatches(mimeMultipart);
+
+  }
+
+  private void assertDataMatches(final MimeMultipart mimeMultipart) throws Exception {
     List<TestSinglePartMIMEReaderCallbackImpl> singlePartMIMEReaderCallbacks =
         _mimeServerRequestHandler._testMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks;
     Assert.assertEquals(singlePartMIMEReaderCallbacks.size(), mimeMultipart.getCount());
@@ -158,7 +177,7 @@ public class TestMultiPartMIMEReader extends AbstractStreamTest {
       //Expected
       final BodyPart currentExpectedPart = mimeMultipart.getBodyPart(i);
 
-      //Construct expected headers
+      //Construct expected headers and verify they match
       final Map<String, String> expectedHeaders = new HashMap<String, String>();
       final Enumeration allHeaders = currentExpectedPart.getAllHeaders();
       while (allHeaders.hasMoreElements())
@@ -167,7 +186,8 @@ public class TestMultiPartMIMEReader extends AbstractStreamTest {
         expectedHeaders.put(header.getName(), header.getValue());
       }
       Assert.assertEquals(currentCallback._headers, expectedHeaders);
-      Assert.assertEquals(currentCallback._finishedData, serializedBody);
+      //Verify the body matches
+      Assert.assertEquals(new String(currentCallback._finishedData.copyBytes()), currentExpectedPart.getContent());
     }
   }
 
@@ -207,9 +227,7 @@ public class TestMultiPartMIMEReader extends AbstractStreamTest {
     final MultiPartMIMEReader.SinglePartMIMEReader _singlePartMIMEReader;
     final ByteArrayOutputStream _byteArrayOutputStream = new ByteArrayOutputStream();
     Map<String, String> _headers;
-    //We can always compare strings for assertions, even if the payload is binary.
-    //resume here todo
-    String _finishedData;
+    ByteString _finishedData;
     int partCounter = 0;
 
     TestSinglePartMIMEReaderCallbackImpl(final MultiPartMIMEReaderCallback topLevelCallback, final
