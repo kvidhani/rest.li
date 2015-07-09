@@ -63,6 +63,7 @@ import test.r2.integ.AbstractStreamTest;
 
 //Exceptions
 // - cancellations, aborts, exceptions in chain scenarios
+//poorly formatted data on reader stide
 
 //Thread safety stuff and race conditions
 
@@ -87,7 +88,7 @@ public class TestMultiPartMIMEReader extends AbstractStreamTest {
   @BeforeClass
   public void dataSourceSetup() throws Exception {
 
-    //Small body
+    //Small body.
     {
       final String body = "A tiny body";
       MimeBodyPart dataPart = new MimeBodyPart();
@@ -97,7 +98,7 @@ public class TestMultiPartMIMEReader extends AbstractStreamTest {
       _smallDataSource = dataPart;
     }
 
-    //Large body. Something bigger then the size of the boundary
+    //Large body. Something bigger then the size of the boundary.
     {
       final String body = "Has at possim tritani laoreet, vis te meis verear. Vel no vero quando oblique, "
           + "eu blandit placerat nec, vide facilisi recusabo nec te. Veri labitur sensibus eum id. Quo omnis "
@@ -107,6 +108,7 @@ public class TestMultiPartMIMEReader extends AbstractStreamTest {
       ContentType contentType = new ContentType("text/plain");
       dataPart.setContent(body, contentType.getBaseType());
       dataPart.setHeader(HEADER_CONTENT_TYPE, "text/plain");
+      dataPart.setHeader("SomeCustomHeader", "SomeCustomValue");
       _largeDataSource = dataPart;
     }
 
@@ -125,18 +127,19 @@ public class TestMultiPartMIMEReader extends AbstractStreamTest {
   protected Map<String, String> getClientProperties()
   {
     Map<String, String> clientProperties = new HashMap<String, String>();
-    clientProperties.put(HttpClientFactory.HTTP_REQUEST_TIMEOUT, "300000");
+    clientProperties.put(HttpClientFactory.HTTP_REQUEST_TIMEOUT, "9000000");
     return clientProperties;
   }
 
+  ///////////////////////////////////////////////////////////////////////////////////////
 
-  @DataProvider(name = "tinySingleBodyDataSource")
-  public Object[][] tinySingleBodyDataSource() throws Exception
+  @DataProvider(name = "smallSingleBodyDataSource")
+  public Object[][] smallSingleBodyDataSource() throws Exception
   {
     MimeMultipart multiPartMimeBody = new MimeMultipart();
 
     //Add your body parts
-    multiPartMimeBody.addBodyPart(_tinyDataSource);
+    multiPartMimeBody.addBodyPart(_smallDataSource);
     final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     multiPartMimeBody.writeTo(byteArrayOutputStream);
     final ByteString requestPayload = ByteString.copy(byteArrayOutputStream.toByteArray());
@@ -147,13 +150,75 @@ public class TestMultiPartMIMEReader extends AbstractStreamTest {
     };
   }
 
-  @Test(dataProvider = "tinySingleBodyDataSource")
-  public void testTinySingleBodyDataSource(final Writer dataSourceWriter, final MimeMultipart mimeMultipart) throws Exception
+  @Test(dataProvider = "smallSingleBodyDataSource")
+  public void testSmallSingleBody(final Writer dataSourceWriter, final MimeMultipart mimeMultipart) throws Exception
   {
+    executeRequestAndAssert(dataSourceWriter, mimeMultipart);
+  }
+
+  ///////////////////////////////////////////////////////////////////////////////////////
+
+  @DataProvider(name = "largeSingleBodyDataSource")
+     public Object[][] largeSingleBodyDataSource() throws Exception
+  {
+    MimeMultipart multiPartMimeBody = new MimeMultipart();
+
+    //Add your body parts
+    multiPartMimeBody.addBodyPart(_largeDataSource);
+    final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    multiPartMimeBody.writeTo(byteArrayOutputStream);
+    final ByteString requestPayload = ByteString.copy(byteArrayOutputStream.toByteArray());
+
+    return new Object[][] {
+            { new VariableByteStringWriter(requestPayload, 1), multiPartMimeBody  },
+            { new VariableByteStringWriter(requestPayload, R2Constants.DEFAULT_DATA_CHUNK_SIZE), multiPartMimeBody }
+    };
+  }
+
+  @Test(dataProvider = "largeSingleBodyDataSource")
+  public void testLargeSingleBody(final Writer dataSourceWriter, final MimeMultipart mimeMultipart) throws Exception
+  {
+    executeRequestAndAssert(dataSourceWriter, mimeMultipart);
+  }
+
+  ///////////////////////////////////////////////////////////////////////////////////////
+
+  @DataProvider(name = "multipleBodiesDataSource")
+  public Object[][] multipleBodiesDataSource() throws Exception
+  {
+    MimeMultipart multiPartMimeBody = new MimeMultipart();
+
+    //Add your body parts
+    //multiPartMimeBody.addBodyPart(_largeDataSource);
+    multiPartMimeBody.addBodyPart(_smallDataSource);
+    multiPartMimeBody.addBodyPart(_largeDataSource);
+    multiPartMimeBody.addBodyPart(_smallDataSource);
+    multiPartMimeBody.addBodyPart(_largeDataSource);
+    final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    multiPartMimeBody.writeTo(byteArrayOutputStream);
+    final ByteString requestPayload = ByteString.copy(byteArrayOutputStream.toByteArray());
+
+    return new Object[][] {
+            { new VariableByteStringWriter(requestPayload, 1), multiPartMimeBody  },
+            { new VariableByteStringWriter(requestPayload, R2Constants.DEFAULT_DATA_CHUNK_SIZE), multiPartMimeBody }
+    };
+  }
+
+  @Test(dataProvider = "multipleBodiesDataSource")
+  public void testMultipleBodies(final Writer dataSourceWriter, final MimeMultipart mimeMultipart) throws Exception
+  {
+    executeRequestAndAssert(dataSourceWriter, mimeMultipart);
+  }
+
+  ///////////////////////////////////////////////////////////////////////////////////////
+
+
+  private void executeRequestAndAssert(final Writer dataSourceWriter, final MimeMultipart mimeMultipart) throws Exception {
+
     final EntityStream entityStream = EntityStreams.newEntityStream(dataSourceWriter);
     final StreamRequestBuilder builder = new StreamRequestBuilder(Bootstrap.createHttpURI(PORT, SERVER_URI));
     StreamRequest request = builder.setMethod("POST").setHeader(HEADER_CONTENT_TYPE, mimeMultipart.getContentType()).build(
-        entityStream);
+            entityStream);
 
     final AtomicInteger status = new AtomicInteger(-1);
     final CountDownLatch latch = new CountDownLatch(1);
@@ -162,11 +227,6 @@ public class TestMultiPartMIMEReader extends AbstractStreamTest {
     latch.await(60000, TimeUnit.MILLISECONDS);
     Assert.assertEquals(status.get(), RestStatus.OK);
 
-    assertDataMatches(mimeMultipart);
-
-  }
-
-  private void assertDataMatches(final MimeMultipart mimeMultipart) throws Exception {
     List<TestSinglePartMIMEReaderCallbackImpl> singlePartMIMEReaderCallbacks =
         _mimeServerRequestHandler._testMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks;
     Assert.assertEquals(singlePartMIMEReaderCallbacks.size(), mimeMultipart.getCount());

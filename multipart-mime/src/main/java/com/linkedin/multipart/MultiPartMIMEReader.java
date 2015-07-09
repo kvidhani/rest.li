@@ -40,6 +40,7 @@ import org.apache.commons.lang.ArrayUtils;
 //on the SinglePartMIMEReader and then be notified when data is available via
 //onPartDataAvailable().
 
+  //todo either put a limit or open a jira for max headers
 public class MultiPartMIMEReader {
 
   //Hide the reader
@@ -462,6 +463,7 @@ public class MultiPartMIMEReader {
 
                 //This could throw so handle appropriately.
                 handleExceptions(clientCallbackException);
+                //todo return here? i think so
               }
             }
             _currentSinglePartMIMEReader = null;
@@ -667,6 +669,7 @@ public class MultiPartMIMEReader {
 
     @Override
     public void onDone() {
+      //todo does this need to be explicityl tested
       //Be careful, we still could have space left in our buffer
       _r2Done = true;
       //We need to trigger onDataAvailable() again with empty data because there is an outstanding request
