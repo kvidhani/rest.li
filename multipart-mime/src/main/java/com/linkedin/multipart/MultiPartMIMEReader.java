@@ -41,6 +41,14 @@ import org.apache.commons.lang.ArrayUtils;
 //onPartDataAvailable().
 
   //todo either put a limit or open a jira for max headers
+  //HUGE TODO SWITCH OUT OF LIST OF BYTES AND USING SUBLIST - USES TOO MUCH MEMORY
+
+  //note that we can steal javadocs from the other rb
+  //also note that header folding does not work for consecutive CRLFS, only CRLF plus space or tab
+
+  //todo - eliminate such large methods
+  //and pull in feedback from your sync rb
+  //reduce usage of ByteString
 public class MultiPartMIMEReader {
 
   //Hide the reader

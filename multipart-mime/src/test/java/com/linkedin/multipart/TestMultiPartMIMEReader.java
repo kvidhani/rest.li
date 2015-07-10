@@ -36,6 +36,7 @@ import javax.mail.Header;
 import javax.mail.internet.ContentType;
 import javax.mail.internet.MimeBodyPart;
 import javax.mail.internet.MimeMultipart;
+import javax.mail.internet.ParameterList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.Assert;
@@ -52,9 +53,13 @@ import test.r2.integ.AbstractStreamTest;
 //-various data sources, input stream data source
 //read using javax mail
 
+
 //the reader
 // write using javax and read using our stuff
 // make sure all areas of the code are exercised
+//todo epligous and prologus and all the stuff
+//exceptions and abortions and what not
+
 
 //reader AND writer together to stream between the two
 //you can use the data sources from your sync MIME rb
@@ -73,6 +78,7 @@ import test.r2.integ.AbstractStreamTest;
 
 //CHANGE R2 SO THAT IT ONLY PROVIDES VERY FEW BYTES ON WRITE?
 
+//todo open a jira so that we can consider tirmming folded headers after they are parsed in
 //Note that we use javax.mail's ability to create multipart mime requests to verify the integrity of our RFC implementation.
 public class TestMultiPartMIMEReader extends AbstractStreamTest {
 
@@ -80,10 +86,15 @@ public class TestMultiPartMIMEReader extends AbstractStreamTest {
   private MimeServerRequestHandler _mimeServerRequestHandler;
   private static final Logger log = LoggerFactory.getLogger(TestMultiPartMIMEReader.class);
   private static final String HEADER_CONTENT_TYPE = "Content-Type";
+  private static final String _textPlainType = "text/plain";
+  private static final String _binaryType = "application/octet-stream";
 
-  private static MimeBodyPart _smallDataSource;
-  private static MimeBodyPart _largeDataSource;
-
+  private static MimeBodyPart _smallDataSource; //Represents a small part with headers and a body composed of simple text
+  private static MimeBodyPart _largeDataSource; //Represents a large part with headers and a body composed of simple text
+  private static MimeBodyPart _headerLessBody; //Represents a part with a body and no headers
+  private static MimeBodyPart _bodyLessBody; //Represents a part with headers but no body
+  private static MimeBodyPart _bytesBody; //Represents a part with bytes
+  private static MimeBodyPart _purelyEmptyBody; //Represents a part with no headers and no body
 
   @BeforeClass
   public void dataSourceSetup() throws Exception {
@@ -91,27 +102,92 @@ public class TestMultiPartMIMEReader extends AbstractStreamTest {
     //Small body.
     {
       final String body = "A tiny body";
-      MimeBodyPart dataPart = new MimeBodyPart();
-      ContentType contentType = new ContentType("text/plain");
+      final MimeBodyPart dataPart = new MimeBodyPart();
+      final ContentType contentType = new ContentType(_textPlainType);
       dataPart.setContent(body, contentType.getBaseType());
-      dataPart.setHeader(HEADER_CONTENT_TYPE, "text/plain");
+      dataPart.setHeader(HEADER_CONTENT_TYPE, contentType.toString());
+      dataPart.setHeader("SomeCustomHeader", "SomeCustomValue");
       _smallDataSource = dataPart;
     }
 
-    //Large body. Something bigger then the size of the boundary.
+    //Large body. Something bigger then the size of the boundary with folded headers.
     {
       final String body = "Has at possim tritani laoreet, vis te meis verear. Vel no vero quando oblique, "
           + "eu blandit placerat nec, vide facilisi recusabo nec te. Veri labitur sensibus eum id. Quo omnis "
           + "putant erroribus ad, nonumes copiosae percipit in qui, id cibo meis clita pri. An brute "
           + "mundi quaerendum duo, eu aliquip facilisis sea, eruditi invidunt dissentiunt eos ea.";
-      MimeBodyPart dataPart = new MimeBodyPart();
-      ContentType contentType = new ContentType("text/plain");
+      final MimeBodyPart dataPart = new MimeBodyPart();
+      final ContentType contentType = new ContentType(_textPlainType);
       dataPart.setContent(body, contentType.getBaseType());
-      dataPart.setHeader(HEADER_CONTENT_TYPE, "text/plain");
-      dataPart.setHeader("SomeCustomHeader", "SomeCustomValue");
+      //Modify the content type header to use folding. We will also use multiple headers that use folding to verify
+      //the integrity of the reader. Note that the Content-Type header uses parameters which are key/value pairs
+      //separated by '='. Note that we do not use two consecutive CRLFs anywhere since our implementation
+      //does not support this.
+      final StringBuffer contentTypeBuffer = new StringBuffer(contentType.toString());
+      contentTypeBuffer.append(";\r\n\t\t\t");
+      contentTypeBuffer.append("parameter1= value1");
+      contentTypeBuffer.append(";\r\n   \t");
+      contentTypeBuffer.append("parameter2= value2");
+
+      //This is a custom header which is folded. It does not use parameters so it's values are separated by commas.
+      final StringBuffer customHeaderBuffer = new StringBuffer();
+      customHeaderBuffer.append("CustomValue1");
+      customHeaderBuffer.append(",\r\n\t  \t");
+      customHeaderBuffer.append("CustomValue2");
+      customHeaderBuffer.append(",\r\n ");
+      customHeaderBuffer.append("CustomValue3");
+
+      dataPart.setHeader(HEADER_CONTENT_TYPE, contentTypeBuffer.toString());
+      dataPart.setHeader("AnotherCustomHeader", "AnotherCustomValue");
+      dataPart.setHeader("FoldedHeader", customHeaderBuffer.toString());
       _largeDataSource = dataPart;
     }
 
+    //Header-less body. This has a body but no headers.
+    {
+      final String body = "A body without any headers.";
+      final MimeBodyPart dataPart = new MimeBodyPart();
+      final ContentType contentType = new ContentType(_textPlainType);
+      dataPart.setContent(body, contentType.getBaseType());
+      _headerLessBody = dataPart;
+    }
+
+    //Body-less body. This has no body but does have headers, some of which are folded.
+    {
+      final MimeBodyPart dataPart = new MimeBodyPart();
+      final ParameterList parameterList = new ParameterList();
+      parameterList.set("AVeryVeryVeryVeryLongHeader", "AVeryVeryVeryVeryLongValue");
+      parameterList.set("AVeryVeryVeryVeryLongHeader2", "AVeryVeryVeryVeryLongValue2");
+      parameterList.set("AVeryVeryVeryVeryLongHeader3", "AVeryVeryVeryVeryLongValue3");
+      parameterList.set("AVeryVeryVeryVeryLongHeader4", "AVeryVeryVeryVeryLongValue4");
+      final ContentType contentType = new ContentType("text", "plain", parameterList);
+      dataPart.setContent("", contentType.getBaseType());
+      dataPart.setHeader(HEADER_CONTENT_TYPE, contentType.toString());
+      dataPart.setHeader("YetAnotherCustomHeader", "YetAnotherCustomValue");
+      _bodyLessBody = dataPart;
+    }
+
+    //Bytes body. A body that uses a content type different then just text/plain.
+    {
+      final byte[] body = new byte[20];
+      for (int i = 0; i<body.length; i++)
+      {
+        body[i] = (byte)i;
+      }
+      final MimeBodyPart dataPart = new MimeBodyPart();
+      final ContentType contentType = new ContentType(_binaryType);
+      dataPart.setContent(body, contentType.getBaseType());
+      dataPart.setHeader(HEADER_CONTENT_TYPE, contentType.toString());
+      _bytesBody = dataPart;
+    }
+
+    //Purely empty body. This has no body or headers.
+    {
+      final MimeBodyPart dataPart = new MimeBodyPart();
+      final ContentType contentType = new ContentType(_textPlainType);
+      dataPart.setContent("", contentType.getBaseType()); //Mail requires content so we do a bit of a hack here.
+      _purelyEmptyBody = dataPart;
+    }
   }
 
   @Override
@@ -133,91 +209,227 @@ public class TestMultiPartMIMEReader extends AbstractStreamTest {
 
   ///////////////////////////////////////////////////////////////////////////////////////
 
-  @DataProvider(name = "smallSingleBodyDataSource")
-  public Object[][] smallSingleBodyDataSource() throws Exception
+  @DataProvider(name = "eachSingleBodyDataSource")
+  public Object[][] eachSingleBodyDataSource() throws Exception
+  {
+    return new Object[][] {
+        { 1, _smallDataSource  },
+        { R2Constants.DEFAULT_DATA_CHUNK_SIZE, _smallDataSource },
+        { 1, _largeDataSource  },
+        { R2Constants.DEFAULT_DATA_CHUNK_SIZE, _largeDataSource },
+        { 1, _headerLessBody  },
+        { R2Constants.DEFAULT_DATA_CHUNK_SIZE, _headerLessBody },
+        { 1, _bodyLessBody  },
+        { R2Constants.DEFAULT_DATA_CHUNK_SIZE, _bodyLessBody },
+        { 1, _bytesBody  },
+        { R2Constants.DEFAULT_DATA_CHUNK_SIZE, _bytesBody },
+        { 1, _purelyEmptyBody  },
+        { R2Constants.DEFAULT_DATA_CHUNK_SIZE, _purelyEmptyBody }
+    };
+  }
+
+  @Test(dataProvider = "eachSingleBodyDataSource")
+  public void testEachSingleBodyDataSource(final int chunkSize, final MimeBodyPart bodyPart) throws Exception
   {
     MimeMultipart multiPartMimeBody = new MimeMultipart();
 
     //Add your body parts
-    multiPartMimeBody.addBodyPart(_smallDataSource);
+    multiPartMimeBody.addBodyPart(bodyPart);
     final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     multiPartMimeBody.writeTo(byteArrayOutputStream);
     final ByteString requestPayload = ByteString.copy(byteArrayOutputStream.toByteArray());
-
-    return new Object[][] {
-            { new VariableByteStringWriter(requestPayload, 1), multiPartMimeBody  },
-            { new VariableByteStringWriter(requestPayload, R2Constants.DEFAULT_DATA_CHUNK_SIZE), multiPartMimeBody }
-    };
+    final VariableByteStringWriter variableByteStringWriter = new VariableByteStringWriter(requestPayload, chunkSize);
+    executeRequestAndAssert(variableByteStringWriter, multiPartMimeBody);
   }
 
-  @Test(dataProvider = "smallSingleBodyDataSource")
-  public void testSmallSingleBody(final Writer dataSourceWriter, final MimeMultipart mimeMultipart) throws Exception
-  {
-    executeRequestAndAssert(dataSourceWriter, mimeMultipart);
-  }
-
-  ///////////////////////////////////////////////////////////////////////////////////////
-
-  @DataProvider(name = "largeSingleBodyDataSource")
-     public Object[][] largeSingleBodyDataSource() throws Exception
+  @Test(dataProvider = "eachSingleBodyDataSource")
+  public void testEachSingleBodyDataSourceMultipleTimes(final int chunkSize, final MimeBodyPart bodyPart) throws Exception
   {
     MimeMultipart multiPartMimeBody = new MimeMultipart();
 
     //Add your body parts
-    multiPartMimeBody.addBodyPart(_largeDataSource);
+    multiPartMimeBody.addBodyPart(bodyPart);
+    multiPartMimeBody.addBodyPart(bodyPart);
+    multiPartMimeBody.addBodyPart(bodyPart);
+    multiPartMimeBody.addBodyPart(bodyPart);
     final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     multiPartMimeBody.writeTo(byteArrayOutputStream);
     final ByteString requestPayload = ByteString.copy(byteArrayOutputStream.toByteArray());
-
-    return new Object[][] {
-            { new VariableByteStringWriter(requestPayload, 1), multiPartMimeBody  },
-            { new VariableByteStringWriter(requestPayload, R2Constants.DEFAULT_DATA_CHUNK_SIZE), multiPartMimeBody }
-    };
-  }
-
-  @Test(dataProvider = "largeSingleBodyDataSource")
-  public void testLargeSingleBody(final Writer dataSourceWriter, final MimeMultipart mimeMultipart) throws Exception
-  {
-    executeRequestAndAssert(dataSourceWriter, mimeMultipart);
+    final VariableByteStringWriter variableByteStringWriter = new VariableByteStringWriter(requestPayload, chunkSize);
+    executeRequestAndAssert(variableByteStringWriter, multiPartMimeBody);
   }
 
   ///////////////////////////////////////////////////////////////////////////////////////
 
-  @DataProvider(name = "multipleBodiesDataSource")
-  public Object[][] multipleBodiesDataSource() throws Exception
+  @DataProvider(name = "multipleNormalBodiesDataSource")
+  public Object[][] multipleNormalBodiesDataSource() throws Exception
+  {
+    final List<MimeBodyPart> bodyPartList = new ArrayList<MimeBodyPart>();
+    bodyPartList.add(_largeDataSource);
+    bodyPartList.add(_smallDataSource);
+    bodyPartList.add(_bodyLessBody);
+    bodyPartList.add(_largeDataSource);
+    bodyPartList.add(_smallDataSource);
+    bodyPartList.add(_bodyLessBody);
+
+    return new Object[][] {
+        { 1, bodyPartList  },
+        { R2Constants.DEFAULT_DATA_CHUNK_SIZE, bodyPartList }
+    };
+  }
+
+  @Test(dataProvider = "multipleNormalBodiesDataSource")
+  public void testMultipleNormalBodiesDataSource(final int chunkSize, final List<MimeBodyPart> bodyPartList) throws Exception
   {
     MimeMultipart multiPartMimeBody = new MimeMultipart();
 
     //Add your body parts
-    multiPartMimeBody.addBodyPart(_largeDataSource);
-    multiPartMimeBody.addBodyPart(_smallDataSource);
-    multiPartMimeBody.addBodyPart(_largeDataSource);
-    multiPartMimeBody.addBodyPart(_smallDataSource);
-    multiPartMimeBody.addBodyPart(_largeDataSource);
+    for (final MimeBodyPart bodyPart : bodyPartList) {
+      multiPartMimeBody.addBodyPart(bodyPart);
+    }
+
     final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     multiPartMimeBody.writeTo(byteArrayOutputStream);
     final ByteString requestPayload = ByteString.copy(byteArrayOutputStream.toByteArray());
-
-    return new Object[][] {
-            { new VariableByteStringWriter(requestPayload, 1), multiPartMimeBody  },
-            { new VariableByteStringWriter(requestPayload, R2Constants.DEFAULT_DATA_CHUNK_SIZE), multiPartMimeBody }
-    };
-  }
-
-  @Test(dataProvider = "multipleBodiesDataSource")
-  public void testMultipleBodies(final Writer dataSourceWriter, final MimeMultipart mimeMultipart) throws Exception
-  {
-    executeRequestAndAssert(dataSourceWriter, mimeMultipart);
+    final VariableByteStringWriter variableByteStringWriter = new VariableByteStringWriter(requestPayload, chunkSize);
+    executeRequestAndAssert(variableByteStringWriter, multiPartMimeBody);
   }
 
   ///////////////////////////////////////////////////////////////////////////////////////
 
+  @DataProvider(name = "multipleAbnormalBodies")
+  public Object[][] multipleAbnormalBodies() throws Exception
+  {
+    final List<MimeBodyPart> bodyPartList = new ArrayList<MimeBodyPart>();
+    bodyPartList.add(_headerLessBody);
+    bodyPartList.add(_bodyLessBody);
+    bodyPartList.add(_purelyEmptyBody);
+
+    return new Object[][] {
+        { 1, bodyPartList  },
+        { R2Constants.DEFAULT_DATA_CHUNK_SIZE, bodyPartList }
+    };
+  }
+
+  @Test(dataProvider = "multipleAbnormalBodies")
+  public void testMultipleAbnormalBodies(final int chunkSize, final List<MimeBodyPart> bodyPartList) throws Exception
+  {
+    MimeMultipart multiPartMimeBody = new MimeMultipart();
+
+    //Add your body parts
+    for (final MimeBodyPart bodyPart : bodyPartList) {
+      multiPartMimeBody.addBodyPart(bodyPart);
+    }
+
+    final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    multiPartMimeBody.writeTo(byteArrayOutputStream);
+    final ByteString requestPayload = ByteString.copy(byteArrayOutputStream.toByteArray());
+    final VariableByteStringWriter variableByteStringWriter = new VariableByteStringWriter(requestPayload, chunkSize);
+    executeRequestAndAssert(variableByteStringWriter, multiPartMimeBody);
+  }
+
+
+  ///////////////////////////////////////////////////////////////////////////////////////
+
+  @DataProvider(name = "allTypesOfBodiesDataSource")
+  public Object[][] allTypesOfBodiesDataSource() throws Exception
+  {
+    final List<MimeBodyPart> bodyPartList = new ArrayList<MimeBodyPart>();
+    bodyPartList.add(_smallDataSource);
+    bodyPartList.add(_largeDataSource);
+    bodyPartList.add(_headerLessBody);
+    bodyPartList.add(_bodyLessBody);
+    bodyPartList.add(_bytesBody);
+    bodyPartList.add(_purelyEmptyBody);
+
+    return new Object[][] {
+        { 1, bodyPartList  },
+        { R2Constants.DEFAULT_DATA_CHUNK_SIZE, bodyPartList }
+    };
+  }
+
+  @Test(dataProvider = "allTypesOfBodiesDataSource")
+  public void testAllTypesOfBodiesDataSource(final int chunkSize, final List<MimeBodyPart> bodyPartList) throws Exception
+  {
+    MimeMultipart multiPartMimeBody = new MimeMultipart();
+
+    //Add your body parts
+    for (final MimeBodyPart bodyPart : bodyPartList) {
+      multiPartMimeBody.addBodyPart(bodyPart);
+    }
+
+    final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    multiPartMimeBody.writeTo(byteArrayOutputStream);
+    final ByteString requestPayload = ByteString.copy(byteArrayOutputStream.toByteArray());
+    final VariableByteStringWriter variableByteStringWriter = new VariableByteStringWriter(requestPayload, chunkSize);
+    executeRequestAndAssert(variableByteStringWriter, multiPartMimeBody);
+  }
+
+
+  ///////////////////////////////////////////////////////////////////////////////////////
+
+  @DataProvider(name = "preambleEpilogueDataSource")
+  public Object[][] preambleEpilogueDataSource() throws Exception
+  {
+    final List<MimeBodyPart> bodyPartList = new ArrayList<MimeBodyPart>();
+    bodyPartList.add(_smallDataSource);
+    bodyPartList.add(_largeDataSource);
+    bodyPartList.add(_headerLessBody);
+    bodyPartList.add(_bodyLessBody);
+    bodyPartList.add(_bytesBody);
+    bodyPartList.add(_purelyEmptyBody);
+
+    return new Object[][] {
+        { 1, bodyPartList, null, null  },
+        { R2Constants.DEFAULT_DATA_CHUNK_SIZE, bodyPartList, null, null },
+        { 1, bodyPartList, "Some preamble", "Some epilogue"  },
+        { R2Constants.DEFAULT_DATA_CHUNK_SIZE, bodyPartList, "Some preamble", "Some epilogue"  },
+        { 1, bodyPartList, "Some preamble", null  },
+        { R2Constants.DEFAULT_DATA_CHUNK_SIZE, bodyPartList, "Some preamble", null },
+        { 1, bodyPartList, null,  "Some epilogue"  },
+        { R2Constants.DEFAULT_DATA_CHUNK_SIZE, bodyPartList, null,  "Some epilogue" }
+    };
+  }
+
+  //Just test the preamble and epilogue here
+  @Test(dataProvider = "preambleEpilogueDataSource")
+  public void testPreambleAndEpilogue(final int chunkSize, final List<MimeBodyPart> bodyPartList, final String preamble, final String epilogue) throws Exception
+  {
+    MimeMultipart multiPartMimeBody = new MimeMultipart();
+
+    //Add your body parts
+    for (final MimeBodyPart bodyPart : bodyPartList) {
+      multiPartMimeBody.addBodyPart(bodyPart);
+    }
+
+    if (preamble != null) {
+      multiPartMimeBody.setPreamble(preamble);
+    }
+
+    final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    multiPartMimeBody.writeTo(byteArrayOutputStream);
+    if (epilogue != null) {
+      //Javax mail does not support epilogue so we add it ourselves. Note that Javax mail throws in an extra CRLF
+      //at the very end but this doesn't affect our tests.
+      byteArrayOutputStream.write(epilogue.getBytes());
+    }
+    final ByteString requestPayload = ByteString.copy(byteArrayOutputStream.toByteArray());
+    final VariableByteStringWriter variableByteStringWriter = new VariableByteStringWriter(requestPayload, chunkSize);
+    executeRequestAndAssert(variableByteStringWriter, multiPartMimeBody);
+  }
+
+  ///////////////////////////////////////////////////////////////////////////////////////
 
   private void executeRequestAndAssert(final Writer dataSourceWriter, final MimeMultipart mimeMultipart) throws Exception {
 
     final EntityStream entityStream = EntityStreams.newEntityStream(dataSourceWriter);
     final StreamRequestBuilder builder = new StreamRequestBuilder(Bootstrap.createHttpURI(PORT, SERVER_URI));
-    StreamRequest request = builder.setMethod("POST").setHeader(HEADER_CONTENT_TYPE, mimeMultipart.getContentType()).build(
+
+    //We add additional parameters since MIME supports this and we want to make sure we can still extract boundary
+    //properly.
+    final String contentTypeHeader = mimeMultipart.getContentType() + ";somecustomparameter=somecustomvalue"
+        + ";anothercustomparameter=anothercustomvalue";
+    StreamRequest request = builder.setMethod("POST").setHeader(HEADER_CONTENT_TYPE, contentTypeHeader).build(
             entityStream);
 
     final AtomicInteger status = new AtomicInteger(-1);
@@ -247,20 +459,15 @@ public class TestMultiPartMIMEReader extends AbstractStreamTest {
       }
       Assert.assertEquals(currentCallback._headers, expectedHeaders);
       //Verify the body matches
-      Assert.assertEquals(new String(currentCallback._finishedData.copyBytes()), currentExpectedPart.getContent());
+      if(currentExpectedPart.getContent() instanceof byte[])
+      {
+        Assert.assertEquals(currentCallback._finishedData.copyBytes(), currentExpectedPart.getContent());
+      } else {
+        //Default is String
+        Assert.assertEquals(new String(currentCallback._finishedData.copyBytes()), currentExpectedPart.getContent());
+      }
     }
   }
-
-
-
-  //todo epligous and prologus and all the stuff
-  //test with a bigger body that's bigger then the boundary size
-  //test with all sorts of payloads
-  //test aborting single parts and all parts
-  //paramteriez on single byte, individual parts on write and entire too
-  //todo try a body part with bytes too
-
-
 
   private static Callback<StreamResponse> expectSuccessCallback(final CountDownLatch latch, final AtomicInteger status)
   {
@@ -393,7 +600,5 @@ public class TestMultiPartMIMEReader extends AbstractStreamTest {
         callback.onError(restException);
       }
     }
-
-
   }
 }
