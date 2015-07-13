@@ -49,6 +49,10 @@ import org.apache.commons.lang.ArrayUtils;
   //todo - eliminate such large methods
   //and pull in feedback from your sync rb
   //reduce usage of ByteString
+
+  //todo a lot of people may end up calling toplevelreader.onStreamError() when they implement thier singlepartcallbacks
+  //clearly define what is protocol in such situations.
+
 public class MultiPartMIMEReader {
 
   //Hide the reader
@@ -125,7 +129,6 @@ public class MultiPartMIMEReader {
       _rh = rh;
       //Start the reading process since the top level callback has been bound.
       //Note that we read ahead a bit here and we read only we need. This is the approach suggested by R2.
-      _readState = ReadState.READING_PREAMBLE;
       _rh.request(1);
     }
 
@@ -388,6 +391,7 @@ public class MultiPartMIMEReader {
                   //The client single part reader can then drive forward themselves.
                 } else {
                   //This is an abort operation, so we need to drop the bytes and keep moving forward.
+                  System.out.println("Byte dropped: " +  new String(ArrayUtils.toPrimitive(useableBytes.toArray(new Byte[0]))));
                   _rh.request(1);
                   //No need to explicitly return here.
                 }
@@ -796,6 +800,7 @@ public class MultiPartMIMEReader {
     }
   }
 
+
   public class SinglePartMIMEReader {
 
     private final Map<String, String> _headers;
@@ -818,7 +823,14 @@ public class MultiPartMIMEReader {
         throws PartBindException {
 
       //Due to the possibility of malicious race conditions caused by clients we lock here.
+      //todo all locks should belong to MultiPartMIMEReader.this since the same variables can't change
+      //using different locks
       synchronized (MultiPartMIMEReader.this) {
+        if (_readerState.get() == SingleReaderState.FINISHED) {
+          //Occurs if the user tries to use this part even after all the parts have been abandoned
+          //by the top level reader
+          throw new PartFinishedException();
+        }
         if (_callback != null) {
           throw new PartBindException();
         }
@@ -1010,11 +1022,17 @@ public class MultiPartMIMEReader {
   //2. If the stream is finished, subsequent calls will throw StreamFinishedException
   //3. Since this is async and we do not allow request queueing, repetitive calls will
   //result in StreamBusyException.
-  //4. If this MultiPartMIMEReader was created without a callback, and none has been registered yet
-  //then a call to abanonAllParts() will not notify on completion.
+  //4. In the future we may allow this to be called without a callback registered beforehand, but for now we require
+  //the callback to be present so we can notify when abandonment is complete.
+
+  //the goal OF THE LOGIC IS THAT YOU HAVE ATLEAST SEEN THE FIRST PART'S HEADERS
+  //BEFORE YOU ARE ABLE TO DECIDE IF YOU WANT OT ABANDON EVERYTHING OR NOT
+  //you can only call abandonAllParts if a callback is registered() and you were notified onNewPart()
+
   void abandonAllParts()
       throws StreamBusyException, StreamFinishedException, ReaderNotInitializedException {
 
+    //to verify you checked all states
     synchronized (this) {
       //No callback registered. This is a problem.
       if (_clientCallback == null) {
@@ -1035,12 +1053,18 @@ public class MultiPartMIMEReader {
         throw new StreamBusyException(); //Not allowed
       }
 
+      //todo could this be null? if the client registers and calls abandon right away
+      //but i think the reading_preamble would catch it
       if (_reader._currentSinglePartMIMEReader._readerState.get() != SingleReaderState.CREATED) {
         throw new StreamBusyException(); //Can't transition at this point in time
       }
+
+      //This is guaranteed not to be null since we only permit abandonAllPart() to be called once
+      //there is new part ready.
+      _reader._currentSinglePartMIMEReader._readerState.set(SingleReaderState.FINISHED);
+      _reader._readState = ReadState.ABORTING;
     }
 
-    _reader._readState = ReadState.ABORTING;
     _reader.onDataAvailable(ByteString.empty());
   }
 
@@ -1049,7 +1073,7 @@ public class MultiPartMIMEReader {
   //will throw StreamBusyException.
   //This can be set even if no parts in the stream have actually been consumed, i.e
   //after the very first invocation of onNewPart() on the initial MultiPartMIMEReaderCallback.
-  public void registerReaderCallback(MultiPartMIMEReaderCallback clientCallback)
+  void registerReaderCallback(MultiPartMIMEReaderCallback clientCallback)
       throws StreamFinishedException, StreamBusyException {
 
     synchronized (this) {
@@ -1084,6 +1108,8 @@ public class MultiPartMIMEReader {
 
       if (_clientCallback == null) {
         //This is the first time it's being set
+        //todo test this
+        _reader._readState = ReadState.READING_PREAMBLE;
         _clientCallback = clientCallback;
         _entityStream.setReader(_reader);
         return; //The lock will be released normally here.
