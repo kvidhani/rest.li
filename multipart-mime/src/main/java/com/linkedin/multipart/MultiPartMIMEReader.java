@@ -290,7 +290,9 @@ public class MultiPartMIMEReader {
           //Note that onPartDataAvailable() and onNewPart() are never called one after another in the logic
           //below because upon invocation of these callbacks, clients may come back to us immediately
           //and it can potentially lead to very confusing states. Furthermore its also more intuitive
-          //to answer each client's request with only one callback.
+          //to answer each client's request with only one callback. This also allows us to use the iterative
+          //callback invocation technique and return at a location in the code that is different then the original
+          //invocation location.
 
           //todo clean this up
           final int boundaryIndex;

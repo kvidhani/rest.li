@@ -1,6 +1,11 @@
 package com.linkedin.multipart;
 
+import com.linkedin.r2.message.rest.StreamRequest;
+import org.mockito.Mockito;
+import org.testng.Assert;
 import org.testng.annotations.Test;
+
+import static org.mockito.Mockito.when;
 
 
 /**
@@ -8,12 +13,19 @@ import org.testng.annotations.Test;
  */
 public class TestMultiPartMIMEReaderExceptions {
 
+
+  @Test
+  public void basicReadSandbox() {
+    StreamRequest streamRequest = Mockito.mock(StreamRequest.class);
+    when(streamRequest.getHeader(MultiPartMIMEUtils.CONTENT_TYPE_HEADER)).thenReturn()
+  }
+
   @Test
   public void with_arguments(){
 
-    Comparable c= mock(Comparable.class);
+    Comparable c= Mockito.mock(Comparable.class);
     when(c.compareTo("Test")).thenReturn(1);
-    assertEquals(1,c.compareTo("Test"));
+    Assert.assertEquals(1, c.compareTo("Test"));
   }
 
 }
