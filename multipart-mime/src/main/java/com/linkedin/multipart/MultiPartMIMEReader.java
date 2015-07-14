@@ -385,14 +385,28 @@ public class MultiPartMIMEReader {
                   } else {
                     processAndInvokeCallableQueue();
                     //If invoking the callables resulting in things stopping, we will return anyway.
-
                   }
 
                   //The client single part reader can then drive forward themselves.
                 } else {
                   //This is an abort operation, so we need to drop the bytes and keep moving forward.
+                  //Note that we don't have a client to drive us forward so we do it ourselves.
                   System.out.println("Byte dropped: " +  new String(ArrayUtils.toPrimitive(useableBytes.toArray(new Byte[0]))));
-                  _rh.request(1);
+
+                  final Callable<Void> recursiveCallable = new MimeReaderCallables.recursiveCallable(this);
+
+                  //Queue up this operation
+                  _callbackQueue.add(recursiveCallable);
+
+                  //If the while loop before us is in progress, we just return
+                  if (_callbackInProgress) {
+                    //We return to unwind the stack. Any queued elements will be taken care of the by the while loop
+                    //before us.
+                    return;
+                  } else {
+                    processAndInvokeCallableQueue();
+                    //If invoking the callables resulting in things stopping, we will return anyway.
+                  }
                   //No need to explicitly return here.
                 }
               } else {
@@ -429,6 +443,23 @@ public class MultiPartMIMEReader {
                   }
                 } else {
                   //drop the bytes
+                  System.out.println("Byte dropped: " +  new String(ArrayUtils.toPrimitive(useableBytes.toArray(new Byte[0]))));
+
+                  final Callable<Void> recursiveCallable = new MimeReaderCallables.recursiveCallable(this);
+
+                  //Queue up this operation
+                  _callbackQueue.add(recursiveCallable);
+
+                  //If the while loop before us is in progress, we just return
+                  if (_callbackInProgress) {
+                    //We return to unwind the stack. Any queued elements will be taken care of the by the while loop
+                    //before us.
+                    return;
+                  } else {
+                    processAndInvokeCallableQueue();
+                    //If invoking the callables resulting in things stopping, we will return anyway.
+                  }
+                  //No need to return explicitly from here.
                 }
                 //This part is finished. Subsequently when the client asks for more data our logic will below
                 //will now see that the buffer begins with the boundary. This will finish up this part

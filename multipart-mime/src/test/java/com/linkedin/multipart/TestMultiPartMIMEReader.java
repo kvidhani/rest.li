@@ -33,17 +33,13 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import javax.mail.BodyPart;
 import javax.mail.Header;
-import javax.mail.internet.ContentType;
 import javax.mail.internet.MimeBodyPart;
 import javax.mail.internet.MimeMultipart;
-import javax.mail.internet.ParameterList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.Assert;
-import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
-import test.r2.integ.AbstractStreamTest;
 
 
 
@@ -85,6 +81,8 @@ import test.r2.integ.AbstractStreamTest;
 //Stream request, stream response builder
 
 //CHANGE R2 SO THAT IT ONLY PROVIDES VERY FEW BYTES ON WRITE?
+
+//consider writing unit tests? is that feasible?
 
 //todo open a jira so that we can consider tirmming folded headers after they are parsed in
 //Note that we use javax.mail's ability to create multipart mime requests to verify the integrity of our RFC implementation.

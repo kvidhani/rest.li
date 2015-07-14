@@ -46,6 +46,20 @@ public class MimeReaderCallables {
       _multiPartMIMEReaderCallback = multiPartMIMEReaderCallback;
       _singlePartMIMEReader = singlePartMIMEReader;
     }
-
   }
+
+  static class recursiveCallable implements Callable<Void> {
+
+    final MultiPartMIMEReader.R2MultiPartMIMEReader _r2MultiPartMIMEReader;
+    @Override
+    public Void call() throws Exception {
+      _r2MultiPartMIMEReader.onDataAvailable(ByteString.empty());
+      return null; //This is ignored
+    }
+
+    recursiveCallable(final MultiPartMIMEReader.R2MultiPartMIMEReader r2MultiPartMIMEReader) {
+      _r2MultiPartMIMEReader = r2MultiPartMIMEReader;
+    }
+  }
+
 }
