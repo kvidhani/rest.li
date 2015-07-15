@@ -14,6 +14,8 @@ import java.util.List;
 import java.util.Map;
 import javax.mail.internet.MimeBodyPart;
 import javax.mail.internet.MimeMultipart;
+
+import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -172,6 +174,9 @@ public class TestMultiPartMIMEIntegrationReaderExceptions {
 */
 
   ///////////////////////////////////////////////////////////////////////////////////////
+
+  @Mock
+
 
   @DataProvider(name = "allTypesOfBodiesDataSource")
   public Object[][] allTypesOfBodiesDataSource() throws Exception

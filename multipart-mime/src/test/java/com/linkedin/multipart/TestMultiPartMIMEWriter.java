@@ -31,6 +31,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import javax.mail.internet.ContentType;
 import javax.mail.internet.MimeBodyPart;
 import javax.mail.internet.MimeMultipart;
+
+import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -69,11 +71,20 @@ public class TestMultiPartMIMEWriter extends AbstractStreamTest {
     return clientProperties;
   }
 
+  @Mock
+  MultiPartMIMEDataSource a;
+
+  @Mock
+  MultiPartMIMEDataSource b;
+
+
   @BeforeTest
   public void testSetup() {
 
     MultiPartMIMEWriter.MultiPartMIMEWriterBuilder multiPartMIMEWriterBuilder =
         new MultiPartMIMEWriter.MultiPartMIMEWriterBuilder("some preamble", "some epilogue");
+
+
     {
       final String body = "A tiny body";
       final Map<String, String> partMap = new HashMap<String, String>();
