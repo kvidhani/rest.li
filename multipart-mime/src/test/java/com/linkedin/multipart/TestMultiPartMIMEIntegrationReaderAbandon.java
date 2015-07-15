@@ -30,16 +30,18 @@ import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import static com.linkedin.multipart.DataSources.*;
+
 
 
 /**
  * Created by kvidhani on 7/11/15.
  */
-public class TestMultiPartMIMEReaderAbandon extends AbstractMultiPartMIMEStreamTest {
+public class TestMultiPartMIMEIntegrationReaderAbandon extends AbstractMultiPartMIMEIntegrationStreamTest {
 
   private static final URI SERVER_URI = URI.create("/pegasusAbandonServer");
   private MimeServerRequestAbandonHandler _mimeServerRequestAbandonHandler;
-  private static final Logger log = LoggerFactory.getLogger(TestMultiPartMIMEReaderAbandon.class);
+  private static final Logger log = LoggerFactory.getLogger(TestMultiPartMIMEIntegrationReaderAbandon.class);
   private static final String ABANDON_HEADER = "AbandonMe";
 
   //Header values for different server side behavior:

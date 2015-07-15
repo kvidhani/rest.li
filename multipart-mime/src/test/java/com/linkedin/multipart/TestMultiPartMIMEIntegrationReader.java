@@ -40,7 +40,7 @@ import org.slf4j.LoggerFactory;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
-
+import static com.linkedin.multipart.DataSources.*;
 
 
 //Areas to test (DOUBLE CHECK ALL OF THIS IS DONE BEFORE RB):
@@ -86,11 +86,11 @@ import org.testng.annotations.Test;
 
 //todo open a jira so that we can consider tirmming folded headers after they are parsed in
 //Note that we use javax.mail's ability to create multipart mime requests to verify the integrity of our RFC implementation.
-public class TestMultiPartMIMEReader extends AbstractMultiPartMIMEStreamTest {
+public class TestMultiPartMIMEIntegrationReader extends AbstractMultiPartMIMEIntegrationStreamTest {
 
   private static final URI SERVER_URI = URI.create("/pegasusMimeServer");
   private MimeServerRequestHandler _mimeServerRequestHandler;
-  private static final Logger log = LoggerFactory.getLogger(TestMultiPartMIMEReader.class);
+  private static final Logger log = LoggerFactory.getLogger(TestMultiPartMIMEIntegrationReader.class);
 
   @Override
   protected TransportDispatcher getTransportDispatcher()

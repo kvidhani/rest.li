@@ -21,6 +21,7 @@ import java.util.concurrent.TimeoutException;
 //2. There was an exception reading the stream, so we then close the stream and call error on write handle
 //3. The write was aborted, in which case we also close the stream.
 
+  //todo use a delegate pattern to forbid external users from calling interface methods directly
 public final class MultiPartMIMEInputStream implements MultiPartMIMEDataSource
 {
   public static final int DEFAULT_MAXIMUM_BLOCKING_DURATION = 3000;

@@ -19,19 +19,23 @@ import com.linkedin.r2.transport.common.StreamRequestHandler;
 import com.linkedin.r2.transport.common.bridge.server.TransportDispatcher;
 import com.linkedin.r2.transport.common.bridge.server.TransportDispatcherBuilder;
 import com.linkedin.r2.transport.http.client.HttpClientFactory;
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.net.URI;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import javax.mail.internet.ContentType;
 import javax.mail.internet.MimeBodyPart;
 import javax.mail.internet.MimeMultipart;
+import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.Assert;
+import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
 import test.r2.integ.AbstractStreamTest;
 
@@ -45,7 +49,7 @@ public class TestMultiPartMIMEWriter extends AbstractStreamTest {
 
   private static final URI SERVER_URI = URI.create("/javaxMimeServer");
   private MimeServerRequestHandler _mimeServerRequestHandler;
-  private static final Logger log = LoggerFactory.getLogger(TestMultiPartMIMEReader.class);
+  private static final Logger log = LoggerFactory.getLogger(TestMultiPartMIMEIntegrationReader.class);
   private static final String HEADER_CONTENT_TYPE = "Content-Type";
 
   @Override
@@ -65,7 +69,55 @@ public class TestMultiPartMIMEWriter extends AbstractStreamTest {
     return clientProperties;
   }
 
+  @BeforeTest
+  public void testSetup() {
 
+    MultiPartMIMEWriter.MultiPartMIMEWriterBuilder multiPartMIMEWriterBuilder =
+        new MultiPartMIMEWriter.MultiPartMIMEWriterBuilder("some preamble", "some epilogue");
+    {
+      final String body = "A tiny body";
+      final Map<String, String> partMap = new HashMap<String, String>();
+      partMap.put(HEADER_CONTENT_TYPE, "text/plain");
+      partMap.put("SomeCustomHeader", "SomeCustomValue");
+
+      final ByteArrayInputStream byteArrayInputStreamA = new ByteArrayInputStream(body.getBytes());
+      MultiPartMIMEInputStream dataSourceA =
+          new MultiPartMIMEInputStream.Builder(byteArrayInputStreamA, new ScheduledThreadPoolExecutor(5), partMap)
+              .withMaximumBlockingTime(100).withWriteChunkSize(1).build();
+      multiPartMIMEWriterBuilder.appendDataSource(dataSourceA);
+    }
+    {
+      final String body = "Has at possim tritani laoreet, vis te meis verear. Vel no vero quando oblique, eu blandit placerat nec, vide facilisi recusabo nec te. Veri labitur sensibus eum id. Quo omnis "
+        + "putant erroribus ad, nonumes copiosae percipit in qui, id cibo meis clita pri. An brute mundi quaerendum duo, eu aliquip facilisis sea, eruditi invidunt dissentiunt eos ea.";
+      final ByteArrayInputStream byteArrayInputStreamB = new ByteArrayInputStream(body.getBytes());
+      final Map<String, String> partMap = new HashMap<String, String>();
+      partMap.put(HEADER_CONTENT_TYPE, "text/plain");
+      partMap.put("SomeCustomHeader", "SomeCustomValue");
+
+      MultiPartMIMEInputStream dataSourceB =
+          new MultiPartMIMEInputStream.Builder(byteArrayInputStreamB, new ScheduledThreadPoolExecutor(5), partMap)
+              .withMaximumBlockingTime(100).withWriteChunkSize(1).build();
+      multiPartMIMEWriterBuilder.appendDataSource(dataSourceB);
+    }
+
+    MultiPartMIMEWriter writer = multiPartMIMEWriterBuilder.build();
+
+    final EntityStreams entityStreams = Mockito.mock(EntityStreams.class);
+
+
+    //final WriteHandle writeHandle = Mockito.mock(WriteHandle.class);
+    //dataSource.onInit(writeHandle);
+
+    //when(streamRequest.getHeader(MultiPartMIMEUtils.CONTENT_TYPE_HEADER)).thenReturn(contentTypeHeader);
+    //when(streamRequest.getEntityStream()).thenReturn(entityStream);
+
+
+    //do all the other bodies
+    //body1
+    //body2
+
+    //test only up until the composite writer is created
+  }
 
 
 
