@@ -25,6 +25,7 @@ public class MultiPartMIMEChainReaderCallback implements MultiPartMIMEReaderCall
     _currentSinglePartReader = singlePartMIMEReader;
     singlePartMIMEReader.registerReaderCallback(singlePartMIMEChainReader);
 
+    //todo relocate this logic so its easier to test
     byteArrayOutputStream.reset();
 
     try {

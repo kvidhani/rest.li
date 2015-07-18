@@ -22,12 +22,13 @@ import java.util.concurrent.TimeoutException;
 //3. The write was aborted, in which case we also close the stream.
 
   //todo use a delegate pattern to forbid external users from calling interface methods directly
+  //todo what needs to be volatile?
 public final class MultiPartMIMEInputStream implements MultiPartMIMEDataSource
 {
   public static final int DEFAULT_MAXIMUM_BLOCKING_DURATION = 3000;
   public static final int DEFAULT_WRITE_CHUNK_SIZE = 5000;
 
-  private WriteHandle _writeHandle;
+  private volatile WriteHandle _writeHandle;
   private final Map<String, String> _headers;
   private final InputStream _inputStream;
   private boolean _dataSourceFinished = false; //since there is no way to see if an InputStream has already been closed
@@ -44,7 +45,10 @@ public final class MultiPartMIMEInputStream implements MultiPartMIMEDataSource
   @Override
   public void onWritePossible() {
 
-    while (_writeHandle.remaining() > 0) {
+    //We can't use the traditional while (_writeHandle.remaining() > 0) since we need to incrementally
+    //schedule reads. We need to wait for each one to finish before moving onto the next. Moving onto the next
+    //means scheduling a runnable which will call onWritePossible() once again simulating what R2 would do.
+    if (_writeHandle.remaining() > 0) {
       final CountDownLatch latch = new CountDownLatch(1);
 
       //We use two threads from the client provided thread pool. We must use this technique
@@ -86,9 +90,9 @@ public final class MultiPartMIMEInputStream implements MultiPartMIMEDataSource
 
   private class InputStreamReader implements Runnable {
 
-    final CountDownLatch _countDownLatch;
-    ByteString _result = null;
-    Throwable _error = null;
+    private final CountDownLatch _countDownLatch;
+    private ByteString _result = null;
+    private Throwable _error = null;
 
     @Override
     public void run() {
@@ -103,7 +107,7 @@ public final class MultiPartMIMEInputStream implements MultiPartMIMEDataSource
           _dataSourceFinished = true;
           _result = ByteString.empty();
         } else if (bytesRead == _writeChunkSize) {
-          //2. N==Capacity. This signifies the most common case which is that we read as many bytes as we originally desired
+          //2. N==Capacity. This signifies the most common case which is that we read as many bytes as we originally desired.
           _result = ByteString.copy(bytes);
         } else {
           //3. Capacity > N >= 0. This signifies that the input stream is wrapping up and we just got the last few bytes.
@@ -121,13 +125,6 @@ public final class MultiPartMIMEInputStream implements MultiPartMIMEDataSource
       _countDownLatch = latch;
     }
 
-    private ByteString getResult() {
-      return _result;
-    }
-
-    private Throwable getError() {
-      return _error;
-    }
   }
 
   private class InputStreamReaderManager implements Runnable {
@@ -151,7 +148,7 @@ public final class MultiPartMIMEInputStream implements MultiPartMIMEDataSource
             if (_dataSourceFinished) {
               _writeHandle.write(_inputStreamReader._result);
               _writeHandle.done();
-              //Close the stream and shutdown the engine, since we won't be invoked again
+              //Close the stream since we won't be invoked again
               try {
                 _inputStream.close();
               } catch (IOException ioException) {
@@ -198,15 +195,39 @@ public final class MultiPartMIMEInputStream implements MultiPartMIMEDataSource
           //Safe to swallow
         }
         _writeHandle.error(exception);
+      } finally {
+
+        //Continue writing only if there is more to do. Note that orthodox writers typically have a
+        //while (_writeHandle.remaining() > 0) in onWritePossible(). Once _writeHandle.remaining() returns
+        //0, then R2 calls onWritePossible() again with a new remaining count.
+        //
+        //Since we can't follow that technique (since we have to sequentially read jobs from the input stream),
+        //we instead iterate sequentially using subsequent invocations to onWritePossible() which uses an
+        //if() loop instead.
+        //Therefore we continue only if:
+        //1. There is more to write on the writeHandle.
+        //AND
+        //2. We haven't called done yet.
+        if (_writeHandle.remaining() > 0 && _dataSourceFinished == false) {
+          final ContinueWritingManager continueWritingManager = new ContinueWritingManager();
+          _executorService.submit(continueWritingManager);
+        }
       }
     }
   }
 
-  /**
+  private class ContinueWritingManager implements Runnable {
+    @Override
+    public void run() {
+        MultiPartMIMEInputStream.this.onWritePossible();
+    }
+  }
+
+    /**
    * Create a new instance of a MultiPartMIMEInputStream that wraps the provided InputStream to
    * construct an individual multipart MIME part within the multipart MIME envelope.
    */
-  //todo do java docs and mention in java docs that the thread pool MUST have atleast two threads
+  //todo do java docs and mention in java docs that the thread pool MUST have atleast three threads
   public static class Builder {
 
     private final InputStream _inputStream;

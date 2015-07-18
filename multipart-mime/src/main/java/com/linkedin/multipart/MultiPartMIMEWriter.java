@@ -77,7 +77,7 @@ public class MultiPartMIMEWriter {
 
       } catch (IOException ioException) {
         //Should never happen
-        throw new IllegalStateException("Serious error when constructing local byte buffer for boundary and header serialization");
+        throw new IllegalStateException("Serious error when constructing local byte buffer for the boundary and headers!");
       }
       final Writer boundaryHeaderWriter = new ByteStringWriter(ByteString.copy(_boundaryHeaderByteArrayOutputStream.toByteArray()));
       _allDataSources.add(EntityStreams.newEntityStream(boundaryHeaderWriter));
@@ -120,11 +120,25 @@ public class MultiPartMIMEWriter {
     }
 
     public MultiPartMIMEWriter build() {
+
+      //Append the final boundary
+      _boundaryHeaderByteArrayOutputStream.reset();
+      try {
+        _boundaryHeaderByteArrayOutputStream.write(_finalEncapsulationBoundary);
+
+      } catch (IOException ioException) {
+        //Should never happen
+        throw new IllegalStateException("Serious error when constructing local byte buffer for the final boundary!");
+      }
+      final Writer finalBoundaryWriter = new ByteStringWriter(ByteString.copy(_boundaryHeaderByteArrayOutputStream.toByteArray()));
+      _allDataSources.add(EntityStreams.newEntityStream(finalBoundaryWriter));
+
       //Append epilogue
       if (!_epilogue.equalsIgnoreCase("")) {
         final Writer epilogueWriter = new ByteStringWriter(ByteString.copyString(_epilogue, Charset.forName("US-ASCII")));
         _allDataSources.add(EntityStreams.newEntityStream(epilogueWriter));
       }
+
       return new MultiPartMIMEWriter(_allDataSources, _rawBoundary);
     }
   }
@@ -161,10 +175,10 @@ public class MultiPartMIMEWriter {
       //Note that by registering here, this will eventually lead to onNewPart() which will then requestPartData()
       //which will eventually lead to onPartDataAvailable() which will then write to the writeHandle thereby
       //honoring the original request here to write data. This initial write here will write out the boundary that this
-      //writer is using followed by the headers. This is similar to _transitionToNewDataSource except within
-      //a MultiPartMIMEReader.
+      //writer is using followed by the headers.
+
       } else {
-        //This is a bit odd. We are calling R2 apis ourselves....TODO REUME AND FIGURE THIS OUT
+        //R2 asked us to read after initial setup is done.
         _multiPartMIMEChainReaderCallback.getCurrentSinglePartReader().requestPartData();
       }
 

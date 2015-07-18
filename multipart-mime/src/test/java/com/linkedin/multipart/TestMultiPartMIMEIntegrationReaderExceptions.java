@@ -175,8 +175,6 @@ public class TestMultiPartMIMEIntegrationReaderExceptions {
 
   ///////////////////////////////////////////////////////////////////////////////////////
 
-  @Mock
-
 
   @DataProvider(name = "allTypesOfBodiesDataSource")
   public Object[][] allTypesOfBodiesDataSource() throws Exception
