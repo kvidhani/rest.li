@@ -53,7 +53,10 @@ import org.apache.commons.lang.ArrayUtils;
   //todo a lot of people may end up calling toplevelreader.onStreamError() when they implement thier singlepartcallbacks
   //clearly define what is protocol in such situations.
 
-public class MultiPartMIMEReader {
+
+  //todo mention in documentation that we must use _rh.request(1) because its too complicated to deal with
+  //multiple onDataAvailable()s.
+public final class MultiPartMIMEReader {
 
   //Hide the reader
   private final R2MultiPartMIMEReader _reader;
@@ -133,9 +136,13 @@ public class MultiPartMIMEReader {
     }
 
     //Note that only one thread should ever be calling onDataAvailable() at any time.
-    //R2 only ever calls us sequentially. Client API calls via the readers that call onDataAvailable()
-    //will also forcefully be controlled in a sequential manner.
-    //It is for this reason we don't have to synchronize any data used within this method.
+    //We control invocation of this this method using the various states.
+    //Client API calls via the readers call onDataAvailable() to refresh the logic and drive forward
+    //but in a forcefully sequential manner.
+    //When more data is needed to fulfill a client's request, R2 will call us sequentially.
+    //It is for this reason we don't have to synchronize any data used within this method. This is a big
+    //performance win.
+    //
     //Also note that all exceptions thrown by asynchronous notification of client callbacks will be given back to
     //them by calling them onStreamError().
     //Anything thrown by us will make it to R2. This should ideally never ever happen and if it happens its a bug.
@@ -338,6 +345,7 @@ public class MultiPartMIMEReader {
             //the very first time.
             // if (_currentSinglePartMIMEReader != null) {
 
+
             //We only proceed forward if there is a reader ready.
             //By ready we mean that:
             //1. They are ready to receive requested data on their onPartDataAvailable() callback.
@@ -345,7 +353,26 @@ public class MultiPartMIMEReader {
             //2. They have requested an abort and are waiting for it to finish.
             //If the current single part reader is not ready, then we just return and move on (we already read into the buffer)
             //since the single part reader can then drive the flow of future data.
-            //todo - I don't think this comment/statement is really required since these are guaranteed to be in one of these states at this point in time.
+            //
+            //It is further important to note that in the current implementation, the reader will ALWAYS be ready at this point in time.
+            //This is because we strictly allow only our clients to push us forward. This means they must be in a ready state
+            //when all of this logic is executed.
+            //
+            //If we need more bytes to fulfill their request we call _rh.request(1), but this only happens if the reader
+            //is ready to begin with (since that refreshed this logic).
+            //
+            //Therefore this is why we don't do _rh.request(n > 1)...i.e _rh.request(2):
+            //A. If we did this, the first onDataAvailable() invoked by R2 would potentially satisfy a client's
+            //request. The second onDataAvailable() invoked by R2 would then just write data into the local buffer. However
+            //now we have to distinguish on whether or not the client drove us forward by refreshing us or our desire for more data
+            //drove us forward. This leads to more complication and performs reading of data that we don't need yet.
+            //
+            //B. Multiple threads could call the logic here concurrently thereby violating the guarantee we get that
+            //the logic here is only run by one thread concurrently. For example:
+            //If we did a _rh.request(2), then the first invocation of onDataAvailable() would satisfy a
+            //client's request. The client could then drive us forward again by invoking onPartDataAvailable()
+            //to refresh the logic. However at this time the answer to our second _rh.request() could also come in
+            //thereby causing multiple threads to operate in an area where there is no synchronization.
 
             final SingleReaderState currentState = _currentSinglePartMIMEReader._readerState.get();
 

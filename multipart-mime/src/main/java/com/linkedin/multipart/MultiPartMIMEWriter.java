@@ -20,7 +20,7 @@ import java.util.List;
 //TODO note that Ang will look into fixing composite writer
 //todo evaluate all sitautions where callbacks can throw....ALL CALLBACKS CAN THROW POTENTIALLY!
 
-public class MultiPartMIMEWriter {
+public final class MultiPartMIMEWriter {
 
   private final CompositeWriter _writer;
   private final EntityStream _entityStream;
@@ -79,6 +79,7 @@ public class MultiPartMIMEWriter {
         //Should never happen
         throw new IllegalStateException("Serious error when constructing local byte buffer for the boundary and headers!");
       }
+      //Note that that nothing happens if there is an abort in the middle of writing a boundary or headers.
       final Writer boundaryHeaderWriter = new ByteStringWriter(ByteString.copy(_boundaryHeaderByteArrayOutputStream.toByteArray()));
       _allDataSources.add(EntityStreams.newEntityStream(boundaryHeaderWriter));
       _allDataSources.add(EntityStreams.newEntityStream(dataSource));

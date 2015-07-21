@@ -15,8 +15,6 @@ import test.r2.integ.AbstractStreamTest;
 //        1. using writer directly in your interface - i.e composite writer
 //        2. the fact you are using the package private interface to hide public api details - could have also used abstract class….
 //        3. the writer has three constructors (part, single and multi)
-// 4. Can abort be called? MultiPartMIMEInputstream could be aborted in mid read...what to do? figure out what to do here
-    //and come bacck to this problme. ask zhenak or ang
 
 
 

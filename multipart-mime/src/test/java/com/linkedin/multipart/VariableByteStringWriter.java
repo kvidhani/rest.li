@@ -6,7 +6,7 @@ import com.linkedin.r2.message.streaming.ByteStringWriter;
 import com.linkedin.r2.message.streaming.WriteHandle;
 import com.linkedin.r2.message.streaming.Writer;
 import com.linkedin.util.ArgumentUtil;
-import junit.framework.Assert;
+import org.testng.Assert;
 
 import java.util.Random;
 

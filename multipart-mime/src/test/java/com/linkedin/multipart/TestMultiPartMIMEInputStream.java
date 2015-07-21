@@ -28,7 +28,7 @@ import static org.mockito.Mockito.*;
  */
 
 
-//todo test onAbort
+//lower the test timeout
 
 public class TestMultiPartMIMEInputStream {
 
@@ -108,7 +108,7 @@ public class TestMultiPartMIMEInputStream {
         }
     }
 
-    //Simulates an input stream that throws IOException on a configurable number of reads.
+    //Simulates an input stream that throws IOException after a configurable number of reads.
     private static class ExceptionThrowingByteArrayInputStream extends StrictByteArrayInputStream {
 
         private final int _permissibleReads;
@@ -724,7 +724,152 @@ public class TestMultiPartMIMEInputStream {
 
         verifyNoMoreInteractions(writeHandle);
     }
-    
+
+
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    //These tests will verify that aborts work properly and close the input stream regardless of the
+    //current state.
+    //
+
+    //Abort before any writes requested.
+    @Test
+    public void testAbortBeforeWrite() throws Exception {
+
+        final byte[] smallInputData = "b".getBytes();
+        final StrictByteArrayInputStream inputStream = new StrictByteArrayInputStream(smallInputData);
+        final StrictByteArrayInputStream spyInputStream = spy(inputStream);
+
+        //Setup:
+        final WriteHandle writeHandle = Mockito.mock(WriteHandle.class);
+        final MultiPartMIMEInputStream multiPartMIMEInputStream =
+                new MultiPartMIMEInputStream.Builder(spyInputStream,  scheduledExecutorService, Collections.<String, String>emptyMap())
+                        .withWriteChunkSize(TEST_CHUNK_SIZE)
+                        .build();
+
+        //Setup for the close on the input stream.
+        //The close must happen for the test to finish.
+        final CountDownLatch closeInputStreamLatch = new CountDownLatch(1);
+        doAnswer(new Answer() {
+            @Override
+            public Object answer(InvocationOnMock invocation) throws Throwable {
+                closeInputStreamLatch.countDown();
+                return null;
+            }
+        }).when(spyInputStream).close();
+
+        ///////////////////////////////////
+        //Start things off
+
+        //Init the data source
+        multiPartMIMEInputStream.onInit(writeHandle);
+        multiPartMIMEInputStream.onAbort(new IOException());
+
+        //Wait to finish
+        try {
+            boolean successful = closeInputStreamLatch.await(TEST_TIMEOUT, TimeUnit.MILLISECONDS);
+            if (!successful) {
+                Assert.fail("Timeout when waiting for abort to happen!");
+            }
+        } catch (Exception exception) {
+            Assert.fail("Unexpected exception when waiting for input stream to be closed!");
+        }
+
+        ///////////////////////////////////
+        //Mock verifies:
+        verify(spyInputStream, times(1)).close();
+        verify(spyInputStream, never()).read(isA(byte[].class));
+        verify(writeHandle, never()).write(isA(ByteString.class));
+        verify(writeHandle, never()).remaining();
+        verify(writeHandle, never()).error(isA(Throwable.class));
+        verify(writeHandle, never()).done();
+        verifyNoMoreInteractions(writeHandle);
+    }
+
+
+    //Abort in the middle of a write task.
+    @Test
+    public void abortWhenNoOutstandingReadTask() throws Exception {
+
+        final StringBuilder builder = new StringBuilder();
+        for (int i = 0; i<(TEST_CHUNK_SIZE * 10) + 2; i++) {
+            builder.append('a');
+        }
+
+        //The slow byte array input stream will verify that we call an abort before the first read task is finished.
+        final byte[] largeInputData = builder.toString().getBytes();
+        final SlowByteArrayInputStream inputStream = new SlowByteArrayInputStream(largeInputData, 300, 10);
+        final SlowByteArrayInputStream spyInputStream = spy(inputStream);
+
+        //Setup:
+        final WriteHandle writeHandle = Mockito.mock(WriteHandle.class);
+        final MultiPartMIMEInputStream multiPartMIMEInputStream =
+                new MultiPartMIMEInputStream.Builder(spyInputStream,  scheduledExecutorService, Collections.<String, String>emptyMap())
+                        .withWriteChunkSize(TEST_CHUNK_SIZE)
+                        .build();
+
+        //By the time the first onWritePossible() completes, half the data should be transferred
+        //Then the abort task will run.
+        when(writeHandle.remaining()).thenReturn(5, new Integer[]{4,3,2,1,0});
+
+        //When data is written to the write handle, we append to the buffer
+        final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        doAnswer(new Answer() {
+            @Override
+            public Object answer(InvocationOnMock invocation) throws Throwable {
+                final ByteString argument = (ByteString)invocation.getArguments()[0];
+                appendByteStringToBuffer(byteArrayOutputStream, argument);
+                return null;
+            }
+        }).when(writeHandle).write(isA(ByteString.class));
+
+        //Setup for the close on the input stream.
+        //The close must happen for the test to finish.
+        final CountDownLatch closeInputStreamLatch = new CountDownLatch(1);
+        doAnswer(new Answer() {
+            @Override
+            public Object answer(InvocationOnMock invocation) throws Throwable {
+                closeInputStreamLatch.countDown();
+                return null;
+            }
+        }).when(spyInputStream).close();
+
+
+        ///////////////////////////////////
+        //Start things off
+
+        //Init the data source
+        multiPartMIMEInputStream.onInit(writeHandle);
+        multiPartMIMEInputStream.onWritePossible();
+        multiPartMIMEInputStream.onAbort(new IOException());
+
+        //Wait to finish
+        try {
+            boolean successful = closeInputStreamLatch.await(TEST_TIMEOUT, TimeUnit.MILLISECONDS);
+            if (!successful) {
+                Assert.fail("Timeout when waiting for abort to happen!");
+            }
+        } catch (Exception exception) {
+            Assert.fail("Unexpected exception when waiting for input stream to be closed!");
+        }
+
+        ///////////////////////////////////
+        //Assert
+        final byte[] expectedBytes = Arrays.copyOf(largeInputData, TEST_CHUNK_SIZE * 5);
+        Assert.assertEquals(byteArrayOutputStream.toByteArray(), expectedBytes, "Partial data from the input stream should have successfully been transferred");
+
+        //Mock verifies:
+        verify(spyInputStream, times(1)).close();
+        verify(spyInputStream, times(5)).read(isA(byte[].class));
+        verify(writeHandle, times(5)).write(isA(ByteString.class));
+        verify(writeHandle, times(6)).remaining();
+        verify(writeHandle, never()).error(isA(Throwable.class));
+        verify(writeHandle, never()).done();
+        verifyNoMoreInteractions(writeHandle);
+
+    }
+
+
     private void appendByteStringToBuffer(final ByteArrayOutputStream outputStream, final ByteString byteString)
     {
         try {

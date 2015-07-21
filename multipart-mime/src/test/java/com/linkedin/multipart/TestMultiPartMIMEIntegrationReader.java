@@ -50,15 +50,13 @@ import static com.linkedin.multipart.DataSources.*;
 //-various data sources, input stream data source
 //read using javax mail
 
-
 //the reader
 // write using javax and read using our stuff
 // make sure all areas of the code are exercised
 //todo epligous and prologus and all the stuff
-//exceptions and abortions and what not...
+//exceptions and abandons and what not...
 //verify you can retrieve the preamble
 //exception tests should cover all possible exceptions in multipart mime reader
-
 
 //reader AND writer together to stream between the two
 //Make sure you do server sending back and client processing too
@@ -86,6 +84,8 @@ import static com.linkedin.multipart.DataSources.*;
 
 //todo open a jira so that we can consider tirmming folded headers after they are parsed in
 //Note that we use javax.mail's ability to create multipart mime requests to verify the integrity of our RFC implementation.
+
+//todo move data sources into one location
 public class TestMultiPartMIMEIntegrationReader extends AbstractMultiPartMIMEIntegrationStreamTest {
 
   private static final URI SERVER_URI = URI.create("/pegasusMimeServer");
@@ -140,8 +140,7 @@ public class TestMultiPartMIMEIntegrationReader extends AbstractMultiPartMIMEInt
     final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     multiPartMimeBody.writeTo(byteArrayOutputStream);
     final ByteString requestPayload = ByteString.copy(byteArrayOutputStream.toByteArray());
-    final VariableByteStringWriter variableByteStringWriter = new VariableByteStringWriter(requestPayload, chunkSize);
-    executeRequestAndAssert(variableByteStringWriter, multiPartMimeBody);
+    executeRequestAndAssert(requestPayload, chunkSize, multiPartMimeBody);
   }
 
   @Test(dataProvider = "eachSingleBodyDataSource")
@@ -157,8 +156,7 @@ public class TestMultiPartMIMEIntegrationReader extends AbstractMultiPartMIMEInt
     final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     multiPartMimeBody.writeTo(byteArrayOutputStream);
     final ByteString requestPayload = ByteString.copy(byteArrayOutputStream.toByteArray());
-    final VariableByteStringWriter variableByteStringWriter = new VariableByteStringWriter(requestPayload, chunkSize);
-    executeRequestAndAssert(variableByteStringWriter, multiPartMimeBody);
+    executeRequestAndAssert(requestPayload, chunkSize, multiPartMimeBody);
   }
 
   ///////////////////////////////////////////////////////////////////////////////////////
@@ -193,8 +191,7 @@ public class TestMultiPartMIMEIntegrationReader extends AbstractMultiPartMIMEInt
     final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     multiPartMimeBody.writeTo(byteArrayOutputStream);
     final ByteString requestPayload = ByteString.copy(byteArrayOutputStream.toByteArray());
-    final VariableByteStringWriter variableByteStringWriter = new VariableByteStringWriter(requestPayload, chunkSize);
-    executeRequestAndAssert(variableByteStringWriter, multiPartMimeBody);
+    executeRequestAndAssert(requestPayload, chunkSize, multiPartMimeBody);
   }
 
   ///////////////////////////////////////////////////////////////////////////////////////
@@ -226,8 +223,7 @@ public class TestMultiPartMIMEIntegrationReader extends AbstractMultiPartMIMEInt
     final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     multiPartMimeBody.writeTo(byteArrayOutputStream);
     final ByteString requestPayload = ByteString.copy(byteArrayOutputStream.toByteArray());
-    final VariableByteStringWriter variableByteStringWriter = new VariableByteStringWriter(requestPayload, chunkSize);
-    executeRequestAndAssert(variableByteStringWriter, multiPartMimeBody);
+    executeRequestAndAssert(requestPayload, chunkSize, multiPartMimeBody);
   }
 
 
@@ -263,8 +259,7 @@ public class TestMultiPartMIMEIntegrationReader extends AbstractMultiPartMIMEInt
     final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     multiPartMimeBody.writeTo(byteArrayOutputStream);
     final ByteString requestPayload = ByteString.copy(byteArrayOutputStream.toByteArray());
-    final VariableByteStringWriter variableByteStringWriter = new VariableByteStringWriter(requestPayload, chunkSize);
-    executeRequestAndAssert(variableByteStringWriter, multiPartMimeBody);
+    executeRequestAndAssert(requestPayload, chunkSize, multiPartMimeBody);
   }
 
 
@@ -316,15 +311,17 @@ public class TestMultiPartMIMEIntegrationReader extends AbstractMultiPartMIMEInt
       byteArrayOutputStream.write(epilogue.getBytes());
     }
     final ByteString requestPayload = ByteString.copy(byteArrayOutputStream.toByteArray());
-    final VariableByteStringWriter variableByteStringWriter = new VariableByteStringWriter(requestPayload, chunkSize);
-    executeRequestAndAssert(variableByteStringWriter, multiPartMimeBody);
+    executeRequestAndAssert(requestPayload, chunkSize, multiPartMimeBody);
   }
 
   ///////////////////////////////////////////////////////////////////////////////////////
 
-  private void executeRequestAndAssert(final Writer dataSourceWriter, final MimeMultipart mimeMultipart) throws Exception {
+  private void executeRequestAndAssert(final ByteString requestPayload, final int chunkSize, final MimeMultipart mimeMultipart) throws Exception {
 
-    final EntityStream entityStream = EntityStreams.newEntityStream(dataSourceWriter);
+    final VariableByteStringWriter variableByteStringWriter =
+            new VariableByteStringWriter(requestPayload, chunkSize);
+
+    final EntityStream entityStream = EntityStreams.newEntityStream(variableByteStringWriter);
     final StreamRequestBuilder builder = new StreamRequestBuilder(Bootstrap.createHttpURI(PORT, SERVER_URI));
 
     //We add additional parameters since MIME supports this and we want to make sure we can still extract boundary
