@@ -56,6 +56,10 @@ import org.apache.commons.lang.ArrayUtils;
 
   //todo mention in documentation that we must use _rh.request(1) because its too complicated to deal with
   //multiple onDataAvailable()s.
+
+  //todo revisit sync strategy
+  //see if all variables are held by same lock if you synchronize
+  //maybe use reader writer lock?
 public final class MultiPartMIMEReader {
 
   //Hide the reader

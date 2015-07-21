@@ -72,10 +72,6 @@ public class TestMultiPartMIMEIntegrationReaderAbandon extends AbstractMultiPart
     return clientProperties;
   }
 
-  //todo tests with single part aborting and with top level aborting
-  //todo test that top level requires callback regiestered
-  //todo tests with and without single part callbacks registerec
-
   ///////////////////////////////////////////////////////////////////////////////////////
 
   @DataProvider(name = "allTypesOfBodiesDataSource")

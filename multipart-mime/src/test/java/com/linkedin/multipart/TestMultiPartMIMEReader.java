@@ -79,7 +79,8 @@ public class TestMultiPartMIMEReader {
                 { 1, _bytesBody  },
                 { R2Constants.DEFAULT_DATA_CHUNK_SIZE, _bytesBody },
                 { 1, _purelyEmptyBody  },
-                { R2Constants.DEFAULT_DATA_CHUNK_SIZE, _purelyEmptyBody }
+                { R2Constants.DEFAULT_DATA_CHUNK_SIZE, _purelyEmptyBody },
+
         };
     }
 
