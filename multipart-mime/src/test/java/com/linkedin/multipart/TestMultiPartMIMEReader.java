@@ -3,9 +3,28 @@ package com.linkedin.multipart;
 import com.linkedin.common.callback.Callback;
 import com.linkedin.data.ByteString;
 import com.linkedin.r2.filter.R2Constants;
-import com.linkedin.r2.message.rest.*;
-import com.linkedin.r2.message.streaming.*;
-import com.linkedin.util.ArgumentUtil;
+import com.linkedin.r2.message.rest.RestException;
+import com.linkedin.r2.message.rest.RestStatus;
+import com.linkedin.r2.message.rest.StreamRequest;
+import com.linkedin.r2.message.streaming.EntityStream;
+import com.linkedin.r2.message.streaming.ReadHandle;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Enumeration;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+import javax.mail.BodyPart;
+import javax.mail.Header;
+import javax.mail.internet.MimeBodyPart;
+import javax.mail.internet.MimeMultipart;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 import org.slf4j.Logger;
@@ -16,23 +35,10 @@ import org.testng.annotations.BeforeTest;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import javax.mail.BodyPart;
-import javax.mail.Header;
-import javax.mail.internet.MimeBodyPart;
-import javax.mail.internet.MimeMultipart;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.util.*;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
-
 import static com.linkedin.multipart.DataSources.*;
 import static org.mockito.Matchers.isA;
 import static org.mockito.Mockito.*;
+
 
 /**
  * Created by kvidhani on 7/19/15.
@@ -274,7 +280,7 @@ public class TestMultiPartMIMEReader {
 
         final ReadHandle readHandle = mock(ReadHandle.class);
 
-        //We have to use the AtomicReference technique to modify the current remaining buffer since the inner class
+        //We have to use the AtomicReference holder technique to modify the current remaining buffer since the inner class
         //in doAnswer() can only access final variables.
         final AtomicReference<MultiPartMIMEReader.R2MultiPartMIMEReader> r2Reader =
                 new AtomicReference<MultiPartMIMEReader.R2MultiPartMIMEReader>();
@@ -365,10 +371,21 @@ public class TestMultiPartMIMEReader {
 
 
         //Assert mocks todo
+
         //entity stream
         //read handle
         //stream request
 
+      //Mock verifies
+      verify(streamRequest, times(1)).getEntityStream();
+      verify(streamRequest, times(1)).getHeader(HEADER_CONTENT_TYPE);
+      verify(entityStream, times(1)).setReader(isA(MultiPartMIMEReader.R2MultiPartMIMEReader.class));
+      final int expectedRequests = (int)Math.ceil((double)payload.length()/chunkSize);
+      //One more expected request because we have to make the last call to get called onDone().
+      verify(readHandle, times(expectedRequests + 1)).request(1);
+      verifyNoMoreInteractions(streamRequest);
+      verifyNoMoreInteractions(entityStream);
+      verifyNoMoreInteractions(readHandle);
     }
 
 
