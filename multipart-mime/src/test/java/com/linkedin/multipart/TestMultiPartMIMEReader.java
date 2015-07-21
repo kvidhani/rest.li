@@ -16,8 +16,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -49,16 +49,16 @@ public class TestMultiPartMIMEReader {
 
     //We will have only one thread in our executor service so that when we submit tasks to write
     //data from the writer we do it in order.
-    private static ScheduledExecutorService singleScheduledExecutorService;
+    private static ExecutorService threadPoolExecutor;
 
     @BeforeTest
     public void setup() {
-        singleScheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
+        threadPoolExecutor = Executors.newFixedThreadPool(5);
     }
 
     @AfterTest
     public void shutDown() {
-        singleScheduledExecutorService.shutdownNow();
+        threadPoolExecutor.shutdownNow();
     }
 
 
@@ -294,16 +294,31 @@ public class TestMultiPartMIMEReader {
             public Object answer(InvocationOnMock invocation) throws Throwable {
                 final MultiPartMIMEReader.R2MultiPartMIMEReader reader = r2Reader.get();
                 Object[] args = invocation.getArguments();
-                final int chunksRequested = (Integer)args[0]; //should always be 1
+
+                //will always be 1 since MultiPartMIMEReader only does _rh.request(1)
+                final int chunksRequested = (Integer)args[0];
 
                 for (int i = 0;i<chunksRequested; i++) {
-                    ByteString clientData = variableByteStringViewer.onWritePossible();
-                    if (clientData.equals(ByteString.empty())) {
+
+                  //Our tests will run into a stack overflow unless we use a thread pool here to fire off the callbacks.
+                  //Especially in cases where the chunk size is 1. When the chunk size is one, the MultiPartMIMEReader
+                  //ends up doing many _rh.request(1) since each write is only 1 byte.
+                  //R2 uses a different technique to avoid stack overflows here which is unnecessary to emulate.
+                  threadPoolExecutor.submit(new Runnable() {
+                    @Override
+                    public void run() {
+
+                      ByteString clientData = variableByteStringViewer.onWritePossible();
+                      if (clientData.equals(ByteString.empty())) {
                         reader.onDone();
-                    }
-                    else {
+                      }
+                      else {
                         reader.onDataAvailable(clientData);
+                      }
+
                     }
+                  });
+
                 }
 
                 return null;
@@ -370,13 +385,6 @@ public class TestMultiPartMIMEReader {
             }
         }
 
-
-        //Assert mocks todo
-
-        //entity stream
-        //read handle
-        //stream request
-
       //Mock verifies
       verify(streamRequest, times(1)).getEntityStream();
       verify(streamRequest, times(1)).getHeader(HEADER_CONTENT_TYPE);
@@ -425,7 +433,7 @@ public class TestMultiPartMIMEReader {
         final ByteArrayOutputStream _byteArrayOutputStream = new ByteArrayOutputStream();
         Map<String, String> _headers;
         ByteString _finishedData;
-        static int partCounter = 0;
+        int partCounter = 0;
 
         TestSinglePartMIMEReaderCallbackImpl(final MultiPartMIMEReaderCallback topLevelCallback, final
         MultiPartMIMEReader.SinglePartMIMEReader singlePartMIMEReader) {

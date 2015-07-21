@@ -139,6 +139,7 @@ public final class MultiPartMIMEReader {
       _rh.request(1);
     }
 
+    //todo move this into a box and mention its benefits
     //Note that only one thread should ever be calling onDataAvailable() at any time.
     //We control invocation of this this method using the various states.
     //Client API calls via the readers call onDataAvailable() to refresh the logic and drive forward
@@ -363,9 +364,9 @@ public final class MultiPartMIMEReader {
             //when all of this logic is executed.
             //
             //If we need more bytes to fulfill their request we call _rh.request(1), but this only happens if the reader
-            //is ready to begin with (since that refreshed this logic).
+            //is ready to begin with (since the reader drove us forward and refreshed this logic).
             //
-            //Therefore this is why we don't do _rh.request(n > 1)...i.e _rh.request(2):
+            //Formally, here is why we don't do _rh.request(2)...i.e _rh.request(n>1):
             //A. If we did this, the first onDataAvailable() invoked by R2 would potentially satisfy a client's
             //request. The second onDataAvailable() invoked by R2 would then just write data into the local buffer. However
             //now we have to distinguish on whether or not the client drove us forward by refreshing us or our desire for more data
