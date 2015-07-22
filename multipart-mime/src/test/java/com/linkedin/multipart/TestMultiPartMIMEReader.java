@@ -375,6 +375,8 @@ public class TestMultiPartMIMEReader {
                 expectedHeaders.put(header.getName(), header.getValue());
             }
             Assert.assertEquals(currentCallback._headers, expectedHeaders);
+
+          Assert.assertNotNull(currentCallback._finishedData);
             //Verify the body matches
             if(currentExpectedPart.getContent() instanceof byte[])
             {
@@ -432,8 +434,8 @@ public class TestMultiPartMIMEReader {
         final MultiPartMIMEReader.SinglePartMIMEReader _singlePartMIMEReader;
         final ByteArrayOutputStream _byteArrayOutputStream = new ByteArrayOutputStream();
         Map<String, String> _headers;
-        ByteString _finishedData;
-        int partCounter = 0;
+        ByteString _finishedData = null;
+        static int partCounter = 0;
 
         TestSinglePartMIMEReaderCallbackImpl(final MultiPartMIMEReaderCallback topLevelCallback, final
         MultiPartMIMEReader.SinglePartMIMEReader singlePartMIMEReader) {

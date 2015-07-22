@@ -302,7 +302,7 @@ public class TestMultiPartMIMEIntegrationReaderExceptions {
 
 /*
     List<TestSinglePartMIMEReaderCallbackImpl> singlePartMIMEReaderCallbacks =
-        _mimeServerRequestHandler._testMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks;
+        _mimeServerRequestHandler._currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks;
     Assert.assertEquals(singlePartMIMEReaderCallbacks.size(), mimeMultipart.getCount());
     for (int i = 0; i<singlePartMIMEReaderCallbacks.size();i++)
     {
@@ -421,8 +421,8 @@ public class TestMultiPartMIMEIntegrationReaderExceptions {
 
   /*
         MultiPartMIMEReader reader = MultiPartMIMEReader.createAndAcquireStream(request);
-        _testMultiPartMIMEReaderCallback  = new TestMultiPartMIMEReaderCallbackImpl(callback);
-        reader.registerReaderCallback(_testMultiPartMIMEReaderCallback);
+        _currentMultiPartMIMEReaderCallback  = new TestMultiPartMIMEReaderCallbackImpl(callback);
+        reader.registerReaderCallback(_currentMultiPartMIMEReaderCallback);
       }
       catch (IllegalMimeFormatException illegalMimeFormatException)
       {

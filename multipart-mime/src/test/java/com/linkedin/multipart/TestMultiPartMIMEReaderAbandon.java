@@ -2,21 +2,29 @@ package com.linkedin.multipart;
 
 import com.linkedin.common.callback.Callback;
 import com.linkedin.data.ByteString;
-import com.linkedin.multipart.reader.exceptions.IllegalMimeFormatException;
 import com.linkedin.r2.filter.R2Constants;
-import com.linkedin.r2.message.RequestContext;
-import com.linkedin.r2.message.rest.*;
+import com.linkedin.r2.message.rest.RestException;
+import com.linkedin.r2.message.rest.RestStatus;
+import com.linkedin.r2.message.rest.StreamRequest;
 import com.linkedin.r2.message.streaming.EntityStream;
-import com.linkedin.r2.message.streaming.EntityStreams;
 import com.linkedin.r2.message.streaming.ReadHandle;
-import com.linkedin.r2.sample.Bootstrap;
-import com.linkedin.r2.transport.common.StreamRequestHandler;
-import com.linkedin.r2.transport.common.bridge.server.TransportDispatcher;
-import com.linkedin.r2.transport.common.bridge.server.TransportDispatcherBuilder;
-import com.linkedin.r2.transport.http.client.HttpClientFactory;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Enumeration;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import javax.mail.BodyPart;
+import javax.mail.Header;
+import javax.mail.internet.MimeBodyPart;
+import javax.mail.internet.MimeMultipart;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 import org.slf4j.Logger;
@@ -27,23 +35,10 @@ import org.testng.annotations.BeforeTest;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import javax.mail.BodyPart;
-import javax.mail.Header;
-import javax.mail.internet.MimeBodyPart;
-import javax.mail.internet.MimeMultipart;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.net.URI;
-import java.util.*;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
-
 import static com.linkedin.multipart.DataSources.*;
 import static org.mockito.Matchers.isA;
-import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 
 /**
@@ -51,9 +46,10 @@ import static org.mockito.Mockito.when;
  */
 public class TestMultiPartMIMEReaderAbandon {
 
-  //We will have only one thread in our executor service so that when we submit tasks to write
-  //data from the writer we do it in order.
   private static ExecutorService threadPoolExecutor;
+
+  MultiPartMIMEAbandonReaderCallbackImpl _currentMultiPartMIMEReaderCallback;
+  MimeMultipart _currentMimeMultipartBody;
 
   @BeforeTest
   public void setup() {
@@ -119,8 +115,8 @@ public class TestMultiPartMIMEReaderAbandon {
         executeRequestWithAbandonStrategy(chunkSize, bodyPartList, SINGLE_ALL_NO_CALLBACK, "onFinished");
 
         //Single part abandons all individually but doesn't use a callback:
-        List<SinglePartMIMEAbandonReaderCallbackImpl> singlePartMIMEReaderCallbacks =
-                _mimeServerRequestAbandonHandler._testMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks;
+      List<SinglePartMIMEAbandonReaderCallbackImpl> singlePartMIMEReaderCallbacks =
+          _currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks;
         Assert.assertEquals(singlePartMIMEReaderCallbacks.size(), 0);
     }
 
@@ -132,7 +128,7 @@ public class TestMultiPartMIMEReaderAbandon {
 
         //Top level abandons all
         List<SinglePartMIMEAbandonReaderCallbackImpl> singlePartMIMEReaderCallbacks =
-                _mimeServerRequestAbandonHandler._testMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks;
+                _currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks;
         Assert.assertEquals(singlePartMIMEReaderCallbacks.size(), 0);
     }
 
@@ -141,12 +137,11 @@ public class TestMultiPartMIMEReaderAbandon {
             throws Exception {
         //Execute the request, verify the correct header came back to ensure the server took the proper abandon actions
         //and return the payload so we can assert deeper.
-        MimeMultipart mimeMultipart =
-                executeRequestWithAbandonStrategy(chunkSize, bodyPartList, SINGLE_PARTIAL_TOP_REMAINING, "onAbandoned");
+       executeRequestWithAbandonStrategy(chunkSize, bodyPartList, SINGLE_PARTIAL_TOP_REMAINING, "onAbandoned");
 
         //Single part abandons the first 6 then the top level abandons all of remaining
-        List<SinglePartMIMEAbandonReaderCallbackImpl> singlePartMIMEReaderCallbacks =
-                _mimeServerRequestAbandonHandler._testMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks;
+      List<SinglePartMIMEAbandonReaderCallbackImpl> singlePartMIMEReaderCallbacks =
+          _currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks;
 
         Assert.assertEquals(singlePartMIMEReaderCallbacks.size(), 6);
 
@@ -154,7 +149,7 @@ public class TestMultiPartMIMEReaderAbandon {
             //Actual 
             final SinglePartMIMEAbandonReaderCallbackImpl currentCallback = singlePartMIMEReaderCallbacks.get(i);
             //Expected 
-            final BodyPart currentExpectedPart = mimeMultipart.getBodyPart(i);
+            final BodyPart currentExpectedPart = _currentMimeMultipartBody.getBodyPart(i);
 
             //Construct expected headers and verify they match 
             final Map<String, String> expectedHeaders = new HashMap<String, String>();
@@ -176,13 +171,12 @@ public class TestMultiPartMIMEReaderAbandon {
             throws Exception {
         //Execute the request, verify the correct header came back to ensure the server took the proper abandon actions
         //and return the payload so we can assert deeper.
-        MimeMultipart mimeMultipart =
-                executeRequestWithAbandonStrategy(chunkSize, bodyPartList, SINGLE_ALTERNATE_TOP_REMAINING, "onAbandoned");
+        executeRequestWithAbandonStrategy(chunkSize, bodyPartList, SINGLE_ALTERNATE_TOP_REMAINING, "onAbandoned");
 
         //Single part alternates between consumption and abandoning the first 6 parts, then top level abandons all of remaining.
         //This means that parts 0, 2, 4 will be consumed and parts 1, 3, 5 will be abandoned.
-        List<SinglePartMIMEAbandonReaderCallbackImpl> singlePartMIMEReaderCallbacks =
-                _mimeServerRequestAbandonHandler._testMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks;
+      List<SinglePartMIMEAbandonReaderCallbackImpl> singlePartMIMEReaderCallbacks =
+          _currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks;
 
         Assert.assertEquals(singlePartMIMEReaderCallbacks.size(), 6);
 
@@ -191,7 +185,7 @@ public class TestMultiPartMIMEReaderAbandon {
             //Actual 
             final SinglePartMIMEAbandonReaderCallbackImpl currentCallback = singlePartMIMEReaderCallbacks.get(i);
             //Expected 
-            final BodyPart currentExpectedPart = mimeMultipart.getBodyPart(i);
+            final BodyPart currentExpectedPart = _currentMimeMultipartBody.getBodyPart(i);
 
             //Construct expected headers and verify they match 
             final Map<String, String> expectedHeaders = new HashMap<String, String>();
@@ -219,7 +213,7 @@ public class TestMultiPartMIMEReaderAbandon {
             //Actual 
             final SinglePartMIMEAbandonReaderCallbackImpl currentCallback = singlePartMIMEReaderCallbacks.get(i);
             //Expected 
-            final BodyPart currentExpectedPart = mimeMultipart.getBodyPart(i);
+            final BodyPart currentExpectedPart = _currentMimeMultipartBody.getBodyPart(i);
 
             //Construct expected headers and verify they match 
             final Map<String, String> expectedHeaders = new HashMap<String, String>();
@@ -241,12 +235,11 @@ public class TestMultiPartMIMEReaderAbandon {
             throws Exception {
         //Execute the request, verify the correct header came back to ensure the server took the proper abandon actions
         //and return the payload so we can assert deeper.
-        MimeMultipart mimeMultipart =
-                executeRequestWithAbandonStrategy(chunkSize, bodyPartList, SINGLE_ALL, "onFinished");
+        executeRequestWithAbandonStrategy(chunkSize, bodyPartList, SINGLE_ALL, "onFinished");
 
         //Single part abandons all, one by one
-        List<SinglePartMIMEAbandonReaderCallbackImpl> singlePartMIMEReaderCallbacks =
-                _mimeServerRequestAbandonHandler._testMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks;
+      List<SinglePartMIMEAbandonReaderCallbackImpl> singlePartMIMEReaderCallbacks =
+          _currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks;
 
         Assert.assertEquals(singlePartMIMEReaderCallbacks.size(), 12);
 
@@ -255,7 +248,7 @@ public class TestMultiPartMIMEReaderAbandon {
             //Actual 
             final SinglePartMIMEAbandonReaderCallbackImpl currentCallback = singlePartMIMEReaderCallbacks.get(i);
             //Expected 
-            final BodyPart currentExpectedPart = mimeMultipart.getBodyPart(i);
+            final BodyPart currentExpectedPart = _currentMimeMultipartBody.getBodyPart(i);
 
             //Construct expected headers and verify they match 
             final Map<String, String> expectedHeaders = new HashMap<String, String>();
@@ -278,13 +271,12 @@ public class TestMultiPartMIMEReaderAbandon {
             throws Exception {
         //Execute the request, verify the correct header came back to ensure the server took the proper abandon actions
         //and return the payload so we can assert deeper.
-        MimeMultipart mimeMultipart =
-                executeRequestWithAbandonStrategy(chunkSize, bodyPartList, SINGLE_ALTERNATE, "onFinished");
+        executeRequestWithAbandonStrategy(chunkSize, bodyPartList, SINGLE_ALTERNATE, "onFinished");
 
         //Single part alternates between consumption and abandoning for all 12 parts.
         //This means that parts 0, 2, 4, etc.. will be consumed and parts 1, 3, 5, etc... will be abandoned.
-        List<SinglePartMIMEAbandonReaderCallbackImpl> singlePartMIMEReaderCallbacks =
-                _mimeServerRequestAbandonHandler._testMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks;
+      List<SinglePartMIMEAbandonReaderCallbackImpl> singlePartMIMEReaderCallbacks =
+          _currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks;
 
         Assert.assertEquals(singlePartMIMEReaderCallbacks.size(), 12);
 
@@ -293,7 +285,7 @@ public class TestMultiPartMIMEReaderAbandon {
             //Actual 
             final SinglePartMIMEAbandonReaderCallbackImpl currentCallback = singlePartMIMEReaderCallbacks.get(i);
             //Expected 
-            final BodyPart currentExpectedPart = mimeMultipart.getBodyPart(i);
+            final BodyPart currentExpectedPart = _currentMimeMultipartBody.getBodyPart(i);
 
             //Construct expected headers and verify they match 
             final Map<String, String> expectedHeaders = new HashMap<String, String>();
@@ -321,7 +313,7 @@ public class TestMultiPartMIMEReaderAbandon {
             //Actual 
             final SinglePartMIMEAbandonReaderCallbackImpl currentCallback = singlePartMIMEReaderCallbacks.get(i);
             //Expected 
-            final BodyPart currentExpectedPart = mimeMultipart.getBodyPart(i);
+            final BodyPart currentExpectedPart = _currentMimeMultipartBody.getBodyPart(i);
 
             //Construct expected headers and verify they match 
             final Map<String, String> expectedHeaders = new HashMap<String, String>();
@@ -340,7 +332,7 @@ public class TestMultiPartMIMEReaderAbandon {
 
     ///////////////////////////////////////////////////////////////////////////////////////
 
-    private MimeMultipart executeRequestWithAbandonStrategy(final int chunkSize, final List<MimeBodyPart> bodyPartList,
+    private void executeRequestWithAbandonStrategy(final int chunkSize, final List<MimeBodyPart> bodyPartList,
                                                             final String abandonStrategy, final String serverHeaderPrefix)
             throws Exception {
 
@@ -354,7 +346,7 @@ public class TestMultiPartMIMEReaderAbandon {
         final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         multiPartMimeBody.writeTo(byteArrayOutputStream);
         final ByteString requestPayload = ByteString.copy(byteArrayOutputStream.toByteArray());
-
+    _currentMimeMultipartBody = multiPartMimeBody;
 
       final EntityStream entityStream = mock(EntityStream.class);
       final ReadHandle readHandle = mock(ReadHandle.class);
@@ -431,9 +423,9 @@ public class TestMultiPartMIMEReaderAbandon {
 
       //We simulate _client.streamRequest(request, callback);
       //MultiPartMIMEReader reader = MultiPartMIMEReader.createAndAcquireStream(streamRequest);
-      //TestMultiPartMIMEReaderCallbackImpl _testMultiPartMIMEReaderCallback =
+      //TestMultiPartMIMEReaderCallbackImpl _currentMultiPartMIMEReaderCallback =
       //    new TestMultiPartMIMEReaderCallbackImpl(callback);
-      //reader.registerReaderCallback(_testMultiPartMIMEReaderCallback);
+      //reader.registerReaderCallback(_currentMultiPartMIMEReaderCallback);
 
 
 
@@ -442,19 +434,31 @@ public class TestMultiPartMIMEReaderAbandon {
 //        _client.streamRequest(request, callback);
 
         //todo assert the request has multipart content type
-        MultiPartMIMEAbandonReaderCallbackImpl _testMultiPartMIMEReaderCallback;
+
         MultiPartMIMEReader reader = MultiPartMIMEReader.createAndAcquireStream(streamRequest);
-        _testMultiPartMIMEReaderCallback =
+        _currentMultiPartMIMEReaderCallback =
                 new MultiPartMIMEAbandonReaderCallbackImpl(callback, abandonStrategy, reader);
-        reader.registerReaderCallback(_testMultiPartMIMEReaderCallback);
+        reader.registerReaderCallback(_currentMultiPartMIMEReaderCallback);
 
 
 
 
         latch.await(60000, TimeUnit.MILLISECONDS);
         Assert.assertEquals(status.get(), RestStatus.OK);
-        Assert.assertEquals(responseHeaders.get(ABANDON_HEADER), serverHeaderPrefix + abandonStrategy);
-        return multiPartMimeBody;
+        Assert.assertEquals(_currentMultiPartMIMEReaderCallback._responseHeaders.get(ABANDON_HEADER), serverHeaderPrefix + abandonStrategy);
+
+
+      //mock verifies
+
+      verify(streamRequest, times(1)).getEntityStream();
+      verify(streamRequest, times(1)).getHeader(HEADER_CONTENT_TYPE);
+      verify(entityStream, times(1)).setReader(isA(MultiPartMIMEReader.R2MultiPartMIMEReader.class));
+      final int expectedRequests = (int)Math.ceil((double)requestPayload.length()/chunkSize);
+      //One more expected request because we have to make the last call to get called onDone().
+      verify(readHandle, times(expectedRequests + 1)).request(1);
+      verifyNoMoreInteractions(streamRequest);
+      verifyNoMoreInteractions(entityStream);
+      verifyNoMoreInteractions(readHandle);
     }
 
 
@@ -485,8 +489,8 @@ public class TestMultiPartMIMEReaderAbandon {
         static String _abandonValue;
         final ByteArrayOutputStream _byteArrayOutputStream = new ByteArrayOutputStream();
         Map<String, String> _headers;
-        ByteString _finishedData = ByteString.empty();
-        int partCounter = 0;
+        ByteString _finishedData = null;
+        static int partCounter = 0;
 
         SinglePartMIMEAbandonReaderCallbackImpl(final MultiPartMIMEReader.SinglePartMIMEReader singlePartMIMEReader) {
             _singlePartMIMEReader = singlePartMIMEReader;
@@ -531,6 +535,7 @@ public class TestMultiPartMIMEReaderAbandon {
         final Callback<Integer> _r2callback;
         final String _abandonValue;
         final MultiPartMIMEReader _reader;
+      final Map<String, String> _responseHeaders = new HashMap<String, String>();
         final List<SinglePartMIMEAbandonReaderCallbackImpl> _singlePartMIMEReaderCallbacks =
                 new ArrayList<SinglePartMIMEAbandonReaderCallbackImpl>();
 
@@ -583,17 +588,17 @@ public class TestMultiPartMIMEReaderAbandon {
         @Override
         public void onFinished() {
             //Happens for SINGLE_ALL_NO_CALLBACK, SINGLE_ALL and SINGLE_ALTERNATE
-            RestResponse response =
-                    new RestResponseBuilder().setStatus(RestStatus.OK).setHeader(ABANDON_HEADER, "onFinished" + _abandonValue).build();
-            _r2callback.onSuccess(Messages.toStreamResponse(response));
+
+          _responseHeaders.put(ABANDON_HEADER, "onFinished" + _abandonValue);
+            _r2callback.onSuccess(200);
         }
 
         @Override
         public void onAbandoned() {
             //Happens for TOP_ALL, SINGLE_PARTIAL_TOP_REMAINING and SINGLE_ALTERNATE_TOP_REMAINING
-            RestResponse response =
-                    new RestResponseBuilder().setStatus(RestStatus.OK).setHeader(ABANDON_HEADER, "onAbandoned" + _abandonValue).build();
-            _r2callback.onSuccess(Messages.toStreamResponse(response));
+
+          _responseHeaders.put(ABANDON_HEADER, "onAbandoned" + _abandonValue);
+            _r2callback.onSuccess(200);
         }
 
         @Override
