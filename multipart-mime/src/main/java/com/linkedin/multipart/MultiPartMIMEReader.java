@@ -105,7 +105,7 @@ public final class MultiPartMIMEReader {
         final Callable<Void> callable = _callbackQueue.poll();
         try {
           callable.call();
-        } catch (Exception clientCallbackException) {
+        } catch (Throwable clientCallbackException) {
           handleExceptions(clientCallbackException);
         }
       }
@@ -170,10 +170,11 @@ public final class MultiPartMIMEReader {
           try {
             //This can throw so we need to notify the client that their APIs threw an exception when we invoked them.
             MultiPartMIMEReader.this._clientCallback.onFinished();
-          } catch (Exception clientCallbackException) {
+          } catch (Throwable clientCallbackException) {
             handleExceptions(clientCallbackException);
+          } finally {
+            return; //Regardless of whether the invocation to onFinished() threw or not we need to return here
           }
-          return;
         }
         //Otherwise r2 has not notified us that we are done. So we keep getting more bytes and dropping them.
         _rh.request(1);
@@ -190,10 +191,11 @@ public final class MultiPartMIMEReader {
           try {
             //This can throw so we need to notify the client that their APIs threw an exception when we invoked them.
             MultiPartMIMEReader.this._clientCallback.onAbandoned();
-          } catch (Exception clientCallbackException) {
+          } catch (Throwable clientCallbackException) {
             handleExceptions(clientCallbackException);
+          } finally {
+            return; //Regardless of whether the invocation to onFinished() threw or not we need to return here
           }
-          return;
         }
         //Otherwise we keep on chugging forward and dropping bytes.
         _rh.request(1);
@@ -223,13 +225,15 @@ public final class MultiPartMIMEReader {
           //In such a case we need to let the client know that reading is complete since there were no parts.
           //There is no need to use our iterative technique to call this callback because a
           //client cannot possibly invoke us again.
+          _readState = ReadState.READER_DONE;
           try {
             //This can throw so we need to notify the client that their APIs threw an exception when we invoked them.
             MultiPartMIMEReader.this._clientCallback.onFinished();
-          } catch (Exception clientCallbackException) {
+          } catch (Throwable clientCallbackException) {
             handleExceptions(clientCallbackException);
+          } finally {
+            return; //Regardless of whether the invocation to onFinished() threw or not we need to return here
           }
-          return;
         }
 
         //Otherwise proceed
@@ -246,7 +250,7 @@ public final class MultiPartMIMEReader {
             //If this happens that means that there was a problem. This means that r2 has
             //fully given us all of the stream and we haven't found the boundary.
             handleExceptions(new IllegalMimeFormatException("Malformed multipart mime request. No boundary found!"));
-            return;
+            return; //We are in an unusable state so we return here.
           }
           _rh.request(1);
           return;
@@ -268,7 +272,7 @@ public final class MultiPartMIMEReader {
           //Notify the reader of the issue.
           handleExceptions(
               new IllegalMimeFormatException("Malformed multipart mime request. Finishing boundary missing!"));
-          return;
+          return; //We are in an unusable state so we return here.
         }
 
         //Otherwise we need to read in some more data.
@@ -335,7 +339,7 @@ public final class MultiPartMIMEReader {
                 //Notify the reader of the issue.
                 handleExceptions(
                         new IllegalMimeFormatException("Malformed multipart mime request. Finishing boundary missing!"));
-                return;
+                return; //We are in an unusable state so we return here.
               }
 
               //Otherwise we need to read in some more data.
@@ -522,9 +526,10 @@ public final class MultiPartMIMEReader {
                   //code) which does not guarantee us proceeding forward from here.
                   try {
                     _currentSinglePartMIMEReader._callback.onAbandoned();
-                  } catch (Exception clientCallbackException) {
+                  } catch (Throwable clientCallbackException) {
                     //This could throw so handle appropriately.
                     handleExceptions(clientCallbackException);
+                    return; //We return since we are in an unusable state.
                   }
                 } //else no notification will happen since there was no callback registered.
               } else {
@@ -541,11 +546,10 @@ public final class MultiPartMIMEReader {
                 //code) which does not guarantee us proceeding forward from here.
                 try {
                   _currentSinglePartMIMEReader._callback.onFinished();
-                } catch (Exception clientCallbackException) {
-
+                } catch (Throwable clientCallbackException) {
                   //This could throw so handle appropriately.
                   handleExceptions(clientCallbackException);
-                  //todo return here? i think so
+                  return; //We return since we are in an unusable state.
                 }
               }
               _currentSinglePartMIMEReader = null;
@@ -566,10 +570,11 @@ public final class MultiPartMIMEReader {
                 try {
                   //This can throw so we need to notify the client that their APIs threw an exception when we invoked them.
                   MultiPartMIMEReader.this._clientCallback.onFinished();
-                } catch (Exception clientCallbackException) {
+                } catch (Throwable clientCallbackException) {
                   handleExceptions(clientCallbackException);
+                } finally {
+                  return; //Regardless of whether or not the onFinished() threw, we're done so we must return here.
                 }
-                return;
               }
               //Keep on reading bytes and dropping them.
               _rh.request(1);
@@ -593,7 +598,7 @@ public final class MultiPartMIMEReader {
                 //MultiPartMIMEReader.this._clientCallback.onStreamError();
                 handleExceptions(new IllegalMimeFormatException("Malformed multipart mime request. Premature"
                         + " termination of multipart mime body due to a boundary without a subsequent consecutive CRLF."));
-                return;
+                return; //Unusable state, so return.
               }
               _rh.request(1);
               return;
@@ -615,7 +620,7 @@ public final class MultiPartMIMEReader {
                 //MultiPartMIMEReader.this._clientCallback.onStreamError();
                 handleExceptions(new IllegalMimeFormatException(
                         "Malformed multipart mime request. Premature termination of headers within a part."));
-                return;
+                return;//Unusable state, so return.
               }
               //We need more data since the current buffer doesn't contain the CRLFs.
               _rh.request(1);
@@ -648,7 +653,7 @@ public final class MultiPartMIMEReader {
               if (!leadingBytes.equals(MultiPartMIMEUtils.CRLF_BYTE_LIST)) {
                 handleExceptions(new IllegalMimeFormatException(
                         "Malformed multipart mime request. Headers are improperly constructed."));
-                return;
+                return; //Unusable state, so return.
               }
 
               //The sliding-window-header-split technique here works because we are essentially splitting the buffer
@@ -709,7 +714,7 @@ public final class MultiPartMIMEReader {
                     if (colonIndex == -1) {
                       handleExceptions(new IllegalMimeFormatException(
                               "Malformed multipart mime request. Individual headers are " + "improperly formatted"));
-                      return;
+                      return; //Unusable state, so return.
                     }
                     headers.put(header.substring(0, colonIndex).trim(),
                             header.substring(colonIndex + 1, header.length()).trim());

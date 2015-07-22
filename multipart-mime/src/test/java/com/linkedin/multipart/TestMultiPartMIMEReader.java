@@ -61,6 +61,20 @@ public class TestMultiPartMIMEReader {
         threadPoolExecutor.shutdownNow();
     }
 
+    //Javax mail always includes a final, trailing CRLF after the final boundary. Meaning something like
+    //--myFinalBoundary--/r/n
+    //
+    //This trailing CRLF is not considered part of the final boundary and is, presumably, some sort of default
+    //epilogue. We want to remove this, otherwise all of our data sources in all of our tests will always have some sort
+    //of epilogue at the end and we won't have any tests where the data sources end with JUST the final boundary.
+    private ByteString trimTrailingCRLF(final ByteString javaxMailPayload) {
+       //Assert the trailing CRLF does
+        final byte[] javaxMailPayloadBytes = javaxMailPayload.copyBytes();
+        //Verify, in case the version of javax mail is changed, that the last two bytes are still CRLF (13 and 10).
+        Assert.assertEquals(javaxMailPayloadBytes[javaxMailPayloadBytes.length-2], 13);
+        Assert.assertEquals(javaxMailPayloadBytes[javaxMailPayloadBytes.length-1], 10);
+        return javaxMailPayload.copySlice(0, javaxMailPayload.length()-2);
+    }
 
     ///////////////////////////////////////////////////////////////////////////////////////
 
@@ -95,7 +109,7 @@ public class TestMultiPartMIMEReader {
         multiPartMimeBody.writeTo(byteArrayOutputStream);
         final ByteString requestPayload = ByteString.copy(byteArrayOutputStream.toByteArray());
         //final VariableByteStringWriter variableByteStringWriter = new VariableByteStringWriter(requestPayload, chunkSize);
-        executeRequestAndAssert(requestPayload, chunkSize, multiPartMimeBody);
+        executeRequestAndAssert(trimTrailingCRLF(requestPayload), chunkSize, multiPartMimeBody);
     }
 
     @Test(dataProvider = "eachSingleBodyDataSource")
@@ -111,7 +125,7 @@ public class TestMultiPartMIMEReader {
         final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         multiPartMimeBody.writeTo(byteArrayOutputStream);
         final ByteString requestPayload = ByteString.copy(byteArrayOutputStream.toByteArray());
-        executeRequestAndAssert(requestPayload, chunkSize, multiPartMimeBody);
+        executeRequestAndAssert(trimTrailingCRLF(requestPayload), chunkSize, multiPartMimeBody);
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////
@@ -146,7 +160,7 @@ public class TestMultiPartMIMEReader {
         final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         multiPartMimeBody.writeTo(byteArrayOutputStream);
         final ByteString requestPayload = ByteString.copy(byteArrayOutputStream.toByteArray());
-        executeRequestAndAssert(requestPayload, chunkSize, multiPartMimeBody);
+        executeRequestAndAssert(trimTrailingCRLF(requestPayload), chunkSize, multiPartMimeBody);
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////
@@ -178,7 +192,7 @@ public class TestMultiPartMIMEReader {
         final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         multiPartMimeBody.writeTo(byteArrayOutputStream);
         final ByteString requestPayload = ByteString.copy(byteArrayOutputStream.toByteArray());
-        executeRequestAndAssert(requestPayload, chunkSize, multiPartMimeBody);
+        executeRequestAndAssert(trimTrailingCRLF(requestPayload), chunkSize, multiPartMimeBody);
     }
 
 
@@ -214,7 +228,24 @@ public class TestMultiPartMIMEReader {
         final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         multiPartMimeBody.writeTo(byteArrayOutputStream);
         final ByteString requestPayload = ByteString.copy(byteArrayOutputStream.toByteArray());
-        executeRequestAndAssert(requestPayload, chunkSize, multiPartMimeBody);
+        executeRequestAndAssert(trimTrailingCRLF(requestPayload), chunkSize, multiPartMimeBody);
+    }
+
+
+    @Test(dataProvider = "allTypesOfBodiesDataSource")
+    public void testAllTypesOfBodiesDataSourceNoLastCRLF(final int chunkSize, final List<MimeBodyPart> bodyPartList) throws Exception
+    {
+        MimeMultipart multiPartMimeBody = new MimeMultipart();
+
+        //Add your body parts
+        for (final MimeBodyPart bodyPart : bodyPartList) {
+            multiPartMimeBody.addBodyPart(bodyPart);
+        }
+
+        final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        multiPartMimeBody.writeTo(byteArrayOutputStream);
+        final ByteString requestPayload = ByteString.copy(byteArrayOutputStream.toByteArray());
+        executeRequestAndAssert(trimTrailingCRLF(requestPayload), chunkSize, multiPartMimeBody);
     }
 
 
@@ -260,12 +291,19 @@ public class TestMultiPartMIMEReader {
 
         final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         multiPartMimeBody.writeTo(byteArrayOutputStream);
+
+        final ByteString requestPayload;
         if (epilogue != null) {
-            //Javax mail does not support epilogue so we add it ourselves. Note that Javax mail throws in an extra CRLF
-            //at the very end but this doesn't affect our tests.
+            //Javax mail does not support epilogue so we add it ourselves (other then the CRLF following the final
+            //boundary).
             byteArrayOutputStream.write(epilogue.getBytes());
+            requestPayload = ByteString.copy(byteArrayOutputStream.toByteArray());
+        } else {
+            //Our test desired no epilogue.
+            //Remove the CRLF introduced by javax mail at the end. We won't want a fake epilogue.
+            requestPayload = trimTrailingCRLF(ByteString.copy(byteArrayOutputStream.toByteArray()));
         }
-        final ByteString requestPayload = ByteString.copy(byteArrayOutputStream.toByteArray());
+
         executeRequestAndAssert(requestPayload, chunkSize, multiPartMimeBody);
     }
 

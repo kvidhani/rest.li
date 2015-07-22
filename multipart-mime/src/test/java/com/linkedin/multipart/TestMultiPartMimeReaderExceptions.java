@@ -186,7 +186,7 @@ public class TestMultiPartMimeReaderExceptions {
 
 
     final byte[] mimePayload = byteArrayOutputStream.toByteArray();
-    //TODO CHANGE THIS BACK TO TEN
+    //TODO CHANGE THIS BACK TO TEN...maybe more?
     //Subtract 3 bytes since this end in CRLF which is 2 bytes
     final byte[] trimmedMimePayload = Arrays.copyOf(mimePayload, mimePayload.length - 3);
 
