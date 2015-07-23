@@ -103,9 +103,14 @@ public class MultiPartMIMEUtils {
   //todo compare to the sync version before committing
   public static String extractBoundary(final String contentTypeHeader) throws IllegalMimeFormatException
   {
+    if (!contentTypeHeader.toLowerCase().startsWith(MultiPartMIMEUtils.MULTIPART_PREFIX))
+    {
+      throw new IllegalMimeFormatException("Malformed multipart mime request. Not a valid multipart mime header.");
+    }
+
     if(!contentTypeHeader.contains(";"))
     {
-      throw new IllegalMimeFormatException("Improperly formatted Content-Type header. "
+      throw new IllegalMimeFormatException("Malformed multipart mime request. Improperly formatted Content-Type header. "
           + "Expected at least one parameter in addition to the content type.");
     }
 

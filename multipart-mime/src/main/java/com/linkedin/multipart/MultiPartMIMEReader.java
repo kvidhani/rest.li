@@ -54,10 +54,7 @@ import org.apache.commons.lang.ArrayUtils;
   //clearly define what is protocol in such situations.
 
 
-  //todo mention in documentation that we must use _rh.request(1) because its too complicated to deal with
-  //multiple onDataAvailable()s.
-
-  //todo revisit sync strategy
+  //todo revisit synchronization strategy
   //see if all variables are held by same lock if you synchronize
   //maybe use reader writer lock?
 public final class MultiPartMIMEReader {
@@ -122,12 +119,25 @@ public final class MultiPartMIMEReader {
       //OR that the client APIs threw exceptions when their callbacks were invoked.
       //We will also invoke the appropriate callbacks here indicating there is an exception while reading.
       //It is the responsibility of the consumer of this library to catch these exceptions and return 4xx.
+
+
+
+
       _rh.cancel();
       _readState = ReadState.READER_DONE;
-      _clientCallback.onStreamError(throwable);
+      try {
+        _clientCallback.onStreamError(throwable);
+      } catch (RuntimeException runtimeException) {
+        //Swallow. What more can we do here?
+      }
       if (_currentSinglePartMIMEReader != null) {
         _currentSinglePartMIMEReader._readerState.set(SingleReaderState.FINISHED);
-        _currentSinglePartMIMEReader._callback.onStreamError(throwable);
+
+        try {
+          _currentSinglePartMIMEReader._callback.onStreamError(throwable);
+        } catch (RuntimeException runtimeException) {
+          //Swallow. What more can we do here?
+        }
       }
     }
 
@@ -170,7 +180,7 @@ public final class MultiPartMIMEReader {
           try {
             //This can throw so we need to notify the client that their APIs threw an exception when we invoked them.
             MultiPartMIMEReader.this._clientCallback.onFinished();
-          } catch (Throwable clientCallbackException) {
+          } catch (RuntimeException clientCallbackException) {
             handleExceptions(clientCallbackException);
           } finally {
             return; //Regardless of whether the invocation to onFinished() threw or not we need to return here
@@ -191,7 +201,7 @@ public final class MultiPartMIMEReader {
           try {
             //This can throw so we need to notify the client that their APIs threw an exception when we invoked them.
             MultiPartMIMEReader.this._clientCallback.onAbandoned();
-          } catch (Throwable clientCallbackException) {
+          } catch (RuntimeException clientCallbackException) {
             handleExceptions(clientCallbackException);
           } finally {
             return; //Regardless of whether the invocation to onFinished() threw or not we need to return here
@@ -229,7 +239,7 @@ public final class MultiPartMIMEReader {
           try {
             //This can throw so we need to notify the client that their APIs threw an exception when we invoked them.
             MultiPartMIMEReader.this._clientCallback.onFinished();
-          } catch (Throwable clientCallbackException) {
+          } catch (RuntimeException clientCallbackException) {
             handleExceptions(clientCallbackException);
           } finally {
             return; //Regardless of whether the invocation to onFinished() threw or not we need to return here
@@ -526,7 +536,7 @@ public final class MultiPartMIMEReader {
                   //code) which does not guarantee us proceeding forward from here.
                   try {
                     _currentSinglePartMIMEReader._callback.onAbandoned();
-                  } catch (Throwable clientCallbackException) {
+                  } catch (RuntimeException clientCallbackException) {
                     //This could throw so handle appropriately.
                     handleExceptions(clientCallbackException);
                     return; //We return since we are in an unusable state.
@@ -546,7 +556,7 @@ public final class MultiPartMIMEReader {
                 //code) which does not guarantee us proceeding forward from here.
                 try {
                   _currentSinglePartMIMEReader._callback.onFinished();
-                } catch (Throwable clientCallbackException) {
+                } catch (RuntimeException clientCallbackException) {
                   //This could throw so handle appropriately.
                   handleExceptions(clientCallbackException);
                   return; //We return since we are in an unusable state.
@@ -570,7 +580,7 @@ public final class MultiPartMIMEReader {
                 try {
                   //This can throw so we need to notify the client that their APIs threw an exception when we invoked them.
                   MultiPartMIMEReader.this._clientCallback.onFinished();
-                } catch (Throwable clientCallbackException) {
+                } catch (RuntimeException clientCallbackException) {
                   handleExceptions(clientCallbackException);
                 } finally {
                   return; //Regardless of whether or not the onFinished() threw, we're done so we must return here.
@@ -713,7 +723,7 @@ public final class MultiPartMIMEReader {
                     final int colonIndex = header.indexOf(":");
                     if (colonIndex == -1) {
                       handleExceptions(new IllegalMimeFormatException(
-                              "Malformed multipart mime request. Individual headers are " + "improperly formatted"));
+                              "Malformed multipart mime request. Individual headers are " + "improperly formatted."));
                       return; //Unusable state, so return.
                     }
                     headers.put(header.substring(0, colonIndex).trim(),
@@ -771,6 +781,18 @@ public final class MultiPartMIMEReader {
     @Override
     public void onError(Throwable e) {
       //R2 has informed us of an error. So we notify our readers and shut things down.
+
+      //It is important to note that R2 will only call onError only once we exit onDataAvailable().
+      //Therefore there is no concurrent issues to be concerned with. If we are going back and forth and honoring client requests using data from memory
+      //we will eventually need to ask R2 for more data. At this point, onError() will be called by R2 and we can clean up
+      //state and notify our clients on their callbacks.
+
+      //It could be the case that we already finished, or reach an erroneous state earlier on our own (i.e malformed multipart mime
+      //body or a client threw an exception when we invoked their callback). In such a case, just return.
+      if (_readState == ReadState.READER_DONE) {
+        return;
+      }
+
       handleExceptions(e);
     }
 
@@ -841,7 +863,7 @@ public final class MultiPartMIMEReader {
 
     final String contentTypeHeaderValue = request.getHeader(MultiPartMIMEUtils.CONTENT_TYPE_HEADER);
     if (contentTypeHeaderValue == null) {
-      throw new IllegalArgumentException("No Content-Type header in this request");
+      throw new IllegalMimeFormatException("Malformed multipart mime request. No Content-Type header in this request");
     }
 
     _reader = new R2MultiPartMIMEReader(MultiPartMIMEUtils.extractBoundary(contentTypeHeaderValue));
@@ -858,7 +880,7 @@ public final class MultiPartMIMEReader {
 
     final String contentTypeHeaderValue = response.getHeader(MultiPartMIMEUtils.CONTENT_TYPE_HEADER);
     if (contentTypeHeaderValue == null) {
-      throw new IllegalArgumentException("No Content-Type header in this response");
+      throw new IllegalMimeFormatException("Malformed multipart mime request. No Content-Type header in this response");
     }
 
     _reader = new R2MultiPartMIMEReader(MultiPartMIMEUtils.extractBoundary(contentTypeHeaderValue));
@@ -1199,7 +1221,13 @@ public final class MultiPartMIMEReader {
       //Also note that if the client is really abusive it is possible for them
       //to call registerReaderCallback() over and over again which would lead to a stack overflow.
       //However this is clearly a client bug so we will not account for it here.
-      _clientCallback.onNewPart(_reader._currentSinglePartMIMEReader);
+
+      try {
+        _clientCallback.onNewPart(_reader._currentSinglePartMIMEReader);
+      } catch (RuntimeException exception) {
+        //The callback could throw here, at which point we let them know what they just did and shut things down.
+        _reader.handleExceptions(exception);
+      }
     }
   }
 

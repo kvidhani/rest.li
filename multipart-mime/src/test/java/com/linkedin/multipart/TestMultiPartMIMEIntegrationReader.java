@@ -14,7 +14,6 @@ import com.linkedin.r2.message.rest.StreamRequestBuilder;
 import com.linkedin.r2.message.rest.StreamResponse;
 import com.linkedin.r2.message.streaming.EntityStream;
 import com.linkedin.r2.message.streaming.EntityStreams;
-import com.linkedin.r2.message.streaming.Writer;
 import com.linkedin.r2.sample.Bootstrap;
 import com.linkedin.r2.transport.common.StreamRequestHandler;
 import com.linkedin.r2.transport.common.bridge.server.TransportDispatcher;
@@ -40,6 +39,7 @@ import org.slf4j.LoggerFactory;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
+
 import static com.linkedin.multipart.DataSources.*;
 
 
@@ -86,6 +86,9 @@ import static com.linkedin.multipart.DataSources.*;
 //Note that we use javax.mail's ability to create multipart mime requests to verify the integrity of our RFC implementation.
 
 //todo move data sources into one location
+
+//stay consistent with the use of parts vs bodies
+
 public class TestMultiPartMIMEIntegrationReader extends AbstractMultiPartMIMEIntegrationStreamTest {
 
   private static final URI SERVER_URI = URI.create("/pegasusMimeServer");

@@ -16,6 +16,7 @@ public final class DataSources {
    static final String _textPlainType = "text/plain";
    static final String _binaryType = "application/octet-stream";
 
+  static MimeBodyPart _tinyDataSource; //Represents a tiny part with no headers. Used exclusively for the stack overflow test.
   static MimeBodyPart _smallDataSource; //Represents a small part with headers and a body composed of simple text
   static MimeBodyPart _largeDataSource; //Represents a large part with headers and a body composed of simple text
   static MimeBodyPart _headerLessBody; //Represents a part with a body and no headers
@@ -28,9 +29,19 @@ public final class DataSources {
 
   static {
     try {
+
+      //Tiny body.
+      {
+        final String body = "1";
+        final MimeBodyPart dataPart = new MimeBodyPart();
+        final ContentType contentType = new ContentType(_textPlainType);
+        dataPart.setContent(body, contentType.getBaseType());
+        _tinyDataSource = dataPart;
+      }
+
       //Small body.
       {
-        final String body = "A tiny body";
+        final String body = "A small body";
         final MimeBodyPart dataPart = new MimeBodyPart();
         final ContentType contentType = new ContentType(_textPlainType);
         dataPart.setContent(body, contentType.getBaseType());

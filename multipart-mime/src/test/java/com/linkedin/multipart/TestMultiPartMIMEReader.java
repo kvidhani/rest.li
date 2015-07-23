@@ -27,8 +27,6 @@ import javax.mail.internet.MimeBodyPart;
 import javax.mail.internet.MimeMultipart;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.testng.Assert;
 import org.testng.annotations.AfterTest;
 import org.testng.annotations.BeforeTest;
@@ -45,11 +43,12 @@ import static org.mockito.Mockito.*;
  */
 public class TestMultiPartMIMEReader {
 
-    private static final Logger log = LoggerFactory.getLogger(TestMultiPartMIMEIntegrationReader.class);
+  private static int TEST_TIMEOUT = 60000;
 
     //We will have only one thread in our executor service so that when we submit tasks to write
     //data from the writer we do it in order.
     private static ExecutorService threadPoolExecutor;
+    private MultiPartMIMEReader _reader;
 
     @BeforeTest
     public void setup() {
@@ -232,23 +231,6 @@ public class TestMultiPartMIMEReader {
     }
 
 
-    @Test(dataProvider = "allTypesOfBodiesDataSource")
-    public void testAllTypesOfBodiesDataSourceNoLastCRLF(final int chunkSize, final List<MimeBodyPart> bodyPartList) throws Exception
-    {
-        MimeMultipart multiPartMimeBody = new MimeMultipart();
-
-        //Add your body parts
-        for (final MimeBodyPart bodyPart : bodyPartList) {
-            multiPartMimeBody.addBodyPart(bodyPart);
-        }
-
-        final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        multiPartMimeBody.writeTo(byteArrayOutputStream);
-        final ByteString requestPayload = ByteString.copy(byteArrayOutputStream.toByteArray());
-        executeRequestAndAssert(trimTrailingCRLF(requestPayload), chunkSize, multiPartMimeBody);
-    }
-
-
     ///////////////////////////////////////////////////////////////////////////////////////
 
     @DataProvider(name = "preambleEpilogueDataSource")
@@ -311,6 +293,47 @@ public class TestMultiPartMIMEReader {
     ///////////////////////////////////////////////////////////////////////////////////////
 
 
+    //Special test to make sure we don't stack overflow.
+  //Have tons of small parts that are all read in at once due to the huge chunk size.
+  @Test
+  public void testStackOverflow() throws Exception
+  {
+    MimeMultipart multiPartMimeBody = new MimeMultipart();
+    TEST_TIMEOUT = 600000;
+
+    //Add many tiny bodies. Since everything comes into memory on the first chunk, we will interact exclusively with the
+    //client and not R2. We want to make sure that us calling them, and them calling us back, and us calling them over and over
+    //does not lead to a stack overflow.
+    for (int i = 0; i< 5000; i++) {
+      multiPartMimeBody.addBodyPart(_tinyDataSource);
+    }
+
+    final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    multiPartMimeBody.writeTo(byteArrayOutputStream);
+    final ByteString requestPayload = ByteString.copy(byteArrayOutputStream.toByteArray());
+    executeRequestAndAssert(trimTrailingCRLF(requestPayload), Integer.MAX_VALUE, multiPartMimeBody);
+  }
+
+///////////////////////////////////////////////////////////////////////////////////////
+
+
+  //This test will verify, that once we are successfully finished, that if R2 gives us onError() we don't let the client know.
+  @Test(dataProvider = "allTypesOfBodiesDataSource")
+  public void alreadyFinishedPreventErrorClient(final int chunkSize, final List<MimeBodyPart> bodyPartList)   throws
+                                                                                                                Exception
+  {
+    testAllTypesOfBodiesDataSource(chunkSize, bodyPartList);
+
+    //The asserts in the callback will make sure that we don't call onStreamError() on the callbacks.
+    //Also we have already verified that _rh.cancel() did not occur.
+    _reader.getR2MultiPartMIMEReader().onError(new NullPointerException());
+  }
+
+
+
+
+
+  ///////////////////////////////////////////////////////////////////////////////////////
     private void executeRequestAndAssert(final ByteString payload, final int chunkSize, final MimeMultipart mimeMultipart) throws Exception {
 
         //final EntityStream entityStream = EntityStreams.newEntityStream(dataSourceWriter);
@@ -386,12 +409,12 @@ public class TestMultiPartMIMEReader {
         Callback<Integer> callback = expectSuccessCallback(latch, status);
 
         //We simulate _client.streamRequest(request, callback);
-        MultiPartMIMEReader reader = MultiPartMIMEReader.createAndAcquireStream(streamRequest);
+        _reader = MultiPartMIMEReader.createAndAcquireStream(streamRequest);
         TestMultiPartMIMEReaderCallbackImpl _testMultiPartMIMEReaderCallback =
                 new TestMultiPartMIMEReaderCallbackImpl(callback);
-        reader.registerReaderCallback(_testMultiPartMIMEReaderCallback);
+        _reader.registerReaderCallback(_testMultiPartMIMEReaderCallback);
 
-        latch.await(60000, TimeUnit.MILLISECONDS);
+        latch.await(TEST_TIMEOUT, TimeUnit.MILLISECONDS);
         Assert.assertEquals(status.get(), RestStatus.OK);
 
         List<TestSinglePartMIMEReaderCallbackImpl> singlePartMIMEReaderCallbacks =
@@ -473,20 +496,17 @@ public class TestMultiPartMIMEReader {
         final ByteArrayOutputStream _byteArrayOutputStream = new ByteArrayOutputStream();
         Map<String, String> _headers;
         ByteString _finishedData = null;
-        static int partCounter = 0;
 
         TestSinglePartMIMEReaderCallbackImpl(final MultiPartMIMEReaderCallback topLevelCallback, final
         MultiPartMIMEReader.SinglePartMIMEReader singlePartMIMEReader) {
             _topLevelCallback = topLevelCallback;
             _singlePartMIMEReader = singlePartMIMEReader;
-            log.info("The headers for the current part " + partCounter + " are: ");
-            log.info(singlePartMIMEReader.getHeaders().toString());
             _headers = singlePartMIMEReader.getHeaders();
         }
 
         @Override
         public void onPartDataAvailable(ByteString b) {
-            log.info("Just received " + b.length() + " byte(s) on the single part reader callback for part number " + partCounter);
+
             try {
                 _byteArrayOutputStream.write(b.copyBytes());
             } catch (IOException ioException) {
@@ -497,7 +517,6 @@ public class TestMultiPartMIMEReader {
 
         @Override
         public void onFinished() {
-            log.info("Part " + partCounter++ + " is done!");
             _finishedData = ByteString.copy(_byteArrayOutputStream.toByteArray());
         }
 
@@ -510,8 +529,7 @@ public class TestMultiPartMIMEReader {
 
         @Override
         public void onStreamError(Throwable e) {
-            //MultiPartMIMEReader will end up calling onStreamError(e) on our top level callback
-            //which will fail the test
+            Assert.fail();
         }
 
     }
@@ -532,7 +550,6 @@ public class TestMultiPartMIMEReader {
 
         @Override
         public void onFinished() {
-            log.info("All parts finished for the request!");
             _r2callback.onSuccess(200);
         }
 
@@ -544,8 +561,7 @@ public class TestMultiPartMIMEReader {
 
         @Override
         public void onStreamError(Throwable e) {
-            RestException restException = new RestException(RestStatus.responseForError(400, e));
-            _r2callback.onError(restException);
+            Assert.fail();
 
         }
 

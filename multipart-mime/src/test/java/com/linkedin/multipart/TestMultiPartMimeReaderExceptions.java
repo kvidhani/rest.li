@@ -3,6 +3,7 @@ package com.linkedin.multipart;
 import com.linkedin.common.callback.Callback;
 import com.linkedin.data.ByteString;
 import com.linkedin.multipart.reader.exceptions.IllegalMimeFormatException;
+import com.linkedin.r2.filter.R2Constants;
 import com.linkedin.r2.message.rest.StreamRequest;
 import com.linkedin.r2.message.streaming.EntityStream;
 import com.linkedin.r2.message.streaming.ReadHandle;
@@ -33,13 +34,11 @@ import org.testng.annotations.BeforeTest;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import static com.linkedin.multipart.DataSources.*;
 import static com.linkedin.multipart.DataSources._bodyLessBody;
-import static com.linkedin.multipart.DataSources._largeDataSource;
 import static com.linkedin.multipart.DataSources._smallDataSource;
 import static org.mockito.Matchers.isA;
-import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 
 /**
@@ -57,6 +56,7 @@ public class TestMultiPartMimeReaderExceptions {
 
   @BeforeTest
   public void setup() {
+    _currentMultiPartMIMEReaderCallback = null;
     threadPoolExecutor = Executors.newFixedThreadPool(5);
   }
 
@@ -69,108 +69,87 @@ public class TestMultiPartMimeReaderExceptions {
   ///////////////////////////////////////////////////////////////////////////////////////
 
 
-  @DataProvider(name = "multipleNormalBodiesDataSource")
-  public Object[][] multipleNormalBodiesDataSource() throws Exception
+  @DataProvider(name = "multiplePartsDataSource")
+  public Object[][] multiplePartsDataSource() throws Exception
   {
     final List<MimeBodyPart> bodyPartList = new ArrayList<MimeBodyPart>();
-    bodyPartList.add(_largeDataSource);
-    bodyPartList.add(_smallDataSource);
-    bodyPartList.add(_bodyLessBody);
-    bodyPartList.add(_largeDataSource);
     bodyPartList.add(_smallDataSource);
     bodyPartList.add(_bodyLessBody);
 
     return new Object[][] {
         { 1, bodyPartList  },
-        //{ R2Constants.DEFAULT_DATA_CHUNK_SIZE, bodyPartList }
+        { R2Constants.DEFAULT_DATA_CHUNK_SIZE, bodyPartList }
     };
   }
 
 
+  //When the test just needs chunk sizes
+  @DataProvider(name = "chunkSizes")
+  public Object[][] chunkSizes() throws Exception
+  {
+    return new Object[][] {
+        { 1 },
+        { R2Constants.DEFAULT_DATA_CHUNK_SIZE }
+    };
+  }
   ///////////////////////////////////////////////////////////////////////////////////////
 
-
-
-  //todo use your own writer to do this
-  /*
-  @Test
-  public void testEmptyEnvelope() throws Exception
-  {
-    //Javax mail does not support this, hence the reason for it only existing here where we test our custom reader.
-    //final MultiPartMIMEWriter writer =
-    //    new MultiPartMIMEWriter(Collections.<MultiPartMIMEDataPart>emptyList(), "some preamble", "some epilogue");
-    //sendRequestAndAssert(Collections.<MultiPartMIMEDataPart>emptyList(), writer);
-  }
+  //These tests all verify that we throw the correct exception in the face of RFC violating bodies:
 
   @Test
   public void missingContentTypeHeader()
   {
+    StreamRequest streamRequest = null;
+    try {
 
-    final RestRequest multipartMimeRequest =
-        new RestRequestBuilder(createHttpURI(PORT, SERVER_URI)).setMethod("POST").setEntity(ByteString.empty()).build();
+      streamRequest = mock(StreamRequest.class);
+      when(streamRequest.getHeader(MultiPartMIMEUtils.CONTENT_TYPE_HEADER)).thenReturn(null);
 
-    try
-    {
-      MultiPartMIMEReader.createMultiPartMIMEReader(multipartMimeRequest);
+      MultiPartMIMEReader.createAndAcquireStream(streamRequest);;
       Assert.fail();
-    }
-    catch (IllegalMimeFormatException illegalMimeFormatException)
-    {
-      Assert.assertEquals(illegalMimeFormatException.getMessage(), "No Content-Type header in this request");
-    }
-  }
+    } catch (IllegalMimeFormatException illegalMimeFormatException) {
+      Assert.assertEquals(illegalMimeFormatException.getMessage(),
+          "Malformed multipart mime request. No Content-Type header in this request");
 
-  @Test
-  public void invalidContentType()
-  {
-    final String contentTypeHeaderValue = "SomeErroneousContentType";
-
-    final RestRequest multipartMimeRequest = new RestRequestBuilder(createHttpURI(PORT, SERVER_URI)).setMethod("POST")
-        .addHeaderValue(MultiPartMIMEUtils.CONTENT_TYPE_HEADER, contentTypeHeaderValue).setEntity(ByteString.empty())
-        .build();
-
-    try
-    {
-      MultiPartMIMEReader.createMultiPartMIMEReader(multipartMimeRequest);
-      Assert.fail();
-    }
-    catch (IllegalMimeFormatException illegalMimeFormatException)
-    {
-      Assert.assertEquals(illegalMimeFormatException.getMessage(), "Not a valid multipart mime header");
+      verify(streamRequest, times(1)).getHeader(MultiPartMIMEUtils.CONTENT_TYPE_HEADER);
     }
   }
 
 
   @Test
-  public void payloadMissingBoundary() throws IllegalMimeFormatException
+  public void invalidContentType() throws Exception
   {
-    final String contentTypeHeaderValue = MultiPartMIMEUtils
-        .buildMIMEContentTypeHeader("mixed", MultiPartMIMEUtils.generateBoundary(),
-            Collections.<String, String>emptyMap());
 
-    final RestRequest multipartMimeRequest = new RestRequestBuilder(createHttpURI(PORT, SERVER_URI)).setMethod("POST")
-        .addHeaderValue(MultiPartMIMEUtils.CONTENT_TYPE_HEADER, contentTypeHeaderValue).setEntity(ByteString.empty())
-        .build();
+    StreamRequest streamRequest = null;
+    try {
 
-    MultiPartMIMEReader multiPartMIMEReader = null;
-    try
-    {
-      multiPartMIMEReader = MultiPartMIMEReader.createMultiPartMIMEReader(multipartMimeRequest);
-      multiPartMIMEReader.parseAndReturnParts();
+      streamRequest = mock(StreamRequest.class);
+    when(streamRequest.getHeader(MultiPartMIMEUtils.CONTENT_TYPE_HEADER)).thenReturn("Some erroneous content type");
+
+    MultiPartMIMEReader.createAndAcquireStream(streamRequest);;
       Assert.fail();
-    }
-    catch (IllegalMimeFormatException illegalMimeFormatException)
-    {
-      Assert.assertEquals(illegalMimeFormatException.getMessage(), "Malformed multipart mime request. No boundary found!");
-      Assert.assertEquals(multiPartMIMEReader.parseAndReturnParts(), Collections.<MultiPartMIMEDataPart>emptyList());
+    } catch (IllegalMimeFormatException illegalMimeFormatException) {
+      Assert.assertEquals(illegalMimeFormatException.getMessage(),
+          "Malformed multipart mime request. Not a valid multipart mime header.");
+      verify(streamRequest, times(1)).getHeader(MultiPartMIMEUtils.CONTENT_TYPE_HEADER);
     }
   }
 
-  */
 
-  //todo when the reader in multipart mime gets called onError() by r2
 
-  @Test(dataProvider = "multipleNormalBodiesDataSource")
+  @Test(dataProvider = "chunkSizes")
+  public void payloadMissingBoundary(final int chunkSize) throws Exception
+  {
+    MimeMultipart multiPartMimeBody = new MimeMultipart();
+    executeRequestWithDesiredException(ByteString.copy("This body has no boundary and is therefore not a valid multipart mime request".getBytes()),
+        chunkSize, multiPartMimeBody.getContentType(), "Malformed multipart mime request. No boundary found!");
+
+    //No single part readers should have been created.
+    Assert.assertEquals(_currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.size(), 0);
+  }
+
+
+  @Test(dataProvider = "multiplePartsDataSource")
   public void payloadMissingFinalBoundary(final int chunkSize, final List<MimeBodyPart> bodyPartList)   throws
                                                                                                         Exception
   {
@@ -184,17 +163,15 @@ public class TestMultiPartMimeReaderExceptions {
     final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     multiPartMimeBody.writeTo(byteArrayOutputStream);
 
-
     final byte[] mimePayload = byteArrayOutputStream.toByteArray();
-    //TODO CHANGE THIS BACK TO TEN...maybe more?
-    //Subtract 3 bytes since this end in CRLF which is 2 bytes
+
+    //To simulate the missing boundary, we have to trim 3 bytes off of the end. We need to snip the very last 2 bytes
+    //because javax mail places a CRLF at the very end (which is not needed) and then another byte before that (which is a
+    //hyphen) so that the final boundary never occurs.
     final byte[] trimmedMimePayload = Arrays.copyOf(mimePayload, mimePayload.length - 3);
 
     final ByteString requestPayload = ByteString.copy(trimmedMimePayload);
-
     executeRequestWithDesiredException(requestPayload, chunkSize, multiPartMimeBody.getContentType(), "Malformed multipart mime request. Finishing boundary missing!");
-
-    //todo should the last single part get a stream error
 
     //In this case we want all the parts to still make it over
     List<SinglePartMIMEAbandonReaderCallbackImpl> singlePartMIMEReaderCallbacks =
@@ -230,6 +207,7 @@ public class TestMultiPartMimeReaderExceptions {
         Assert.assertEquals(new String(currentCallback._finishedData.copyBytes()), currentExpectedPart.getContent());
       }
     }
+
     SinglePartMIMEAbandonReaderCallbackImpl singlePartMIMEAbandonReaderCallback =
         singlePartMIMEReaderCallbacks.get(singlePartMIMEReaderCallbacks.size() - 1);
     Assert.assertNull(singlePartMIMEAbandonReaderCallback._finishedData);
@@ -237,34 +215,22 @@ public class TestMultiPartMimeReaderExceptions {
   }
 
 
-  /*
-  @Test
-  public void prematureHeaderTermination() throws IllegalMimeFormatException
+
+  @Test(dataProvider = "multiplePartsDataSource")
+  public void prematureHeaderTermination(final int chunkSize, final List<MimeBodyPart> bodyPartList)   throws
+                                                                                                        Exception
+
   {
     //Use Javax to create a multipart payload. Then we just modify the location of the consecutive CRLFs.
-    final MimeMultipart multipartEnvelope = new MimeMultipart("mixed");
-    final MimeBodyPart firstBody = new MimeBodyPart();
-    try
-    {
-      firstBody.setContent("SomeBody", "text/plain");
-      firstBody.setHeader(MultiPartMIMEUtils.CONTENT_TYPE_HEADER, "text/plain");
-    }
-    catch (Exception exception)
-    {
-      Assert.fail("Unable to create test data due to: " + exception);
+    MimeMultipart multiPartMimeBody = new MimeMultipart();
+
+    //Add your body parts
+    for (final MimeBodyPart bodyPart : bodyPartList) {
+      multiPartMimeBody.addBodyPart(bodyPart);
     }
 
     final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-
-    try
-    {
-      multipartEnvelope.addBodyPart(firstBody);
-      multipartEnvelope.writeTo(byteArrayOutputStream);
-    }
-    catch (Exception exception)
-    {
-      Assert.fail("Unable to create test data due to: " + exception);
-    }
+    multiPartMimeBody.writeTo(byteArrayOutputStream);
 
     final byte[] mimePayload = byteArrayOutputStream.toByteArray();
 
@@ -278,52 +244,30 @@ public class TestMultiPartMimeReaderExceptions {
       }
     }
 
-    final RestRequest multipartMimeRequest = new RestRequestBuilder(createHttpURI(PORT, SERVER_URI)).setMethod("POST")
-        .addHeaderValue(MultiPartMIMEUtils.CONTENT_TYPE_HEADER, multipartEnvelope.getContentType())
-        .setEntity(ByteString.copy(mimePayload)).build();
+    final ByteString requestPayload = ByteString.copy(mimePayload);
+    executeRequestWithDesiredException(requestPayload, chunkSize, multiPartMimeBody.getContentType(), "Malformed multipart mime request. Premature termination of headers within a part.");
 
-    MultiPartMIMEReader multiPartMIMEReader = null;
-    try
-    {
-      multiPartMIMEReader = MultiPartMIMEReader.createMultiPartMIMEReader(multipartMimeRequest);
-      multiPartMIMEReader.parseAndReturnParts();
-      Assert.fail();
-    }
-    catch (IllegalMimeFormatException illegalMimeFormatException)
-    {
-      Assert.assertEquals(illegalMimeFormatException.getMessage(),
-          "Malformed multipart mime request. Premature termination of headers within a part.");
-      Assert.assertEquals(multiPartMIMEReader.parseAndReturnParts(), Collections.<MultiPartMIMEDataPart>emptyList());
-    }
+    //No single part readers should have been created.
+    Assert.assertEquals(_currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.size(), 0);
   }
 
-  @Test
-  public void incorrectHeaderStart() throws IllegalMimeFormatException
+
+
+  @Test(dataProvider = "multiplePartsDataSource")
+  public void incorrectHeaderStart(final int chunkSize, final List<MimeBodyPart> bodyPartList)   throws
+                                                                                                       Exception
+
   {
-    //Use Javax to create a multipart payload. Then we just find the CRLF before the first header and modify it.
-    final MimeMultipart multipartEnvelope = new MimeMultipart("mixed");
-    final MimeBodyPart firstBody = new MimeBodyPart();
-    try
-    {
-      firstBody.setContent("SomeBody", "text/plain");
-      firstBody.setHeader(MultiPartMIMEUtils.CONTENT_TYPE_HEADER, "text/plain");
-    }
-    catch (Exception exception)
-    {
-      Assert.fail("Unable to create test data due to: " + exception);
+    //Use Javax to create a multipart payload. Then we just modify the location of the consecutive CRLFs.
+    MimeMultipart multiPartMimeBody = new MimeMultipart();
+
+    //Add your body parts
+    for (final MimeBodyPart bodyPart : bodyPartList) {
+      multiPartMimeBody.addBodyPart(bodyPart);
     }
 
     final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-
-    try
-    {
-      multipartEnvelope.addBodyPart(firstBody);
-      multipartEnvelope.writeTo(byteArrayOutputStream);
-    }
-    catch (Exception exception)
-    {
-      Assert.fail("Unable to create test data due to: " + exception);
-    }
+    multiPartMimeBody.writeTo(byteArrayOutputStream);
 
     final byte[] mimePayload = byteArrayOutputStream.toByteArray();
 
@@ -339,54 +283,32 @@ public class TestMultiPartMimeReaderExceptions {
       }
     }
 
-    final RestRequest multipartMimeRequest = new RestRequestBuilder(createHttpURI(PORT, SERVER_URI)).setMethod("POST")
-        .addHeaderValue(MultiPartMIMEUtils.CONTENT_TYPE_HEADER, multipartEnvelope.getContentType())
-        .setEntity(ByteString.copy(mimePayload)).build();
+    final ByteString requestPayload = ByteString.copy(mimePayload);
+    executeRequestWithDesiredException(requestPayload, chunkSize, multiPartMimeBody.getContentType(), "Malformed multipart mime request. Headers are improperly constructed.");
 
-    MultiPartMIMEReader multiPartMIMEReader = null;
-    try
-    {
-      multiPartMIMEReader = MultiPartMIMEReader.createMultiPartMIMEReader(multipartMimeRequest);
-      multiPartMIMEReader.parseAndReturnParts();
-      Assert.fail();
-    }
-    catch (IllegalMimeFormatException illegalMimeFormatException)
-    {
-      Assert.assertEquals(illegalMimeFormatException.getMessage(), "Malformed multipart mime request. Headers are improperly constructed.");
-      Assert.assertEquals(multiPartMIMEReader.parseAndReturnParts(), Collections.<MultiPartMIMEDataPart>emptyList());
-    }
+    //No single part readers should have been created.
+    Assert.assertEquals(_currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.size(), 0);
+
   }
 
-  @Test
-  public void incorrectHeaderFormat() throws IllegalMimeFormatException
+
+  @Test(dataProvider = "multiplePartsDataSource")
+  public void incorrectHeaderFormat(final int chunkSize, final List<MimeBodyPart> bodyPartList)   throws
+                                                                                                 Exception
   {
-    //Use Javax to create a multipart payload. Then we just find an occurrence of the text/plain header and replace
-    //the colon in that header to something else.
-    final MimeMultipart multipartEnvelope = new MimeMultipart("mixed");
-    final MimeBodyPart firstBody = new MimeBodyPart();
-    try
-    {
-      firstBody.setContent("SomeBody", "text/plain");
-      firstBody.setHeader(MultiPartMIMEUtils.CONTENT_TYPE_HEADER, "text/plain");
-    }
-    catch (Exception exception)
-    {
-      Assert.fail("Unable to create test data due to: " + exception);
+    //Use Javax to create a multipart payload. Then we just modify the location of the consecutive CRLFs.
+    MimeMultipart multiPartMimeBody = new MimeMultipart();
+
+    //Add your body parts
+    for (final MimeBodyPart bodyPart : bodyPartList) {
+      multiPartMimeBody.addBodyPart(bodyPart);
     }
 
     final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-
-    try
-    {
-      multipartEnvelope.addBodyPart(firstBody);
-      multipartEnvelope.writeTo(byteArrayOutputStream);
-    }
-    catch (Exception exception)
-    {
-      Assert.fail("Unable to create test data due to: " + exception);
-    }
+    multiPartMimeBody.writeTo(byteArrayOutputStream);
 
     final byte[] mimePayload = byteArrayOutputStream.toByteArray();
+
 
     final byte[] contentTypeColonBytes = (MultiPartMIMEUtils.CONTENT_TYPE_HEADER + ":").getBytes();
     for (int i = 0; i < mimePayload.length - contentTypeColonBytes.length; i++)
@@ -399,27 +321,36 @@ public class TestMultiPartMimeReaderExceptions {
       }
     }
 
-    final RestRequest multipartMimeRequest = new RestRequestBuilder(createHttpURI(PORT, SERVER_URI)).setMethod("POST")
-        .addHeaderValue(MultiPartMIMEUtils.CONTENT_TYPE_HEADER, multipartEnvelope.getContentType())
-        .setEntity(ByteString.copy(mimePayload)).build();
+    final ByteString requestPayload = ByteString.copy(mimePayload);
+    executeRequestWithDesiredException(requestPayload, chunkSize, multiPartMimeBody.getContentType(), "Malformed multipart mime request. Individual headers are improperly formatted.");
 
-    MultiPartMIMEReader multiPartMIMEReader = null;
-    try
-    {
-      multiPartMIMEReader = MultiPartMIMEReader.createMultiPartMIMEReader(multipartMimeRequest);
-      multiPartMIMEReader.parseAndReturnParts();
-      Assert.fail();
-    }
-    catch (IllegalMimeFormatException illegalMimeFormatException)
-    {
-      Assert.assertEquals(illegalMimeFormatException.getMessage(),
-          "Malformed multipart mime request. Individual headers are improperly formatted.");
-      Assert.assertEquals(multiPartMIMEReader.parseAndReturnParts(), Collections.<MultiPartMIMEDataPart>emptyList());
-    }
+    //No single part readers should have been created.
+    Assert.assertEquals(_currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.size(), 0);
+
   }
 
 
-*/
+
+
+
+  ///////////////////////////////////////////////////////////////////////////////////////
+
+  //These tests will verify that we clean up properly when R2 invokes us with onError()
+
+  //This can happen when we are already in an erroneous state. We want to make sure we don't invoke the client multiple times.
+  //We want to create a state where we have already invoked the client on their onStreamError() callbacks once.
+  @Test(dataProvider = "multiplePartsDataSource")
+  public void alreadyErrorPreventDoubleInvocation(final int chunkSize, final List<MimeBodyPart> bodyPartList)   throws
+                                                                                                        Exception
+  {
+
+    payloadMissingFinalBoundary(chunkSize, bodyPartList);
+
+    //The asserts in the callback will make sure that we don't call the callbacks multiple times.
+    //Also we have already verified that _rh.cancel() only occured once.
+    _currentMultiPartMIMEReaderCallback._reader.getR2MultiPartMIMEReader().onError(new NullPointerException());
+
+  }
 
 
 
@@ -430,7 +361,7 @@ public class TestMultiPartMimeReaderExceptions {
 
 
 
-  //todo - test with callback in construction
+
 
 
 
@@ -438,7 +369,6 @@ public class TestMultiPartMimeReaderExceptions {
 
   private void executeRequestWithDesiredException(final ByteString requestPayload, final int chunkSize, final String contentTypeHeader,
       final String desiredExceptionMessage) throws Exception {
-
 
 
     final EntityStream entityStream = mock(EntityStream.class);
@@ -523,7 +453,6 @@ public class TestMultiPartMimeReaderExceptions {
     //      Callback<Integer> callback = expectSuccessCallback(latch, status, responseHeaders);
 //        _client.streamRequest(request, callback);
 
-    //todo assert the request has multipart content type
 
     MultiPartMIMEReader reader = MultiPartMIMEReader.createAndAcquireStream(streamRequest);
     _currentMultiPartMIMEReaderCallback =
@@ -534,9 +463,11 @@ public class TestMultiPartMimeReaderExceptions {
 
 
     latch.await(60000, TimeUnit.MILLISECONDS);
+
+    //Verify the correct exception was sent to the reader callback. The test itself will then verify
+    //if the correct error (if applicable) was sent to the single part reader callback.
     Assert.assertTrue(throwable.get() instanceof IllegalMimeFormatException);
     Assert.assertEquals(throwable.get().getMessage(), desiredExceptionMessage);
-    //assert the exception details
 
 
 
@@ -544,17 +475,15 @@ public class TestMultiPartMimeReaderExceptions {
 
     //mock verifies
 
-/*
+    //Unnecessary to verify how many times requestData on the read handle was called.
+    verify(readHandle, atLeastOnce()).request(isA(Integer.class));
+    verify(readHandle, times(1)).cancel();
     verify(streamRequest, times(1)).getEntityStream();
     verify(streamRequest, times(1)).getHeader(HEADER_CONTENT_TYPE);
     verify(entityStream, times(1)).setReader(isA(MultiPartMIMEReader.R2MultiPartMIMEReader.class));
-    final int expectedRequests = (int)Math.ceil((double)requestPayload.length()/chunkSize);
-    //One more expected request because we have to make the last call to get called onDone().
-    verify(readHandle, times(expectedRequests + 1)).request(1);
     verifyNoMoreInteractions(streamRequest);
     verifyNoMoreInteractions(entityStream);
-    verifyNoMoreInteractions(readHandle);
-    */
+
   }
 
 
@@ -585,7 +514,6 @@ public class TestMultiPartMimeReaderExceptions {
   private static class SinglePartMIMEAbandonReaderCallbackImpl implements SinglePartMIMEReaderCallback {
 
     final MultiPartMIMEReader.SinglePartMIMEReader _singlePartMIMEReader;
-    static String _abandonValue;
     final ByteArrayOutputStream _byteArrayOutputStream = new ByteArrayOutputStream();
     Map<String, String> _headers;
     ByteString _finishedData = null;
@@ -625,6 +553,10 @@ public class TestMultiPartMimeReaderExceptions {
 
     @Override
     public void onStreamError(Throwable e) {
+      //Should only happen once.
+      if (_streamError !=null) {
+        Assert.fail();
+      }
       _streamError = e;
     }
   }
@@ -635,6 +567,7 @@ public class TestMultiPartMimeReaderExceptions {
     final MultiPartMIMEReader _reader;
     final List<SinglePartMIMEAbandonReaderCallbackImpl> _singlePartMIMEReaderCallbacks =
         new ArrayList<SinglePartMIMEAbandonReaderCallbackImpl>();
+    Throwable _streamError = null;
 
     @Override
     public void onNewPart(MultiPartMIMEReader.SinglePartMIMEReader singlePartMIMEReader) {
@@ -659,6 +592,11 @@ public class TestMultiPartMimeReaderExceptions {
 
     @Override
     public void onStreamError(Throwable e) {
+      //We should only ever be invoked once.
+      if (_streamError != null) {
+        Assert.fail();
+      }
+      _streamError = e;
       _r2callback.onError(e);
     }
 

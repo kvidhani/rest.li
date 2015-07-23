@@ -16,5 +16,6 @@ public interface SinglePartMIMEReaderCallback {
     void onAbandoned();
 
     //When there is an error reading from the stream.
+    //Mention this can be called AT ANYTIME...because R2 may call this!
     void onStreamError(Throwable e);
 }
