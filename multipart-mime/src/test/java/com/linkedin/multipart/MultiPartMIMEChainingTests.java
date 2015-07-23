@@ -6,19 +6,12 @@ package com.linkedin.multipart;
 public class MultiPartMIMEChainingTests {
 
 
+    //todo change the name fo this file
 
-    private static void recurse(int i, String s) {
-      try {
-        recurse(i+1, "foo");
-      } catch (StackOverflowError e) {
-        System.out.print("Recursion depth on this system is " + i + ".");
-      }
-    }
-
-    public static void main(String[] args) {
-      recurse(0, "foo");
-    }
-
+    //todo test the case where when we chain, and register a new top level multipart mime reader callback, we throw
+    //from:
+    //multipart mime reader callback:
+    //onNewPart both in the main logic and also in callback registration
 
 
 }

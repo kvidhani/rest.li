@@ -1,6 +1,7 @@
 package com.linkedin.multipart;
 
 import com.linkedin.data.ByteString;
+import com.linkedin.data.Null;
 import com.linkedin.r2.filter.R2Constants;
 import com.linkedin.r2.message.rest.StreamRequest;
 import com.linkedin.r2.message.streaming.EntityStream;
@@ -63,21 +64,8 @@ public class TestMultiPartMIMEReaderClientCallbackExceptions {
 
 
   ///////////////////////////////////////////////////////////////////////////////////////
-
-  //These tests all verify the resilience of the reader when client callbacks throw runtime exceptions
-
-
-  //multipart mime reader callback:
-  //onNewPart both in the main logic and also in callback registration
-  //onFinished()
-  //onAbandoned()
-
-
-  //singlepart callback
-  //onPartDataAvailable
-  //onFinished
-  //onAbandoned
-
+  //MultiPartMIMEReader callback invocations throwing exceptions:
+  //These tests all verify the resilience of the multipart mime reader when multipart mime reader client callbacks throw runtime exceptions
 
   @DataProvider(name = "allTypesOfBodiesDataSource")
   public Object[][] allTypesOfBodiesDataSource() throws Exception
@@ -113,12 +101,162 @@ public class TestMultiPartMIMEReaderClientCallbackExceptions {
 
     MultiPartMIMEAbandonReaderCallbackImpl.throwOnNewPart = true;
     CountDownLatch countDownLatch =
-        executeRequestPartialReadWithException(requestPayload, 1, multiPartMimeBody.getContentType());
+        executeRequestPartialReadWithException(requestPayload, chunkSize, multiPartMimeBody.getContentType());
 
     countDownLatch.await(60000, TimeUnit.MILLISECONDS);
 
     Assert.assertTrue(_currentMultiPartMIMEReaderCallback._streamError instanceof NullPointerException);
     Assert.assertEquals(_currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.size(), 0);
+  }
+
+
+
+  @Test(dataProvider =  "allTypesOfBodiesDataSource")
+  public void testMultiPartMIMEReaderCallbackExceptionOnFinished(final int chunkSize, final List<MimeBodyPart> bodyPartList) throws Exception
+  {
+    MimeMultipart multiPartMimeBody = new MimeMultipart();
+
+    //Add your body parts
+    for (final MimeBodyPart bodyPart : bodyPartList) {
+      multiPartMimeBody.addBodyPart(bodyPart);
+    }
+
+    final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    multiPartMimeBody.writeTo(byteArrayOutputStream);
+    final ByteString requestPayload = ByteString.copy(byteArrayOutputStream.toByteArray());
+
+    MultiPartMIMEAbandonReaderCallbackImpl.throwOnFinished = true;
+    CountDownLatch countDownLatch =
+            executeRequestPartialReadWithException(requestPayload, chunkSize, multiPartMimeBody.getContentType());
+
+    countDownLatch.await(60000, TimeUnit.MILLISECONDS);
+
+    Assert.assertTrue(_currentMultiPartMIMEReaderCallback._streamError instanceof NullPointerException);
+    Assert.assertEquals(_currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.size(), 6);
+    //None of the single part callbacks should have recieved the error since they were all done before the top
+    //callback threw
+    for (int i = 0; i<_currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.size(); i++) {
+      Assert.assertNull(_currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.get(i)._streamError);
+    }
+  }
+
+
+  @Test(dataProvider =  "allTypesOfBodiesDataSource")
+  public void testMultiPartMIMEReaderCallbackExceptionOnAbandoned(final int chunkSize, final List<MimeBodyPart> bodyPartList) throws Exception
+  {
+    MimeMultipart multiPartMimeBody = new MimeMultipart();
+
+    //Add your body parts
+    for (final MimeBodyPart bodyPart : bodyPartList) {
+      multiPartMimeBody.addBodyPart(bodyPart);
+    }
+
+    final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    multiPartMimeBody.writeTo(byteArrayOutputStream);
+    final ByteString requestPayload = ByteString.copy(byteArrayOutputStream.toByteArray());
+
+    MultiPartMIMEAbandonReaderCallbackImpl.throwOnAbandoned = true;
+    CountDownLatch countDownLatch =
+            executeRequestPartialReadWithException(requestPayload, chunkSize, multiPartMimeBody.getContentType());
+
+    countDownLatch.await(60000, TimeUnit.MILLISECONDS);
+
+    Assert.assertTrue(_currentMultiPartMIMEReaderCallback._streamError instanceof NullPointerException);
+    Assert.assertEquals(_currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.size(), 0);
+  }
+
+
+
+
+  ///////////////////////////////////////////////////////////////////////////////////////
+  //SinglePartMIMEReader callback invocations throwing exceptions:
+  //These tests all verify the resilience of the single part mime reader when single part mime reader client callbacks throw runtime exceptions
+
+  //singlepart callback
+  //onPartDataAvailable
+  //onFinished
+  //onAbandoned
+
+
+
+  @Test(dataProvider =  "allTypesOfBodiesDataSource")
+  public void testSinglePartMIMEReaderCallbackExceptionOnPartDataAvailable(final int chunkSize, final List<MimeBodyPart> bodyPartList) throws Exception
+  {
+    MimeMultipart multiPartMimeBody = new MimeMultipart();
+
+    //Add your body parts
+    for (final MimeBodyPart bodyPart : bodyPartList) {
+      multiPartMimeBody.addBodyPart(bodyPart);
+    }
+
+    final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    multiPartMimeBody.writeTo(byteArrayOutputStream);
+    final ByteString requestPayload = ByteString.copy(byteArrayOutputStream.toByteArray());
+
+    SinglePartMIMEAbandonReaderCallbackImpl.throwOnPartDataAvailable = true;
+    CountDownLatch countDownLatch =
+            executeRequestPartialReadWithException(requestPayload, chunkSize, multiPartMimeBody.getContentType());
+
+    countDownLatch.await(60000, TimeUnit.MILLISECONDS);
+
+    Assert.assertTrue(_currentMultiPartMIMEReaderCallback._streamError instanceof NullPointerException);
+    Assert.assertEquals(_currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.size(), 1);
+    Assert.assertTrue(_currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.get(0)._streamError instanceof NullPointerException);
+
+  }
+
+
+
+  @Test(dataProvider =  "allTypesOfBodiesDataSource")
+  public void testSinglePartMIMEReaderCallbackExceptionOnFinished(final int chunkSize, final List<MimeBodyPart> bodyPartList) throws Exception
+  {
+    MimeMultipart multiPartMimeBody = new MimeMultipart();
+
+    //Add your body parts
+    for (final MimeBodyPart bodyPart : bodyPartList) {
+      multiPartMimeBody.addBodyPart(bodyPart);
+    }
+
+    final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    multiPartMimeBody.writeTo(byteArrayOutputStream);
+    final ByteString requestPayload = ByteString.copy(byteArrayOutputStream.toByteArray());
+
+    SinglePartMIMEAbandonReaderCallbackImpl.throwOnFinished = true;
+    CountDownLatch countDownLatch =
+            executeRequestPartialReadWithException(requestPayload, chunkSize, multiPartMimeBody.getContentType());
+
+    countDownLatch.await(60000, TimeUnit.MILLISECONDS);
+
+    Assert.assertTrue(_currentMultiPartMIMEReaderCallback._streamError instanceof NullPointerException);
+    Assert.assertEquals(_currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.size(), 1);
+    Assert.assertTrue(_currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.get(0)._streamError instanceof NullPointerException);
+
+  }
+
+
+  @Test(dataProvider =  "allTypesOfBodiesDataSource")
+  public void testSinglePartMIMEReaderCallbackExceptionOnAbandoned(final int chunkSize, final List<MimeBodyPart> bodyPartList) throws Exception
+  {
+    MimeMultipart multiPartMimeBody = new MimeMultipart();
+
+    //Add your body parts
+    for (final MimeBodyPart bodyPart : bodyPartList) {
+      multiPartMimeBody.addBodyPart(bodyPart);
+    }
+
+    final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    multiPartMimeBody.writeTo(byteArrayOutputStream);
+    final ByteString requestPayload = ByteString.copy(byteArrayOutputStream.toByteArray());
+
+    SinglePartMIMEAbandonReaderCallbackImpl.throwOnAbandoned = true;
+    CountDownLatch countDownLatch =
+            executeRequestPartialReadWithException(requestPayload, chunkSize, multiPartMimeBody.getContentType());
+
+    countDownLatch.await(60000, TimeUnit.MILLISECONDS);
+
+    Assert.assertTrue(_currentMultiPartMIMEReaderCallback._streamError instanceof NullPointerException);
+    Assert.assertEquals(_currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.size(), 1);
+    Assert.assertTrue(_currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.get(0)._streamError instanceof NullPointerException);
   }
 
 
@@ -199,7 +337,7 @@ public class TestMultiPartMIMEReaderClientCallbackExceptions {
 
     _reader = MultiPartMIMEReader.createAndAcquireStream(streamRequest);
     _currentMultiPartMIMEReaderCallback=
-        new MultiPartMIMEAbandonReaderCallbackImpl(latch);
+        new MultiPartMIMEAbandonReaderCallbackImpl(latch, _reader);
     _reader.registerReaderCallback(_currentMultiPartMIMEReaderCallback);
 
     return latch;
@@ -236,7 +374,11 @@ public class TestMultiPartMIMEReaderClientCallbackExceptions {
     public void onPartDataAvailable(ByteString b) {
       if(throwOnPartDataAvailable) {
         throw new NullPointerException();
-      } else {
+      } else if (throwOnAbandoned) {
+        _singlePartMIMEReader.abandonPart();
+        return;
+      }
+      else {
         _singlePartMIMEReader.requestPartData();
       }
     }
@@ -250,9 +392,8 @@ public class TestMultiPartMIMEReaderClientCallbackExceptions {
 
     @Override
     public void onAbandoned() {
-      if(throwOnAbandoned) {
-        throw new NullPointerException();
-      }
+      //We only reached here due to the presence of throwOnAbandoned == true
+      throw new NullPointerException();
     }
 
     @Override
@@ -267,6 +408,7 @@ public class TestMultiPartMIMEReaderClientCallbackExceptions {
         new ArrayList<SinglePartMIMEAbandonReaderCallbackImpl>();
     Throwable _streamError = null;
     final CountDownLatch _latch;
+    final MultiPartMIMEReader _reader;
 
     static boolean throwOnNewPart = false;
     static boolean throwOnFinished = false;
@@ -283,6 +425,11 @@ public class TestMultiPartMIMEReaderClientCallbackExceptions {
 
       if(throwOnNewPart) {
         throw new NullPointerException();
+      }
+
+      if(throwOnAbandoned) {
+        _reader.abandonAllParts();
+        return;
       }
 
       SinglePartMIMEAbandonReaderCallbackImpl singlePartMIMEReaderCallback =
@@ -302,9 +449,9 @@ public class TestMultiPartMIMEReaderClientCallbackExceptions {
 
     @Override
     public void onAbandoned() {
-      if(throwOnAbandoned) {
+      //We only reached here due to the presence of throwOnAbandoned == true
         throw new NullPointerException();
-      }
+
     }
 
     @Override
@@ -313,8 +460,9 @@ public class TestMultiPartMIMEReaderClientCallbackExceptions {
       _latch.countDown();
     }
 
-    MultiPartMIMEAbandonReaderCallbackImpl(final CountDownLatch latch) {
+    MultiPartMIMEAbandonReaderCallbackImpl(final CountDownLatch latch, final MultiPartMIMEReader reader) {
       _latch = latch;
+      _reader = reader;
     }
   }
 
