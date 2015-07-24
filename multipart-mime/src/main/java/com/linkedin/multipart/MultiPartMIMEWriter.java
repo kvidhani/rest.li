@@ -86,11 +86,6 @@ public final class MultiPartMIMEWriter {
       return this;
     }
 
-    public MultiPartMIMEWriterBuilder appendSinglePartDataSource(final MultiPartMIMEReader.SinglePartMIMEReader singlePartMIMEReader) {
-      _allDataSources.add(EntityStreams.newEntityStream(singlePartMIMEReader));
-      return this;
-    }
-
     public MultiPartMIMEWriterBuilder appendMultiPartDataSource(final MultiPartMIMEReader multiPartMIMEReader) {
       final Writer multiPartMIMEReaderWriter = new MultiPartMIMEReaderWriter(multiPartMIMEReader, _normalEncapsulationBoundary);
       _allDataSources.add(EntityStreams.newEntityStream(multiPartMIMEReaderWriter));
@@ -100,13 +95,6 @@ public final class MultiPartMIMEWriter {
     public MultiPartMIMEWriterBuilder appendDataSources(final List<MultiPartMIMEDataSource> dataSources) {
       for (final MultiPartMIMEDataSource dataSource : dataSources) {
         appendDataSource(dataSource);
-      }
-      return this;
-    }
-
-    public MultiPartMIMEWriterBuilder appendSinglePartDataSources(final List<MultiPartMIMEReader.SinglePartMIMEReader> singlePartMIMEReaders) {
-      for (MultiPartMIMEReader.SinglePartMIMEReader singlePartMIMEReader : singlePartMIMEReaders) {
-        appendSinglePartDataSource(singlePartMIMEReader);
       }
       return this;
     }
