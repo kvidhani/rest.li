@@ -18,7 +18,6 @@ import java.util.concurrent.*;
 //2. There was an exception reading the stream, so we then close the stream and call error on write handle
 //3. The write was aborted, in which case we also close the stream.
 
-  //todo use a delegate pattern to forbid external users from calling interface methods directly
   //todo what needs to be volatile?
 
   //todo what happens if some data source keeps on reading only 0 bytes

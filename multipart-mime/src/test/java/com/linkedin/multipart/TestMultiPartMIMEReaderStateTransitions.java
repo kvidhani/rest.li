@@ -5,10 +5,8 @@ package com.linkedin.multipart;
  */
 public class TestMultiPartMIMEReaderStateTransitions {
 
-  //all state transision tests
-  // except state transitions which will go in another file
-  //for example, even when things are done (erroneously or not), make sure that no further progress can be made
+  //These tests will verify that the correct exceptions are thrown in the face of unorthodox clients.
 
 
-  //threading race conditions
+
 }

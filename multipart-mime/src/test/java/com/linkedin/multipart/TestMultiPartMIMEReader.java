@@ -2,6 +2,8 @@ package com.linkedin.multipart;
 
 import com.linkedin.common.callback.Callback;
 import com.linkedin.data.ByteString;
+import com.linkedin.multipart.reader.exceptions.PartFinishedException;
+import com.linkedin.multipart.reader.exceptions.StreamFinishedException;
 import com.linkedin.r2.filter.R2Constants;
 import com.linkedin.r2.message.rest.RestException;
 import com.linkedin.r2.message.rest.RestStatus;
@@ -41,6 +43,9 @@ import static org.mockito.Mockito.*;
 /**
  * Created by kvidhani on 7/19/15.
  */
+//todo for all your tests have a global latch timeout
+  //better yet switch all your tests to use FutureCallback with a timeout
+//test to make sure you can get the premable
 public class TestMultiPartMIMEReader {
 
   private static int TEST_TIMEOUT = 60000;
@@ -417,6 +422,14 @@ public class TestMultiPartMIMEReader {
         latch.await(TEST_TIMEOUT, TimeUnit.MILLISECONDS);
         Assert.assertEquals(status.get(), RestStatus.OK);
 
+
+      try {
+        _reader.abandonAllParts();
+        Assert.fail();
+      } catch (StreamFinishedException streamFinishedException) {
+
+      }
+
         List<TestSinglePartMIMEReaderCallbackImpl> singlePartMIMEReaderCallbacks =
                 _testMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks;
         Assert.assertEquals(singlePartMIMEReaderCallbacks.size(), mimeMultipart.getCount());
@@ -448,6 +461,8 @@ public class TestMultiPartMIMEReader {
             }
         }
 
+      Assert.assertTrue(_reader.haveAllPartsFinished());
+
       //Mock verifies
       verify(streamRequest, times(1)).getEntityStream();
       verify(streamRequest, times(1)).getHeader(HEADER_CONTENT_TYPE);
@@ -463,7 +478,7 @@ public class TestMultiPartMIMEReader {
 
 
     //todo - test with callback in construction
-
+    //todo no need for callback. just use a latch
 
 
 
@@ -517,6 +532,15 @@ public class TestMultiPartMIMEReader {
 
         @Override
         public void onFinished() {
+
+          //Verify that upon finishing that this is reader is no longer usable.
+          try {
+            _singlePartMIMEReader.abandonPart();
+            Assert.fail();
+          } catch (PartFinishedException partFinishedException) {
+
+          }
+
             _finishedData = ByteString.copy(_byteArrayOutputStream.toByteArray());
         }
 
@@ -550,6 +574,7 @@ public class TestMultiPartMIMEReader {
 
         @Override
         public void onFinished() {
+
             _r2callback.onSuccess(200);
         }
 

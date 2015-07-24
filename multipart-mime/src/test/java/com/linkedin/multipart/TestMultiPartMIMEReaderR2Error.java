@@ -1,6 +1,7 @@
 package com.linkedin.multipart;
 
 import com.linkedin.data.ByteString;
+import com.linkedin.multipart.reader.exceptions.StreamFinishedException;
 import com.linkedin.r2.message.rest.StreamRequest;
 import com.linkedin.r2.message.streaming.EntityStream;
 import com.linkedin.r2.message.streaming.ReadHandle;
@@ -15,8 +16,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import javax.mail.internet.MimeMultipart;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.testng.Assert;
 import org.testng.annotations.AfterTest;
 import org.testng.annotations.BeforeTest;
@@ -33,8 +32,6 @@ import static org.mockito.Mockito.when;
  * Created by kvidhani on 7/22/15.
  */
 public class TestMultiPartMIMEReaderR2Error {
-
-  private static final Logger log = LoggerFactory.getLogger(TestMultiPartMIMEReaderR2Error.class);
 
   private static ExecutorService threadPoolExecutor;
 
@@ -90,9 +87,24 @@ public class TestMultiPartMIMEReaderR2Error {
     _reader.getR2MultiPartMIMEReader().onError(new NullPointerException());
 
     Assert.assertTrue(_currentMultiPartMIMEReaderCallback._streamError instanceof NullPointerException);
+    try {
+      _currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.get(0)._singlePartMIMEReader.requestPartData();
+      Assert.fail();
+    } catch (StreamFinishedException streamFinishedException) {
+      //pass
+    }
+
     Assert.assertEquals(_currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.size(), 2);
     Assert.assertNull(_currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.get(0)._streamError);
-    Assert.assertTrue(_currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.get(1)._streamError instanceof NullPointerException);
+    Assert.assertTrue(_currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks
+        .get(1)._streamError instanceof NullPointerException);
+
+    try {
+      _currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.get(1)._singlePartMIMEReader.requestPartData();
+      Assert.fail();
+    } catch (StreamFinishedException streamFinishedException) {
+      //pass
+    }
   }
 
 

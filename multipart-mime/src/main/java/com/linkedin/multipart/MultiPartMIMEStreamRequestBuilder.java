@@ -16,7 +16,7 @@ public final class MultiPartMIMEStreamRequestBuilder {
   private final Map<String, String> _contentTypeParameters;
   private final MultiPartMIMEWriter _writer;
   private final String _boundary;
-  private final StreamRequestBuilder _streamRequestBuilder;
+   final StreamRequestBuilder _streamRequestBuilder;
 
   //Java docs should mention this should be a valid mime type
   //Also note that in Javadocs, contentTypeParameters should not include the boundary as its already

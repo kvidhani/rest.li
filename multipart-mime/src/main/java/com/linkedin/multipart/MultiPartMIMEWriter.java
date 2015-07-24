@@ -87,9 +87,7 @@ public final class MultiPartMIMEWriter {
     }
 
     public MultiPartMIMEWriterBuilder appendSinglePartDataSource(final MultiPartMIMEReader.SinglePartMIMEReader singlePartMIMEReader) {
-      MultiPartMIMEDataSource singlePartMIMEReaderDataSource =
-          new MultiPartMIMEReader.SinglePartMIMEReaderDataSource(singlePartMIMEReader);
-      _allDataSources.add(EntityStreams.newEntityStream(singlePartMIMEReaderDataSource));
+      _allDataSources.add(EntityStreams.newEntityStream(singlePartMIMEReader));
       return this;
     }
 

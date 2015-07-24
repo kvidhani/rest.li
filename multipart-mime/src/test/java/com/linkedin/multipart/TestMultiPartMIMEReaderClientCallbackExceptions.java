@@ -1,7 +1,7 @@
 package com.linkedin.multipart;
 
 import com.linkedin.data.ByteString;
-import com.linkedin.data.Null;
+import com.linkedin.multipart.reader.exceptions.StreamFinishedException;
 import com.linkedin.r2.filter.R2Constants;
 import com.linkedin.r2.message.rest.StreamRequest;
 import com.linkedin.r2.message.streaming.EntityStream;
@@ -107,6 +107,13 @@ public class TestMultiPartMIMEReaderClientCallbackExceptions {
 
     Assert.assertTrue(_currentMultiPartMIMEReaderCallback._streamError instanceof NullPointerException);
     Assert.assertEquals(_currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.size(), 0);
+
+    try {
+      _currentMultiPartMIMEReaderCallback._reader.abandonAllParts();
+      Assert.fail();
+    } catch (StreamFinishedException streamFinishedException) {
+      //pass
+    }
   }
 
 
@@ -132,11 +139,27 @@ public class TestMultiPartMIMEReaderClientCallbackExceptions {
     countDownLatch.await(60000, TimeUnit.MILLISECONDS);
 
     Assert.assertTrue(_currentMultiPartMIMEReaderCallback._streamError instanceof NullPointerException);
+
+    //Verify this are unusable.
+    try {
+      _currentMultiPartMIMEReaderCallback._reader.abandonAllParts();
+      Assert.fail();
+    } catch (StreamFinishedException streamFinishedException) {
+      //pass
+    }
+
     Assert.assertEquals(_currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.size(), 6);
     //None of the single part callbacks should have recieved the error since they were all done before the top
     //callback threw
     for (int i = 0; i<_currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.size(); i++) {
       Assert.assertNull(_currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.get(i)._streamError);
+      //Verify this are unusable.
+      try {
+        _currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.get(i)._singlePartMIMEReader.requestPartData();
+        Assert.fail();
+      } catch (StreamFinishedException streamFinishedException) {
+        //pass
+      }
     }
   }
 
@@ -163,6 +186,14 @@ public class TestMultiPartMIMEReaderClientCallbackExceptions {
 
     Assert.assertTrue(_currentMultiPartMIMEReaderCallback._streamError instanceof NullPointerException);
     Assert.assertEquals(_currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.size(), 0);
+
+    //Verify this are unusable.
+    try {
+      _currentMultiPartMIMEReaderCallback._reader.abandonAllParts();
+      Assert.fail();
+    } catch (StreamFinishedException streamFinishedException) {
+      //pass
+    }
   }
 
 
@@ -200,8 +231,23 @@ public class TestMultiPartMIMEReaderClientCallbackExceptions {
     countDownLatch.await(60000, TimeUnit.MILLISECONDS);
 
     Assert.assertTrue(_currentMultiPartMIMEReaderCallback._streamError instanceof NullPointerException);
+    //Verify this are unusable.
+    try {
+      _currentMultiPartMIMEReaderCallback._reader.abandonAllParts();
+      Assert.fail();
+    } catch (StreamFinishedException streamFinishedException) {
+      //pass
+    }
+
+
     Assert.assertEquals(_currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.size(), 1);
     Assert.assertTrue(_currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.get(0)._streamError instanceof NullPointerException);
+    try {
+      _currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.get(0)._singlePartMIMEReader.requestPartData();
+      Assert.fail();
+    } catch (StreamFinishedException streamFinishedException) {
+      //pass
+    }
 
   }
 
@@ -228,9 +274,22 @@ public class TestMultiPartMIMEReaderClientCallbackExceptions {
     countDownLatch.await(60000, TimeUnit.MILLISECONDS);
 
     Assert.assertTrue(_currentMultiPartMIMEReaderCallback._streamError instanceof NullPointerException);
+    //Verify this are unusable.
+    try {
+      _currentMultiPartMIMEReaderCallback._reader.abandonAllParts();
+      Assert.fail();
+    } catch (StreamFinishedException streamFinishedException) {
+      //pass
+    }
+
     Assert.assertEquals(_currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.size(), 1);
     Assert.assertTrue(_currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.get(0)._streamError instanceof NullPointerException);
-
+    try {
+      _currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.get(0)._singlePartMIMEReader.requestPartData();
+      Assert.fail();
+    } catch (StreamFinishedException streamFinishedException) {
+      //pass
+    }
   }
 
 
@@ -255,8 +314,21 @@ public class TestMultiPartMIMEReaderClientCallbackExceptions {
     countDownLatch.await(60000, TimeUnit.MILLISECONDS);
 
     Assert.assertTrue(_currentMultiPartMIMEReaderCallback._streamError instanceof NullPointerException);
+    //Verify these are unusable.
+    try {
+      _currentMultiPartMIMEReaderCallback._reader.abandonAllParts();
+      Assert.fail();
+    } catch (StreamFinishedException streamFinishedException) {
+      //pass
+    }
     Assert.assertEquals(_currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.size(), 1);
     Assert.assertTrue(_currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.get(0)._streamError instanceof NullPointerException);
+    try {
+      _currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.get(0)._singlePartMIMEReader.requestPartData();
+      Assert.fail();
+    } catch (StreamFinishedException streamFinishedException) {
+      //pass
+    }
   }
 
 

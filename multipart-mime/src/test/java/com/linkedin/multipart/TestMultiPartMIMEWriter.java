@@ -1,45 +1,34 @@
 package com.linkedin.multipart;
 
-import com.linkedin.common.callback.Callback;
+import com.linkedin.common.callback.FutureCallback;
 import com.linkedin.data.ByteString;
-import com.linkedin.multipart.reader.exceptions.IllegalMimeFormatException;
-import com.linkedin.r2.message.RequestContext;
-import com.linkedin.r2.message.rest.Messages;
-import com.linkedin.r2.message.rest.RestException;
-import com.linkedin.r2.message.rest.RestResponse;
-import com.linkedin.r2.message.rest.RestStatus;
 import com.linkedin.r2.message.rest.StreamRequest;
-import com.linkedin.r2.message.rest.StreamRequestBuilder;
-import com.linkedin.r2.message.rest.StreamResponse;
-import com.linkedin.r2.message.streaming.ByteStringWriter;
-import com.linkedin.r2.message.streaming.EntityStream;
-import com.linkedin.r2.message.streaming.EntityStreams;
-import com.linkedin.r2.sample.Bootstrap;
-import com.linkedin.r2.transport.common.StreamRequestHandler;
-import com.linkedin.r2.transport.common.bridge.server.TransportDispatcher;
-import com.linkedin.r2.transport.common.bridge.server.TransportDispatcherBuilder;
-import com.linkedin.r2.transport.http.client.HttpClientFactory;
+import com.linkedin.r2.message.streaming.FullEntityReader;
 import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.URI;
+import java.nio.charset.Charset;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
-import javax.mail.internet.ContentType;
-import javax.mail.internet.MimeBodyPart;
+import javax.activation.DataSource;
+import javax.mail.BodyPart;
+import javax.mail.Header;
+import javax.mail.MessagingException;
 import javax.mail.internet.MimeMultipart;
-
-import org.mockito.Mock;
-import org.mockito.Mockito;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.testng.Assert;
+import org.testng.annotations.AfterTest;
 import org.testng.annotations.BeforeTest;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
-import test.r2.integ.AbstractStreamTest;
 
 
 /**
@@ -47,238 +36,303 @@ import test.r2.integ.AbstractStreamTest;
  */
 //Using Javax.mail on the server side to verify the integrity of our RFC implementation of the MultiPartMIMEWriter
 
-public class TestMultiPartMIMEWriter extends AbstractStreamTest {
+//Read in all the bytes that the writer generates into memory and then use javax mail to verify things look correct
+//There is no way to use mockito to mock EntitStreams.newEntityStream()
+//Therefore we have no choice but to use R2's functionality here.
+public class TestMultiPartMIMEWriter {
 
-  private static final URI SERVER_URI = URI.create("/javaxMimeServer");
-  private MimeServerRequestHandler _mimeServerRequestHandler;
-  private static final Logger log = LoggerFactory.getLogger(TestMultiPartMIMEIntegrationReader.class);
-  private static final String HEADER_CONTENT_TYPE = "Content-Type";
+  private static ScheduledExecutorService scheduledExecutorService;
+  private static final int TEST_TIMEOUT = 90000;
 
-  @Override
-  protected TransportDispatcher getTransportDispatcher()
-  {
-    _mimeServerRequestHandler = new MimeServerRequestHandler();
-    return new TransportDispatcherBuilder()
-        .addStreamHandler(SERVER_URI, _mimeServerRequestHandler)
-        .build();
-  }
+  byte[] normalBodyData;
+  Map<String, String> normalBodyHeaders;
 
-  @Override
-  protected Map<String, String> getClientProperties()
-  {
-    Map<String, String> clientProperties = new HashMap<String, String>();
-    clientProperties.put(HttpClientFactory.HTTP_REQUEST_TIMEOUT, "300000");
-    return clientProperties;
-  }
+  byte[] headerLessBodyData;
 
-  @Mock
-  MultiPartMIMEDataSource a;
+  Map<String, String> bodyLessHeaders;
 
-  @Mock
-  MultiPartMIMEDataSource b;
-
+  MultiPartMIMEDataPartImpl normalBody;
+  MultiPartMIMEDataPartImpl headerLessBody;
+  MultiPartMIMEDataPartImpl bodyLessBody;
 
   @BeforeTest
-  public void testSetup() {
+  public void setup() {
 
-    MultiPartMIMEWriter.MultiPartMIMEWriterBuilder multiPartMIMEWriterBuilder =
-        new MultiPartMIMEWriter.MultiPartMIMEWriterBuilder("some preamble", "some epilogue");
+    normalBodyData = "abc".getBytes();
+    normalBodyHeaders = new HashMap<String, String>();
+    normalBodyHeaders.put("simpleheader", "simplevalue");
 
+    //Second body has no headers
+    headerLessBodyData = "def".getBytes();
 
-    {
-      final String body = "A tiny body";
-      final Map<String, String> partMap = new HashMap<String, String>();
-      partMap.put(HEADER_CONTENT_TYPE, "text/plain");
-      partMap.put("SomeCustomHeader", "SomeCustomValue");
+    //Third body has only headers
+    bodyLessHeaders = new HashMap<String, String>();
+    normalBodyHeaders.put("header1", "value1");
+    normalBodyHeaders.put("header2", "value2");
+    normalBodyHeaders.put("header3", "value3");
 
-      final ByteArrayInputStream byteArrayInputStreamA = new ByteArrayInputStream(body.getBytes());
-      MultiPartMIMEInputStream dataSourceA =
-          new MultiPartMIMEInputStream.Builder(byteArrayInputStreamA, new ScheduledThreadPoolExecutor(5), partMap)
-              .withMaximumBlockingTime(100).withWriteChunkSize(1).build();
-      multiPartMIMEWriterBuilder.appendDataSource(dataSourceA);
-    }
-    {
-      final String body = "Has at possim tritani laoreet, vis te meis verear. Vel no vero quando oblique, eu blandit placerat nec, vide facilisi recusabo nec te. Veri labitur sensibus eum id. Quo omnis "
-        + "putant erroribus ad, nonumes copiosae percipit in qui, id cibo meis clita pri. An brute mundi quaerendum duo, eu aliquip facilisis sea, eruditi invidunt dissentiunt eos ea.";
-      final ByteArrayInputStream byteArrayInputStreamB = new ByteArrayInputStream(body.getBytes());
-      final Map<String, String> partMap = new HashMap<String, String>();
-      partMap.put(HEADER_CONTENT_TYPE, "text/plain");
-      partMap.put("SomeCustomHeader", "SomeCustomValue");
+    normalBody =
+        new MultiPartMIMEDataPartImpl(ByteString.copy(normalBodyData), normalBodyHeaders);
 
-      MultiPartMIMEInputStream dataSourceB =
-          new MultiPartMIMEInputStream.Builder(byteArrayInputStreamB, new ScheduledThreadPoolExecutor(5), partMap)
-              .withMaximumBlockingTime(100).withWriteChunkSize(1).build();
-      multiPartMIMEWriterBuilder.appendDataSource(dataSourceB);
-    }
+    headerLessBody =
+        new MultiPartMIMEDataPartImpl(ByteString.copy(headerLessBodyData), Collections.<String, String>emptyMap());
 
-    MultiPartMIMEWriter writer = multiPartMIMEWriterBuilder.build();
+    bodyLessBody =
+        new MultiPartMIMEDataPartImpl(ByteString.empty(), bodyLessHeaders);
 
-    final EntityStreams entityStreams = Mockito.mock(EntityStreams.class);
+    scheduledExecutorService = Executors.newScheduledThreadPool(10);
+  }
 
-
-    //final WriteHandle writeHandle = Mockito.mock(WriteHandle.class);
-    //dataSource.onInit(writeHandle);
-
-    //when(streamRequest.getHeader(MultiPartMIMEUtils.CONTENT_TYPE_HEADER)).thenReturn(contentTypeHeader);
-    //when(streamRequest.getEntityStream()).thenReturn(entityStream);
-
-
-    //do all the other bodies
-    //body1
-    //body2
-
-    //test only up until the composite writer is created
+  @AfterTest
+  public void shutDown() {
+    scheduledExecutorService.shutdownNow();
   }
 
 
 
-  @Test
-  public void testSimpleReaderRequest() throws Exception
+  @DataProvider(name = "singleDataSources")
+  public Object[][] singleDataSources() throws Exception
   {
-    //Create a simple multi part mime request with just one part
-    MimeMultipart multi = new MimeMultipart();
-    MimeBodyPart dataPart = new MimeBodyPart();
-    ContentType contentType = new ContentType("text/plain");
-    dataPart.setContent("Some bytes for some body", contentType.getBaseType());
-    dataPart.setHeader(HEADER_CONTENT_TYPE, "test/plain");
-    multi.addBodyPart(dataPart);
-    final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-    multi.writeTo(byteArrayOutputStream);
-    log.info("The request we are sending is: " + new String(byteArrayOutputStream.toByteArray()));
-    final ByteStringWriter byteStringWriter = new ByteStringWriter(ByteString.copy(byteArrayOutputStream.toByteArray()));
-    EntityStream entityStream = EntityStreams.newEntityStream(byteStringWriter);
-    StreamRequestBuilder builder = new StreamRequestBuilder(Bootstrap.createHttpURI(PORT, SERVER_URI));
-    StreamRequest request = builder.setMethod("POST").setHeader(HEADER_CONTENT_TYPE, multi.getContentType()) .build(entityStream);
 
-    final AtomicInteger status = new AtomicInteger(-1);
-    final CountDownLatch latch = new CountDownLatch(1);
-    Callback<StreamResponse> callback = expectSuccessCallback(latch, status);
-    _client.streamRequest(request, callback);
-    latch.await(60000, TimeUnit.MILLISECONDS);
-    Assert.assertEquals(status.get(), RestStatus.OK);
-    //BytesReader reader = _checkRequestHandler.getReader();
-    //Assert.assertNotNull(reader);
-    //Assert.assertEquals(totalBytes, reader.getTotalBytes());
-    //Assert.assertTrue(reader.allBytesCorrect());
-    //todo make sure all callbacks are invoked
-  }
-
-
-  private static Callback<StreamResponse> expectSuccessCallback(final CountDownLatch latch, final AtomicInteger status)
-  {
-    return new Callback<StreamResponse>()
-    {
-      @Override
-      public void onError(Throwable e)
-      {
-        latch.countDown();
-      }
-
-      @Override
-      public void onSuccess(StreamResponse result)
-      {
-        status.set(result.getStatus());
-        latch.countDown();
-      }
+    return new Object[][] {
+        {ByteString.copy(normalBodyData), normalBodyHeaders},
+        {ByteString.copy(headerLessBodyData), Collections.<String, String>emptyMap()},
+        {ByteString.empty(), bodyLessHeaders}
     };
   }
 
+  @Test(dataProvider = "singleDataSources")
+  public void testSingleDataSource(final ByteString body, final Map<String, String> headers) throws Exception {
 
-  private static class TestSinglePartMIMEReaderCallbackImpl implements SinglePartMIMEReaderCallback {
+    final MultiPartMIMEDataPartImpl expectedMultiPartMIMEDataPart =
+        new MultiPartMIMEDataPartImpl(body, headers);
 
-    final MultiPartMIMEReaderCallback _topLevelCallback;
-    final MultiPartMIMEReader.SinglePartMIMEReader _singlePartMIMEReader;
-    int partCounter = 0;
+    final MultiPartMIMEInputStream simpleDataSource =
+        new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(body.copyBytes()), scheduledExecutorService, headers).build();
 
-    TestSinglePartMIMEReaderCallbackImpl(final MultiPartMIMEReaderCallback topLevelCallback, final
-    MultiPartMIMEReader.SinglePartMIMEReader singlePartMIMEReader) {
-      _topLevelCallback = topLevelCallback;
-      _singlePartMIMEReader = singlePartMIMEReader;
-      log.info("The headers for the current part " + partCounter + " are: ");
-      log.info(singlePartMIMEReader.getHeaders().toString());
-    }
+    final MultiPartMIMEWriter multiPartMIMEWriter =
+        new MultiPartMIMEWriter.MultiPartMIMEWriterBuilder("preamble", "epilogue").appendDataSource(simpleDataSource).build();
 
-    @Override
-    public void onPartDataAvailable(ByteString b) {
-      log.info("Just received " + b.length() + " byte(s) on the single part reader callback for part number " + partCounter);
-      _singlePartMIMEReader.requestPartData();
-    }
+    //final AtomicReference
+    final FutureCallback<ByteString> futureCallback = new FutureCallback<ByteString>();
+    final FullEntityReader fullEntityReader = new FullEntityReader(futureCallback);
+    multiPartMIMEWriter.getEntityStream().setReader(fullEntityReader);
+    futureCallback.get(TEST_TIMEOUT, TimeUnit.MILLISECONDS);
 
-    @Override
-    public void onFinished() {
-      log.info("Part " + partCounter++ + " is done!");
-    }
+    //todo this may change
+    final StreamRequest multiPartMIMEStreamRequest = new MultiPartMIMEStreamRequestBuilder(URI.create("localhost"),
+        "mixed", multiPartMIMEWriter, Collections.<String, String>emptyMap()).build();
 
-    //Delegate to the top level for now for these two
-    @Override
-    public void onAbandoned() {
-      _topLevelCallback.onAbandoned();
-    }
+    JavaxMailMultiPartMIMEReader javaxMailMultiPartMIMEReader =
+        new JavaxMailMultiPartMIMEReader(multiPartMIMEStreamRequest.getHeader(MultiPartMIMEUtils.CONTENT_TYPE_HEADER),
+            futureCallback.get());
+    javaxMailMultiPartMIMEReader.parseRequestIntoParts();
 
-    @Override
-    public void onStreamError(Throwable e) {
-      _topLevelCallback.onStreamError(e);
+
+    List<MultiPartMIMEDataPartImpl> dataSourceList = javaxMailMultiPartMIMEReader._dataSourceList;
+
+    Assert.assertEquals(dataSourceList.size(), 1);
+    Assert.assertEquals(dataSourceList.get(0), expectedMultiPartMIMEDataPart);
+
+  }
+
+
+  @Test
+  public void testMultipleDataSources() throws Exception {
+
+    final List<MultiPartMIMEDataPartImpl> expectedParts = new ArrayList<MultiPartMIMEDataPartImpl>();
+    expectedParts.add(normalBody);
+    expectedParts.add(normalBody);
+    expectedParts.add(headerLessBody);
+    expectedParts.add(normalBody);
+    expectedParts.add(bodyLessBody);
+    expectedParts.add(headerLessBody);
+    expectedParts.add(headerLessBody);
+    expectedParts.add(headerLessBody);
+    expectedParts.add(normalBody);
+    expectedParts.add(bodyLessBody);
+
+    final List<MultiPartMIMEDataSource> inputStreamDataSources = new ArrayList<MultiPartMIMEDataSource>();
+    inputStreamDataSources.add(new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(normalBodyData), scheduledExecutorService, normalBodyHeaders).build());
+    inputStreamDataSources.add(new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(normalBodyData), scheduledExecutorService, normalBodyHeaders).build());
+    inputStreamDataSources.add(new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(headerLessBodyData), scheduledExecutorService, Collections.<String, String>emptyMap()).build());
+    inputStreamDataSources.add(new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(normalBodyData), scheduledExecutorService, normalBodyHeaders).build());
+    inputStreamDataSources.add(new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(new byte[0]), scheduledExecutorService, bodyLessHeaders).build());
+    inputStreamDataSources.add(new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(headerLessBodyData), scheduledExecutorService, Collections.<String, String>emptyMap()).build());
+    inputStreamDataSources.add(new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(headerLessBodyData), scheduledExecutorService, Collections.<String, String>emptyMap()).build());
+    inputStreamDataSources.add(new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(headerLessBodyData), scheduledExecutorService, Collections.<String, String>emptyMap()).build());
+    inputStreamDataSources.add(new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(normalBodyData), scheduledExecutorService, normalBodyHeaders).build());
+    inputStreamDataSources.add(new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(new byte[0]), scheduledExecutorService, bodyLessHeaders).build());
+
+    final MultiPartMIMEWriter multiPartMIMEWriter =
+        new MultiPartMIMEWriter.MultiPartMIMEWriterBuilder("preamble", "epilogue").appendDataSources(inputStreamDataSources).build();
+
+    final FutureCallback<ByteString> futureCallback = new FutureCallback<ByteString>();
+    final FullEntityReader fullEntityReader = new FullEntityReader(futureCallback);
+    multiPartMIMEWriter.getEntityStream().setReader(fullEntityReader);
+    futureCallback.get(TEST_TIMEOUT, TimeUnit.MILLISECONDS);
+
+    //todo this may change
+    final StreamRequest multiPartMIMEStreamRequest = new MultiPartMIMEStreamRequestBuilder(URI.create("localhost"),
+        "mixed", multiPartMIMEWriter, Collections.<String, String>emptyMap()).build();
+
+    JavaxMailMultiPartMIMEReader javaxMailMultiPartMIMEReader =
+        new JavaxMailMultiPartMIMEReader(multiPartMIMEStreamRequest.getHeader(MultiPartMIMEUtils.CONTENT_TYPE_HEADER),
+            futureCallback.get());
+    javaxMailMultiPartMIMEReader.parseRequestIntoParts();
+
+
+    List<MultiPartMIMEDataPartImpl> dataSourceList = javaxMailMultiPartMIMEReader._dataSourceList;
+
+    Assert.assertEquals(dataSourceList.size(), 10);
+    for (int i = 0;i<dataSourceList.size(); i++) {
+      Assert.assertEquals(dataSourceList.get(i), expectedParts.get(i));
     }
 
   }
 
-  private static class TestMultiPartMIMEReaderCallbackImpl implements MultiPartMIMEReaderCallback {
 
-    final Callback<StreamResponse> _r2callback;
 
-    @Override
-    public void onNewPart(MultiPartMIMEReader.SinglePartMIMEReader singleParMIMEReader) {
-      SinglePartMIMEReaderCallback singlePartMIMEReaderCallback = new TestSinglePartMIMEReaderCallbackImpl(this, singleParMIMEReader);
-      singleParMIMEReader.registerReaderCallback(singlePartMIMEReaderCallback);
-      singleParMIMEReader.requestPartData();
-    }
-
-    @Override
-    public void onFinished() {
-      log.info("All parts finished for the request!");
-      RestResponse response = RestStatus.responseForStatus(RestStatus.OK, "");
-      _r2callback.onSuccess(Messages.toStreamResponse(response));
-    }
-
-    @Override
-    public void onAbandoned() {
-      RestException restException = new RestException(RestStatus.responseForStatus(406, "Not Acceptable"));
-      _r2callback.onError(restException);
-    }
-
-    @Override
-    public void onStreamError(Throwable e) {
-      RestException restException = new RestException(RestStatus.responseForError(400, e));
-      _r2callback.onError(restException);
-
-    }
-
-    TestMultiPartMIMEReaderCallbackImpl(final Callback<StreamResponse> r2callback) {
-      _r2callback = r2callback;
-    }
-  }
-
-  private static class MimeServerRequestHandler implements StreamRequestHandler
+  private static class JavaxMailMultiPartMIMEReader
   {
-    private MultiPartMIMEReader _reader;
+    final String _contentTypeHeaderValue;
+    final ByteString _payload;
 
-    MimeServerRequestHandler()
-    {}
+    final List<MultiPartMIMEDataPartImpl> _dataSourceList = new ArrayList<MultiPartMIMEDataPartImpl>();
 
-    @Override
-    public void handleRequest(StreamRequest request, RequestContext requestContext, final Callback<StreamResponse> callback)
+    private JavaxMailMultiPartMIMEReader(final String contentTypeHeaderValue, final ByteString paylaod)
     {
-      try {
-        //todo assert the request has multipart content type
-        _reader = MultiPartMIMEReader.createAndAcquireStream(request);
-        final MultiPartMIMEReaderCallback testMultiPartMIMEReaderCallback = new TestMultiPartMIMEReaderCallbackImpl(callback);
-        _reader.registerReaderCallback(testMultiPartMIMEReaderCallback);
-      } catch (IllegalMimeFormatException illegalMimeFormatException) {
-        RestException restException = new RestException(RestStatus.responseForError(400, illegalMimeFormatException));
-        callback.onError(restException);      }
+      _contentTypeHeaderValue = contentTypeHeaderValue;
+      _payload = paylaod;
+    }
+
+    @SuppressWarnings("rawtypes")
+    private void parseRequestIntoParts()
+    {
+      final DataSource dataSource = new DataSource()
+      {
+        @Override
+        public InputStream getInputStream() throws IOException
+        {
+          return new ByteArrayInputStream(_payload.copyBytes());
+        }
+
+        @Override
+        public OutputStream getOutputStream() throws IOException
+        {
+          return null;
+        }
+
+        @Override
+        public String getContentType()
+        {
+          return _contentTypeHeaderValue;
+        }
+
+        @Override
+        public String getName()
+        {
+          return null;
+        }
+      };
+
+      try
+      {
+        final MimeMultipart mimeBody = new MimeMultipart(dataSource);
+        for (int i = 0; i < mimeBody.getCount(); i++)
+        {
+          final BodyPart bodyPart = mimeBody.getBodyPart(i);
+          try
+          {
+            //For our purposes, javax mail converts the body part's content (based on headers) into a string
+            final ByteString partData = ByteString.copyString((String) bodyPart.getContent(), Charset.defaultCharset());
+
+            final Map<String, String> partHeaders = new HashMap<String, String>();
+            final Enumeration allHeaders = bodyPart.getAllHeaders();
+            while (allHeaders.hasMoreElements())
+            {
+              final Header header = (Header) allHeaders.nextElement();
+              partHeaders.put(header.getName(), header.getValue());
+            }
+            final MultiPartMIMEDataPartImpl tempDataSource = new MultiPartMIMEDataPartImpl(partData, partHeaders);
+            _dataSourceList.add(tempDataSource);
+          }
+          catch (Exception exception)
+          {
+            Assert.fail("Failed to read body content due to " + exception);
+          }
+        }
+      }
+      catch (MessagingException messagingException)
+      {
+        Assert.fail("Failed to read in request multipart mime body");
+      }
     }
   }
 
+  public static class MultiPartMIMEDataPartImpl
+  {
+    final ByteString _partData;
+    final Map<String, String> _headers;
 
+    public MultiPartMIMEDataPartImpl(final ByteString partData, final Map<String, String> headers)
+    {
+      if (partData == null)
+      {
+        _partData = ByteString.empty();
+      }
+      else
+      {
+        _partData = partData;
+      }
+      _headers = headers;
+    }
+
+    public ByteString getPartData()
+    {
+      return _partData;
+    }
+
+    public Map<String, String> getPartHeaders()
+    {
+      return _headers;
+    }
+
+    @Override
+    public boolean equals(Object o)
+    {
+      if (this == o)
+      {
+        return true;
+      }
+
+      if (!(o instanceof MultiPartMIMEDataPartImpl))
+      {
+        return false;
+      }
+
+      final MultiPartMIMEDataPartImpl that = (MultiPartMIMEDataPartImpl) o;
+
+      if(!_headers.equals(that.getPartHeaders()))
+      {
+        return false;
+      }
+
+      if(!_partData.equals(that.getPartData()))
+      {
+        return false;
+      }
+
+      return true;
+    }
+
+    @Override
+    public int hashCode()
+    {
+      int result = _partData != null ? _partData.hashCode() : 0;
+      result = 31 * result + (_headers != null ? _headers.hashCode() : 0);
+      return result;
+    }
+  }
 
 }

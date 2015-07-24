@@ -3,6 +3,7 @@ package com.linkedin.multipart;
 import com.linkedin.common.callback.Callback;
 import com.linkedin.data.ByteString;
 import com.linkedin.multipart.reader.exceptions.IllegalMimeFormatException;
+import com.linkedin.multipart.reader.exceptions.StreamFinishedException;
 import com.linkedin.r2.filter.R2Constants;
 import com.linkedin.r2.message.rest.StreamRequest;
 import com.linkedin.r2.message.streaming.EntityStream;
@@ -34,7 +35,7 @@ import org.testng.annotations.BeforeTest;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import static com.linkedin.multipart.DataSources.*;
+import static com.linkedin.multipart.DataSources.HEADER_CONTENT_TYPE;
 import static com.linkedin.multipart.DataSources._bodyLessBody;
 import static com.linkedin.multipart.DataSources._smallDataSource;
 import static org.mockito.Matchers.isA;
@@ -212,6 +213,13 @@ public class TestMultiPartMimeReaderExceptions {
         singlePartMIMEReaderCallbacks.get(singlePartMIMEReaderCallbacks.size() - 1);
     Assert.assertNull(singlePartMIMEAbandonReaderCallback._finishedData);
     Assert.assertTrue(singlePartMIMEAbandonReaderCallback._streamError instanceof IllegalMimeFormatException);
+
+    try {
+      singlePartMIMEAbandonReaderCallback._singlePartMIMEReader.requestPartData();
+      Assert.fail();
+    } catch (StreamFinishedException streamFinishedException) {
+      //pass
+    }
   }
 
 
@@ -363,7 +371,7 @@ public class TestMultiPartMimeReaderExceptions {
 
 
 
-
+//todo you don't need the callback, just pass the latch to the top level reader callback directly!!!
 
   ///////////////////////////////////////////////////////////////////////////////////////
 
@@ -470,7 +478,13 @@ public class TestMultiPartMimeReaderExceptions {
     Assert.assertEquals(throwable.get().getMessage(), desiredExceptionMessage);
 
 
-
+    //Verify these are unusable.
+    try {
+      reader.abandonAllParts();
+      Assert.fail();
+    } catch (StreamFinishedException streamFinishedException) {
+      //pass
+    }
 
 
     //mock verifies

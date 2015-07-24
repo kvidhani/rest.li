@@ -2,6 +2,7 @@ package com.linkedin.multipart;
 
 import com.linkedin.common.callback.Callback;
 import com.linkedin.data.ByteString;
+import com.linkedin.multipart.reader.exceptions.StreamFinishedException;
 import com.linkedin.r2.filter.R2Constants;
 import com.linkedin.r2.message.rest.RestException;
 import com.linkedin.r2.message.rest.RestStatus;
@@ -162,7 +163,7 @@ public class TestMultiPartMIMEReaderAbandon {
 
             Assert.assertEquals(currentCallback._headers, expectedHeaders);
             //Verify that the bodies are empty
-            Assert.assertEquals(currentCallback._finishedData, ByteString.empty());
+            Assert.assertNull(currentCallback._finishedData);
         }
     }
 
@@ -226,7 +227,7 @@ public class TestMultiPartMIMEReaderAbandon {
 
             Assert.assertEquals(currentCallback._headers, expectedHeaders);
             //Verify that the bodies are empty
-            Assert.assertEquals(currentCallback._finishedData, ByteString.empty());
+            Assert.assertNull(currentCallback._finishedData, null);
         }
     }
 
@@ -261,7 +262,7 @@ public class TestMultiPartMIMEReaderAbandon {
 
             Assert.assertEquals(currentCallback._headers, expectedHeaders);
             //Verify that the bodies are empty
-            Assert.assertEquals(currentCallback._finishedData, ByteString.empty());
+            Assert.assertNull(currentCallback._finishedData);
         }
     }
 
@@ -326,7 +327,7 @@ public class TestMultiPartMIMEReaderAbandon {
 
             Assert.assertEquals(currentCallback._headers, expectedHeaders);
             //Verify that the bodies are empty
-            Assert.assertEquals(currentCallback._finishedData, ByteString.empty());
+            Assert.assertNull(currentCallback._finishedData);
         }
     }
 
@@ -448,8 +449,17 @@ public class TestMultiPartMIMEReaderAbandon {
         Assert.assertEquals(_currentMultiPartMIMEReaderCallback._responseHeaders.get(ABANDON_HEADER), serverHeaderPrefix + abandonStrategy);
 
 
-      //mock verifies
+      try {
+        reader.abandonAllParts();
+        Assert.fail();
+      } catch (StreamFinishedException streamFinishedException) {
+        //pass
+      }
 
+      Assert.assertTrue(reader.haveAllPartsFinished());
+
+
+      //mock verifies
       verify(streamRequest, times(1)).getEntityStream();
       verify(streamRequest, times(1)).getHeader(HEADER_CONTENT_TYPE);
       verify(entityStream, times(1)).setReader(isA(MultiPartMIMEReader.R2MultiPartMIMEReader.class));
