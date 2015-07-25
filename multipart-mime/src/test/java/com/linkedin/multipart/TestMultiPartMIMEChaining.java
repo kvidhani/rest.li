@@ -15,6 +15,9 @@ public class TestMultiPartMIMEChaining {
 
 
   //1. Echo MM reader. Server gets a MM reader and simply sends it back.
+  //A. Echo single.
+  //B. Chain a single to another server
+  //C. Chain a MM to another server.
 
   //2. Client sends a MM request. On the server we append a few local input streams and tag on the MM and send that down without
   //even reading. Verify the server gets everything.
