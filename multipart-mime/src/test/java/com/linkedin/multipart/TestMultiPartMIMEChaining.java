@@ -3,7 +3,7 @@ package com.linkedin.multipart;
 /**
  * Created by kvidhani on 7/22/15.
  */
-public class MultiPartMIMEChainingTests {
+public class TestMultiPartMIMEChaining {
 
 
     //todo change the name fo this file
@@ -12,6 +12,8 @@ public class MultiPartMIMEChainingTests {
     //from:
     //multipart mime reader callback:
     //onNewPart both in the main logic and also in callback registration
+
+  
 
 
 }

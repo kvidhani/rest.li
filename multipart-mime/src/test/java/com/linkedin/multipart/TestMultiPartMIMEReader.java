@@ -46,6 +46,8 @@ import static org.mockito.Mockito.*;
 //todo for all your tests have a global latch timeout
   //better yet switch all your tests to use FutureCallback with a timeout
 //test to make sure you can get the premable
+
+  //todo you can move the data sources into the tests here... clean up
 public class TestMultiPartMIMEReader {
 
   private static int TEST_TIMEOUT = 60000;

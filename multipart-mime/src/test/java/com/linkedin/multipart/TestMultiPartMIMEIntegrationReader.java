@@ -46,41 +46,19 @@ import static com.linkedin.multipart.DataSources.*;
 //Areas to test (DOUBLE CHECK ALL OF THIS IS DONE BEFORE RB):
 //look for remaining todos in tests
 
-//the writer
-//-various data sources, input stream data source
-//read using javax mail
 
-//the reader
-// write using javax and read using our stuff
-// make sure all areas of the code are exercised
-//todo epligous and prologus and all the stuff
-//exceptions and abandons and what not...
-//verify you can retrieve the preamble
-//exception tests should cover all possible exceptions in multipart mime reader
-
-//reader AND writer together to stream between the two
-//Make sure you do server sending back and client processing too
-//you can use the data sources from your sync MIME rb
 
 //chaining
 //exceptions thrown in the middle of chaining
 //abandoning parts coming in from a chain
 
-//Exceptions
-// - cancellations, aborts, exceptions in chain scenarios
-//poorly formatted data on reader stide
 
-//Thread safety stuff and race conditions
 
 //multipart mime utils
 
-//input stream class you wrote testing
 
 //Stream request, stream response builder
 
-//CHANGE R2 SO THAT IT ONLY PROVIDES VERY FEW BYTES ON WRITE?
-
-//consider writing unit tests? is that feasible?
 
 //todo open a jira so that we can consider tirmming folded headers after they are parsed in
 //Note that we use javax.mail's ability to create multipart mime requests to verify the integrity of our RFC implementation.
