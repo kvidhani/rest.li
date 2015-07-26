@@ -20,8 +20,10 @@ public class MultiPartMIMEChainReaderCallback implements MultiPartMIMEReaderCall
 
   @Override
   public void onNewPart(MultiPartMIMEReader.SinglePartMIMEReader singlePartMIMEReader) {
+
+    //When each single part finishes we don't say to the write handle we are done yet.
     final SinglePartMIMEReaderCallback singlePartMIMEChainReader =
-        new SinglePartMIMEChainReaderCallback(_writeHandle, singlePartMIMEReader);
+        new SinglePartMIMEChainReaderCallback(_writeHandle, singlePartMIMEReader, false);
     _currentSinglePartReader = singlePartMIMEReader;
     singlePartMIMEReader.registerReaderCallback(singlePartMIMEChainReader);
 

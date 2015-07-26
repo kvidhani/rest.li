@@ -1,4 +1,4 @@
-package com.linkedin.multipart;
+package com.linkedin.multipart.integ;
 
 import com.linkedin.common.callback.Callback;
 import com.linkedin.r2.message.rest.StreamResponse;

@@ -1077,8 +1077,6 @@ public final class MultiPartMIMEReader {
     private final R2MultiPartMIMEReader _r2MultiPartMIMEReader;
     private volatile SingleReaderState _singleReaderState = SingleReaderState.CREATED;
 
-
-
     //Only MultiPartMIMEReader should ever create an instance
     /** Package private for testing*/ SinglePartMIMEReader(Map<String, String> headers) {
       _r2MultiPartMIMEReader = MultiPartMIMEReader.this._reader;
@@ -1187,7 +1185,7 @@ public final class MultiPartMIMEReader {
       //2. Creating a callback to register ourselves with.
       _writeHandle = writeHandle;
       SinglePartMIMEReaderCallback singlePartMIMEChainReaderCallback =
-          new SinglePartMIMEChainReaderCallback(writeHandle, this);
+          new SinglePartMIMEChainReaderCallback(writeHandle, this, true);
       registerReaderCallback(singlePartMIMEChainReaderCallback);
     }
 

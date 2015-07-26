@@ -2,6 +2,7 @@ package com.linkedin.multipart;
 
 import com.linkedin.common.callback.Callback;
 import com.linkedin.data.ByteString;
+import com.linkedin.multipart.integ.AbstractMultiPartMIMEIntegrationStreamTest;
 import com.linkedin.multipart.reader.exceptions.IllegalMimeFormatException;
 import com.linkedin.r2.filter.R2Constants;
 import com.linkedin.r2.message.RequestContext;

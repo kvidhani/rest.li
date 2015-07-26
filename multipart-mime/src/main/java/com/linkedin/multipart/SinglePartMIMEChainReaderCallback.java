@@ -1,16 +1,23 @@
 package com.linkedin.multipart;
 
 import com.linkedin.data.ByteString;
+import com.linkedin.multipart.MultiPartMIMEReader;
+import com.linkedin.multipart.SinglePartMIMEReaderCallback;
 import com.linkedin.r2.message.streaming.WriteHandle;
 
 
 /**
  * Created by kvidhani on 7/2/15.
  */
+//This class has two uses.
+  //It can be used when chaining along a SinglePartMIMEReader. In such a case we close the write handle.
+  //It can also be used by the MultiPartMIMEChainReaderCallback when an entire
+  //MultiPartMIMEReader is chained along. In such a case ethe write handle does not close on finish.
 public class SinglePartMIMEChainReaderCallback implements SinglePartMIMEReaderCallback {
 
   private final WriteHandle _writeHandle;
   private final MultiPartMIMEReader.SinglePartMIMEReader _singlePartMIMEReader;
+  private final boolean _doneOnFinished;
 
   @Override
   public void onPartDataAvailable(ByteString b) {
@@ -23,7 +30,9 @@ public class SinglePartMIMEChainReaderCallback implements SinglePartMIMEReaderCa
 
   @Override
   public void onFinished() {
-    _writeHandle.done();
+    if (_doneOnFinished) {
+      _writeHandle.done();
+    }
   }
 
   @Override
@@ -44,8 +53,10 @@ public class SinglePartMIMEChainReaderCallback implements SinglePartMIMEReaderCa
   }
 
   public SinglePartMIMEChainReaderCallback(final WriteHandle writeHandle,
-                                           final MultiPartMIMEReader.SinglePartMIMEReader singlePartMIMEReader) {
+                                           final MultiPartMIMEReader.SinglePartMIMEReader singlePartMIMEReader,
+                                           final boolean doneOnFinished) {
     _singlePartMIMEReader = singlePartMIMEReader;
     _writeHandle = writeHandle;
+    _doneOnFinished = doneOnFinished;
   }
 }

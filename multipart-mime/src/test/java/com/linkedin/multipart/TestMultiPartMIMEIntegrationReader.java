@@ -2,6 +2,7 @@ package com.linkedin.multipart;
 
 import com.linkedin.common.callback.Callback;
 import com.linkedin.data.ByteString;
+import com.linkedin.multipart.integ.AbstractMultiPartMIMEIntegrationStreamTest;
 import com.linkedin.multipart.reader.exceptions.IllegalMimeFormatException;
 import com.linkedin.r2.filter.R2Constants;
 import com.linkedin.r2.message.RequestContext;
@@ -66,6 +67,10 @@ import static com.linkedin.multipart.DataSources.*;
 //todo move data sources into one location
 
 //stay consistent with the use of parts vs bodies
+
+
+//tell ang and zhenkai about abort on composite writer
+//the bug in the multiple chaining stuff
 
 public class TestMultiPartMIMEIntegrationReader extends AbstractMultiPartMIMEIntegrationStreamTest {
 
