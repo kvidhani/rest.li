@@ -90,22 +90,22 @@ public class TestMIMEChainingSinglePart {
     public void testSinglePartDataSource(final int chunkSize) throws Exception {
 
         final MultiPartMIMEInputStream bodyADataSource =
-                new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_bodyA._partData.copyBytes()), scheduledExecutorService, _bodyA._headers)
+                new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_bodyA.getPartData().copyBytes()), scheduledExecutorService, _bodyA.getPartHeaders())
                         .withWriteChunkSize(chunkSize)
                         .build();
 
         final MultiPartMIMEInputStream bodyBDataSource =
-                new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_bodyB._partData.copyBytes()), scheduledExecutorService, _bodyB._headers)
+                new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_bodyB.getPartData().copyBytes()), scheduledExecutorService, _bodyB.getPartHeaders())
                         .withWriteChunkSize(chunkSize)
                         .build();
 
         final MultiPartMIMEInputStream bodyCDataSource =
-                new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_bodyC._partData.copyBytes()), scheduledExecutorService, _bodyC._headers)
+                new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_bodyC.getPartData().copyBytes()), scheduledExecutorService, _bodyC.getPartHeaders())
                         .withWriteChunkSize(chunkSize)
                         .build();
 
         final MultiPartMIMEInputStream bodyDDataSource =
-                new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_bodyD._partData.copyBytes()), scheduledExecutorService, _bodyD._headers)
+                new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_bodyD.getPartData().copyBytes()), scheduledExecutorService, _bodyD.getPartHeaders())
                         .withWriteChunkSize(chunkSize)
                         .build();
 

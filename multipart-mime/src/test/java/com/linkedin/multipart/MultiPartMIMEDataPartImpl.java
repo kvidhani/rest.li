@@ -9,8 +9,8 @@ import java.util.Map;
  */
 public class MultiPartMIMEDataPartImpl
 {
-  final ByteString _partData;
-  final Map<String, String> _headers;
+  private final ByteString _partData;
+  private final Map<String, String> _headers;
 
   public MultiPartMIMEDataPartImpl(final ByteString partData, final Map<String, String> headers)
   {

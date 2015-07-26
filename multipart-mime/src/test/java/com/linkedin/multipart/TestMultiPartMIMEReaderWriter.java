@@ -155,7 +155,7 @@ public class TestMultiPartMIMEReaderWriter extends AbstractMultiPartMIMEIntegrat
     public void testEachSingleBodyDataSource(final int chunkSize, final MultiPartMIMEDataPartImpl bodyPart) throws Exception {
 
         final MultiPartMIMEInputStream inputStreamDataSource =
-                new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(bodyPart._partData.copyBytes()), scheduledExecutorService, bodyPart._headers)
+                new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(bodyPart.getPartData().copyBytes()), scheduledExecutorService, bodyPart.getPartHeaders())
                         .withWriteChunkSize(chunkSize)
                         .build();
 
@@ -172,8 +172,8 @@ public class TestMultiPartMIMEReaderWriter extends AbstractMultiPartMIMEIntegrat
         final List<MultiPartMIMEDataSource> dataSources = new ArrayList<MultiPartMIMEDataSource>();
         for (int i = 0; i < 4; i++) {
             final MultiPartMIMEInputStream inputStreamDataSource =
-                    new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(bodyPart._partData.copyBytes()),
-                            scheduledExecutorService, bodyPart._headers).withWriteChunkSize(chunkSize).build();
+                    new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(bodyPart.getPartData().copyBytes()),
+                            scheduledExecutorService, bodyPart.getPartHeaders()).withWriteChunkSize(chunkSize).build();
             dataSources.add(inputStreamDataSource);
         }
 
@@ -197,23 +197,23 @@ public class TestMultiPartMIMEReaderWriter extends AbstractMultiPartMIMEIntegrat
     @Test(dataProvider = "chunkSizes")
     public void testMultipleBodies(final int chunkSize) throws Exception {
         final MultiPartMIMEInputStream normalBodyInputStream =
-                new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_normalBody._partData.copyBytes()), scheduledExecutorService, _normalBody._headers)
+                new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_normalBody.getPartData().copyBytes()), scheduledExecutorService, _normalBody.getPartHeaders())
                         .withWriteChunkSize(chunkSize)
                         .build();
 
         final MultiPartMIMEInputStream headerLessBodyInputStream =
-                new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_headerLessBody._partData.copyBytes()), scheduledExecutorService, _headerLessBody._headers)
+                new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_headerLessBody.getPartData().copyBytes()), scheduledExecutorService, _headerLessBody.getPartHeaders())
                         .withWriteChunkSize(chunkSize)
                         .build();
 
         //Copying over empty ByteString, but let's keep things consistent.
         final MultiPartMIMEInputStream bodyLessBodyInputStream =
-                new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_bodyLessBody._partData.copyBytes()), scheduledExecutorService, _bodyLessBody._headers)
+                new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_bodyLessBody.getPartData().copyBytes()), scheduledExecutorService, _bodyLessBody.getPartHeaders())
                         .withWriteChunkSize(chunkSize)
                         .build();
 
         final MultiPartMIMEInputStream purelyEmptyBodyInputStream =
-                new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_purelyEmptyBody._partData.copyBytes()), scheduledExecutorService, _purelyEmptyBody._headers)
+                new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_purelyEmptyBody.getPartData().copyBytes()), scheduledExecutorService, _purelyEmptyBody.getPartHeaders())
                         .withWriteChunkSize(chunkSize)
                         .build();
 

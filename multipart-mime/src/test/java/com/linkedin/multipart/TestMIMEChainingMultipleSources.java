@@ -57,6 +57,7 @@ public class TestMIMEChainingMultipleSources {
     private Client _client;
     private Client _server_A_client;
     private CountDownLatch _latch;
+    private ServerAMultiPartCallback _serverAMultiPartCallback;
 
 
     private ScheduledExecutorService _scheduledExecutorService;
@@ -126,7 +127,6 @@ public class TestMIMEChainingMultipleSources {
         final byte[] localInputStreamBytes = "local input stream".getBytes();
         final Map<String, String> localInputStreamHeaders = ImmutableMap.of("local1", "local2");
         _localInputStreamBody = new MultiPartMIMEDataPartImpl(ByteString.copy(localInputStreamBytes), localInputStreamHeaders);
-
 
         _clientFactory = new HttpClientFactory();
         _client = new TransportClientAdapter(_clientFactory.getClient(Collections.<String, String>emptyMap()));
@@ -228,9 +228,9 @@ public class TestMIMEChainingMultipleSources {
             public void onSuccess(StreamResponse result) {
 
                 final MultiPartMIMEReader reader = MultiPartMIMEReader.createAndAcquireStream(result);
-                ServerAMultiPartCallback serverAMultiPartCallback =
+                 _serverAMultiPartCallback =
                         new ServerAMultiPartCallback(incomingRequest, incomingRequestCallback);
-                reader.registerReaderCallback(serverAMultiPartCallback);
+                reader.registerReaderCallback(_serverAMultiPartCallback);
 
             }
         };
@@ -297,7 +297,7 @@ public class TestMIMEChainingMultipleSources {
                 final MultiPartMIMEReader incomingRequestReader = MultiPartMIMEReader.createAndAcquireStream(_incomingRequest);
 
                 final MultiPartMIMEInputStream localInputStream =
-                        new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_localInputStreamBody._partData.copyBytes()), _scheduledExecutorService, _bodyC._headers)
+                        new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_localInputStreamBody.getPartData().copyBytes()), _scheduledExecutorService, _localInputStreamBody.getPartHeaders())
                                 .withWriteChunkSize(_chunkSize)
                                 .build();
 
@@ -355,22 +355,22 @@ public class TestMIMEChainingMultipleSources {
             try
             {
                 final MultiPartMIMEInputStream body1DataSource =
-                        new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_body1._partData.copyBytes()), _scheduledExecutorService, _body1._headers)
+                        new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_body1.getPartData().copyBytes()), _scheduledExecutorService, _body1.getPartHeaders())
                                 .withWriteChunkSize(_chunkSize)
                                 .build();
 
                 final MultiPartMIMEInputStream body2DataSource =
-                        new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_body2._partData.copyBytes()), _scheduledExecutorService, _body2._headers)
+                        new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_body2.getPartData().copyBytes()), _scheduledExecutorService, _body2.getPartHeaders())
                                 .withWriteChunkSize(_chunkSize)
                                 .build();
 
                 final MultiPartMIMEInputStream body3DataSource =
-                        new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_body3._partData.copyBytes()), _scheduledExecutorService, _body3._headers)
+                        new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_body3.getPartData().copyBytes()), _scheduledExecutorService, _body3.getPartHeaders())
                                 .withWriteChunkSize(_chunkSize)
                                 .build();
 
                 final MultiPartMIMEInputStream body4DataSource =
-                        new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_body4._partData.copyBytes()), _scheduledExecutorService, _body4._headers)
+                        new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_body4.getPartData().copyBytes()), _scheduledExecutorService, _body4.getPartHeaders())
                                 .withWriteChunkSize(_chunkSize)
                                 .build();
 
@@ -435,22 +435,22 @@ public class TestMIMEChainingMultipleSources {
         _chunkSize = chunkSize;
 
         final MultiPartMIMEInputStream bodyADataSource =
-                new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_bodyA._partData.copyBytes()), _scheduledExecutorService, _bodyA._headers)
+                new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_bodyA.getPartData().copyBytes()), _scheduledExecutorService, _bodyA.getPartHeaders())
                         .withWriteChunkSize(chunkSize)
                         .build();
 
         final MultiPartMIMEInputStream bodyBDataSource =
-                new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_bodyB._partData.copyBytes()), _scheduledExecutorService, _bodyB._headers)
+                new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_bodyB.getPartData().copyBytes()), _scheduledExecutorService, _bodyB.getPartHeaders())
                         .withWriteChunkSize(chunkSize)
                         .build();
 
         final MultiPartMIMEInputStream bodyCDataSource =
-                new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_bodyC._partData.copyBytes()), _scheduledExecutorService, _bodyC._headers)
+                new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_bodyC.getPartData().copyBytes()), _scheduledExecutorService, _bodyC.getPartHeaders())
                         .withWriteChunkSize(chunkSize)
                         .build();
 
         final MultiPartMIMEInputStream bodyDDataSource =
-                new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_bodyD._partData.copyBytes()), _scheduledExecutorService, _bodyD._headers)
+                new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_bodyD.getPartData().copyBytes()), _scheduledExecutorService, _bodyD.getPartHeaders())
                         .withWriteChunkSize(chunkSize)
                         .build();
 
@@ -468,9 +468,9 @@ public class TestMIMEChainingMultipleSources {
         final StreamRequest multiPartMIMEStreamRequest = new MultiPartMIMEStreamRequestBuilder(Bootstrap.createHttpsURI(PORT_SERVER_A, SERVER_A_URI),
                 "mixed", writer, Collections.<String, String>emptyMap()).build();
 
-        ClientMultiPartMIMEReaderEchoReceiver _clientReceiver =
+        ClientMultiPartMIMEReaderEchoReceiver clientReceiver =
                 new ClientMultiPartMIMEReaderEchoReceiver();
-        Callback<StreamResponse> callback = expectSuccessChainCallback(_clientReceiver);
+        Callback<StreamResponse> callback = expectSuccessChainCallback(clientReceiver);
 
         //Send the request to Server A
         _client.streamRequest(multiPartMIMEStreamRequest, callback);
@@ -479,22 +479,32 @@ public class TestMIMEChainingMultipleSources {
         _latch.await(60000, TimeUnit.MILLISECONDS);
 
         //Verify client
-        Assert.assertEquals(_clientReceiver._singlePartMIMEReaderCallbacks.size(), 6);
-        //Assert.assertEquals(_clientReceiver._singlePartMIMEReaderCallbacks.get(0)._finishedData, _bodyA.getPartData());
-        //Assert.assertEquals(_clientReceiver._singlePartMIMEReaderCallbacks.get(0)._headers, _bodyA.getPartHeaders());
+        List<ClientSinglePartMIMEReaderEchoReceiver> clientSinglePartCallbacks = clientReceiver._singlePartMIMEReaderCallbacks;
+        Assert.assertEquals(clientReceiver._singlePartMIMEReaderCallbacks.size(), 6);
+        Assert.assertEquals(clientSinglePartCallbacks.get(0)._finishedData, _body1.getPartData());
+        Assert.assertEquals(clientSinglePartCallbacks.get(0)._headers, _body1.getPartHeaders());
+        Assert.assertEquals(clientSinglePartCallbacks.get(1)._finishedData, _localInputStreamBody.getPartData());
+        Assert.assertEquals(clientSinglePartCallbacks.get(1)._headers, _localInputStreamBody.getPartHeaders());
+        Assert.assertEquals(clientSinglePartCallbacks.get(2)._finishedData, _bodyA.getPartData());
+        Assert.assertEquals(clientSinglePartCallbacks.get(2)._headers, _bodyA.getPartHeaders());
+        Assert.assertEquals(clientSinglePartCallbacks.get(3)._finishedData, _bodyB.getPartData());
+        Assert.assertEquals(clientSinglePartCallbacks.get(3)._headers, _bodyB.getPartHeaders());
+        Assert.assertEquals(clientSinglePartCallbacks.get(4)._finishedData, _bodyC.getPartData());
+        Assert.assertEquals(clientSinglePartCallbacks.get(4)._headers, _bodyC.getPartHeaders());
+        Assert.assertEquals(clientSinglePartCallbacks.get(5)._finishedData, _bodyD.getPartData());
+        Assert.assertEquals(clientSinglePartCallbacks.get(5)._headers, _bodyD.getPartHeaders());
 
-        //Verify server
-        //List<ServerSinglePartMIMEReader> singlePartMIMEReaderCallbacks =
-        //        _serverSender._singlePartMIMEReaderCallbacks;
-        /*
-        Assert.assertEquals(singlePartMIMEReaderCallbacks.size(), 3);
-        Assert.assertEquals(singlePartMIMEReaderCallbacks.get(0)._finishedData, _bodyB.getPartData());
-        Assert.assertEquals(singlePartMIMEReaderCallbacks.get(0)._headers, _bodyB.getPartHeaders());
-        Assert.assertEquals(singlePartMIMEReaderCallbacks.get(1)._finishedData, _bodyC.getPartData());
-        Assert.assertEquals(singlePartMIMEReaderCallbacks.get(1)._headers, _bodyC.getPartHeaders());
-        Assert.assertEquals(singlePartMIMEReaderCallbacks.get(2)._finishedData, _bodyD.getPartData());
-        Assert.assertEquals(singlePartMIMEReaderCallbacks.get(2)._headers, _bodyD.getPartHeaders());
-        */
+        //Verify Server A
+        List<ServerASinglePartCallback> serverASinglePartCallbacks = _serverAMultiPartCallback._singlePartMIMEReaderCallbacks;
+        Assert.assertEquals(serverASinglePartCallbacks.size(), 3);
+        Assert.assertEquals(serverASinglePartCallbacks.get(0)._finishedData, _body2.getPartData());
+        Assert.assertEquals(serverASinglePartCallbacks.get(0)._headers, _body2.getPartHeaders());
+        Assert.assertEquals(serverASinglePartCallbacks.get(1)._finishedData, _body3.getPartData());
+        Assert.assertEquals(serverASinglePartCallbacks.get(1)._headers, _body3.getPartHeaders());
+        Assert.assertEquals(serverASinglePartCallbacks.get(2)._finishedData, _body4.getPartData());
+        Assert.assertEquals(serverASinglePartCallbacks.get(2)._headers, _body4.getPartHeaders());
+
+
     }
 
     static Callback<StreamResponse> expectSuccessChainCallback(final ClientMultiPartMIMEReaderEchoReceiver receiver) {
