@@ -249,9 +249,9 @@ public class TestMIMEChainingMultipleSources {
         }
 
         @Override
-        public void onPartDataAvailable(ByteString b) {
+        public void onPartDataAvailable(ByteString partData) {
             try {
-                _byteArrayOutputStream.write(b.copyBytes());
+                _byteArrayOutputStream.write(partData.copyBytes());
             } catch (IOException ioException) {
                 onStreamError(ioException);
             }
@@ -271,7 +271,7 @@ public class TestMIMEChainingMultipleSources {
         }
 
         @Override
-        public void onStreamError(Throwable e) {
+        public void onStreamError(Throwable throwable) {
             Assert.fail();
         }
 
@@ -299,7 +299,7 @@ public class TestMIMEChainingMultipleSources {
                                 .build();
 
                 final MultiPartMIMEWriter writer =
-                        new MultiPartMIMEWriter.MultiPartMIMEWriterBuilder()
+                        new MultiPartMIMEWriter.Builder()
                                 .appendDataSource(singleParMIMEReader)
                                 .appendDataSource(localInputStream)
                                 .appendMultiPartDataSource(incomingRequestReader)
@@ -327,7 +327,7 @@ public class TestMIMEChainingMultipleSources {
         }
 
         @Override
-        public void onStreamError(Throwable e) {
+        public void onStreamError(Throwable throwable) {
             Assert.fail();
         }
 
@@ -378,7 +378,7 @@ public class TestMIMEChainingMultipleSources {
                 dataSources.add(body4DataSource);
 
                 final MultiPartMIMEWriter writer =
-                        new MultiPartMIMEWriter.MultiPartMIMEWriterBuilder()
+                        new MultiPartMIMEWriter.Builder()
                                 .appendDataSources(dataSources)
                                 .build();
 
@@ -458,7 +458,7 @@ public class TestMIMEChainingMultipleSources {
         dataSources.add(bodyDDataSource);
 
         final MultiPartMIMEWriter writer =
-                new MultiPartMIMEWriter.MultiPartMIMEWriterBuilder()
+                new MultiPartMIMEWriter.Builder()
                         .appendDataSources(dataSources)
                         .build();
 
@@ -536,9 +536,9 @@ public class TestMIMEChainingMultipleSources {
         }
 
         @Override
-        public void onPartDataAvailable(ByteString b) {
+        public void onPartDataAvailable(ByteString partData) {
             try {
-                _byteArrayOutputStream.write(b.copyBytes());
+                _byteArrayOutputStream.write(partData.copyBytes());
             } catch (IOException ioException) {
                 onStreamError(ioException);
             }
@@ -556,7 +556,7 @@ public class TestMIMEChainingMultipleSources {
         }
 
         @Override
-        public void onStreamError(Throwable e) {
+        public void onStreamError(Throwable throwable) {
             Assert.fail();
         }
 
@@ -588,7 +588,7 @@ public class TestMIMEChainingMultipleSources {
         }
 
         @Override
-        public void onStreamError(Throwable e) {
+        public void onStreamError(Throwable throwable) {
             Assert.fail();
         }
 

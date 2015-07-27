@@ -1,28 +1,35 @@
 package com.linkedin.multipart;
 
 /**
- * Created by kvidhani on 6/5/15.
+ * @author Karim Vidhani
+ *
+ * Used to register with {@link com.linkedin.multipart.MultiPartMIMEReader} to asynchronously
+ * drive through the reading of a multipart mime envelope.
  */
 public interface MultiPartMIMEReaderCallback {
-    //Upon construction of a MultiPartReader or upon a call to registerReaderCallback()
-    //inside of the MultiPartMIMEReader this callback will be invoked
-    //(if there are parts in this stream).
-    //If a part had just finished, meaning onCurrentPartSuccessfullyFinished() was invoked
-    //in the SinglePartMIMEReader callback, then this will be invoked if there are
-    //future parts available.
-    //Note that when this is called, it does not bind the callee to acquire and
-    //commit to reading this part. Only upon registering with the SinglePartMIMEReader (init())
-    //does the client then commit to reading that part.
+    /**
+     * Invoked (at some time in the future) upon a registration with a {@link com.linkedin.multipart.MultiPartMIMEReader}.
+     * Also invoked when previous parts are finished and new parts are available.
+     *
+     * @param singleParMIMEReader the SinglePartMIMEReader which can be used to walk through this part.
+     */
     public void onNewPart(MultiPartMIMEReader.SinglePartMIMEReader singleParMIMEReader);
 
-    //When the entire stream is finished
+    /**
+     * Invoked when this reader is finished and the multipart mime envelope has been completely read.
+     */
     public void onFinished();
 
-    //When all parts are abandoned
+    /**
+     * Invoked as a result of calling {@link MultiPartMIMEReader#abandonAllParts()}. This will be invoked
+     * at some time in the future when all the parts from this multipart mime envelope are abandoned.
+     */
     public void onAbandoned();
 
-    //When there is an error reading from the stream.
-    //todo mention that this may be called when chaining a single part
-  //Mention this can be called AT ANYTIME...because R2 may call this!
-    public void onStreamError(Throwable e);
+    /**
+     * Invoked when there was an error reading from the multipart envelope.
+     *
+     * @param throwable the Throwable that caused this to happen.
+     */
+    public void onStreamError(Throwable throwable);
 }

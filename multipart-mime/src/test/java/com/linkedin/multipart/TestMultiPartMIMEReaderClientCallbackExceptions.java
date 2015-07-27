@@ -2,7 +2,7 @@ package com.linkedin.multipart;
 
 import com.linkedin.data.ByteString;
 import com.linkedin.multipart.exceptions.PartFinishedException;
-import com.linkedin.multipart.exceptions.StreamFinishedException;
+import com.linkedin.multipart.exceptions.ReaderFinishedException;
 import com.linkedin.r2.filter.R2Constants;
 import com.linkedin.r2.message.rest.StreamRequest;
 import com.linkedin.r2.message.streaming.EntityStream;
@@ -107,7 +107,7 @@ public class TestMultiPartMIMEReaderClientCallbackExceptions {
     try {
       _currentMultiPartMIMEReaderCallback._reader.abandonAllParts();
       Assert.fail();
-    } catch (StreamFinishedException streamFinishedException) {
+    } catch (ReaderFinishedException readerFinishedException) {
       //pass
     }
   }
@@ -140,7 +140,7 @@ public class TestMultiPartMIMEReaderClientCallbackExceptions {
     try {
       _currentMultiPartMIMEReaderCallback._reader.abandonAllParts();
       Assert.fail();
-    } catch (StreamFinishedException streamFinishedException) {
+    } catch (ReaderFinishedException readerFinishedException) {
       //pass
     }
 
@@ -187,7 +187,7 @@ public class TestMultiPartMIMEReaderClientCallbackExceptions {
     try {
       _currentMultiPartMIMEReaderCallback._reader.abandonAllParts();
       Assert.fail();
-    } catch (StreamFinishedException streamFinishedException) {
+    } catch (ReaderFinishedException readerFinishedException) {
       //pass
     }
   }
@@ -231,7 +231,7 @@ public class TestMultiPartMIMEReaderClientCallbackExceptions {
     try {
       _currentMultiPartMIMEReaderCallback._reader.abandonAllParts();
       Assert.fail();
-    } catch (StreamFinishedException streamFinishedException) {
+    } catch (ReaderFinishedException readerFinishedException) {
       //pass
     }
 
@@ -274,7 +274,7 @@ public class TestMultiPartMIMEReaderClientCallbackExceptions {
     try {
       _currentMultiPartMIMEReaderCallback._reader.abandonAllParts();
       Assert.fail();
-    } catch (StreamFinishedException streamFinishedException) {
+    } catch (ReaderFinishedException readerFinishedException) {
       //pass
     }
 
@@ -314,7 +314,7 @@ public class TestMultiPartMIMEReaderClientCallbackExceptions {
     try {
       _currentMultiPartMIMEReaderCallback._reader.abandonAllParts();
       Assert.fail();
-    } catch (StreamFinishedException streamFinishedException) {
+    } catch (ReaderFinishedException readerFinishedException) {
       //pass
     }
     Assert.assertEquals(_currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.size(), 1);
@@ -438,7 +438,7 @@ public class TestMultiPartMIMEReaderClientCallbackExceptions {
     }
 
     @Override
-    public void onPartDataAvailable(ByteString b) {
+    public void onPartDataAvailable(ByteString partData) {
       if(throwOnPartDataAvailable) {
         throw new NullPointerException();
       } else if (throwOnAbandoned) {
@@ -464,8 +464,8 @@ public class TestMultiPartMIMEReaderClientCallbackExceptions {
     }
 
     @Override
-    public void onStreamError(Throwable e) {
-      _streamError = e;
+    public void onStreamError(Throwable throwable) {
+      _streamError = throwable;
     }
   }
 
@@ -522,8 +522,8 @@ public class TestMultiPartMIMEReaderClientCallbackExceptions {
     }
 
     @Override
-    public void onStreamError(Throwable e) {
-      _streamError = e;
+    public void onStreamError(Throwable throwable) {
+      _streamError = throwable;
       _latch.countDown();
     }
 

@@ -7,7 +7,7 @@ import com.linkedin.multipart.exceptions.PartFinishedException;
 import com.linkedin.multipart.exceptions.PartNotInitializedException;
 import com.linkedin.multipart.exceptions.ReaderNotInitializedException;
 import com.linkedin.multipart.exceptions.StreamBusyException;
-import com.linkedin.multipart.exceptions.StreamFinishedException;
+import com.linkedin.multipart.exceptions.ReaderFinishedException;
 import com.linkedin.r2.message.rest.StreamRequest;
 import com.linkedin.r2.message.rest.StreamResponse;
 import com.linkedin.r2.message.streaming.EntityStream;
@@ -53,7 +53,6 @@ import org.apache.commons.lang.ArrayUtils;
  *
  */
 public final class MultiPartMIMEReader {
-
     private final R2MultiPartMIMEReader _reader;
     private volatile MultiPartMIMEReaderCallback _clientCallback;
     private final EntityStream _entityStream;
@@ -139,7 +138,6 @@ public final class MultiPartMIMEReader {
 
         //OnDataAvailable() will invoke this method
         private void processEventAndInvokeClient(final ByteString data) {
-
             //Note that only one thread should ever be calling processEventAndInvokeClient() at any time.
             //We control invocation of this this method using the various states.
             //Client API calls (from the readers) will call processEventAndInvokeClient() to refresh the logic and drive forward
@@ -201,7 +199,6 @@ public final class MultiPartMIMEReader {
 
         //This method is use to iteratively invoke our callbacks to prevent a stack overflow.
         private void processAndInvokeCallableQueue() {
-
             //This variable indicates that there is no current iterative invocation taking place. We can start one here.
             _callbackInProgress = true;
 
@@ -217,7 +214,6 @@ public final class MultiPartMIMEReader {
         }
 
         private boolean checkAndProcessEpilogue() {
-
             //Drop the epilogue on the ground. No need to read into our buffer.
             if (_multiPartReaderState == MultiPartReaderState.READING_EPILOGUE) {
                 if (_r2Done) {
@@ -242,7 +238,6 @@ public final class MultiPartMIMEReader {
         }
 
         private boolean checkAndProcessAbandonment() {
-
             //Drop bytes for a top level abort.
             if (_multiPartReaderState == MultiPartReaderState.ABANDONING) {
                 if (_r2Done) {
@@ -268,7 +263,6 @@ public final class MultiPartMIMEReader {
         }
 
         private boolean checkAndProcessPreamble() {
-
             //Read the preamble in.
             if (_multiPartReaderState == MultiPartReaderState.CALLBACK_BOUND_AND_READING_PREAMBLE) {
 
@@ -324,7 +318,6 @@ public final class MultiPartMIMEReader {
         }
 
         private boolean checkForSufficientBufferSize() {
-
             //We buffer forward a bit if we have is less then the finishing boundary size.
             //This is the minimum amount of data we need in the buffer before we can go forward.
             if (_byteBuffer.size() < _finishingBoundaryBytes.size()) {
@@ -348,7 +341,6 @@ public final class MultiPartMIMEReader {
         }
 
         private void performPartReading() {
-
             //READING_PARTS represents normal part reading operation and is where most of the time will be spent.
             //At this point in time in our logic this is guaranteed to be in this state.
             assert(_multiPartReaderState == MultiPartReaderState.READING_PARTS);
@@ -400,7 +392,6 @@ public final class MultiPartMIMEReader {
         }
 
         private void processBufferStartingWithoutBoundary(final int boundaryIndex) {
-
             //We only proceed forward if there is a reader ready. By ready we mean that:
             //1. They are ready to receive requested data on their onPartDataAvailable() callback, meaning
             //REQUESTED_DATA.
@@ -556,7 +547,6 @@ public final class MultiPartMIMEReader {
         }
 
         private void processBufferStartingWithBoundary(final int boundarySize) {
-
             //The beginning of the buffer contains a boundary. Finish of the current part first.
             //If performing this results in an exception then we can't continue so we return.
             if(finishCurrentPart()) {
@@ -944,7 +934,6 @@ public final class MultiPartMIMEReader {
 
     private MultiPartMIMEReader(final StreamRequest request, final MultiPartMIMEReaderCallback clientCallback)
             throws IllegalMultiPartMIMEFormatException {
-
         final String contentTypeHeaderValue = request.getHeader(MultiPartMIMEUtils.CONTENT_TYPE_HEADER);
         if (contentTypeHeaderValue == null) {
             throw new IllegalMultiPartMIMEFormatException("Malformed multipart mime request. No Content-Type header in this request");
@@ -961,7 +950,6 @@ public final class MultiPartMIMEReader {
 
     private MultiPartMIMEReader(StreamResponse response, MultiPartMIMEReaderCallback clientCallback)
             throws IllegalMultiPartMIMEFormatException {
-
         final String contentTypeHeaderValue = response.getHeader(MultiPartMIMEUtils.CONTENT_TYPE_HEADER);
         if (contentTypeHeaderValue == null) {
             throw new IllegalMultiPartMIMEFormatException("Malformed multipart mime request. No Content-Type header in this response");
@@ -1002,14 +990,13 @@ public final class MultiPartMIMEReader {
      *
      * Once the stream is finished being abandoned, we call {@link MultiPartMIMEReaderCallback#onAbandoned()}.
      *
-     * If the stream is finished, subsequent calls will throw {@link com.linkedin.multipart.exceptions.StreamFinishedException}.
+     * If the stream is finished, subsequent calls will throw {@link com.linkedin.multipart.exceptions.ReaderFinishedException}.
      *
      * Since this is async and we do not allow request queueing, repetitive calls will result in
      * {@link com.linkedin.multipart.exceptions.StreamBusyException}.
      *
      */
     public void abandonAllParts() {
-
         if (_multiPartReaderState == MultiPartReaderState.CREATED) {
             throw new ReaderNotInitializedException("No callback registered with the reader. Unable to proceed.");
         }
@@ -1017,7 +1004,7 @@ public final class MultiPartMIMEReader {
         //We are already done or almost done.
         if (_multiPartReaderState == MultiPartReaderState.FINISHED || _multiPartReaderState
                 == MultiPartReaderState.READING_EPILOGUE) {
-            throw new StreamFinishedException("The reader is finished therefore it cannot proceed.");
+            throw new ReaderFinishedException("The reader is finished therefore it cannot proceed.");
         }
 
         if (_multiPartReaderState == MultiPartReaderState.CALLBACK_BOUND_AND_READING_PREAMBLE) {
@@ -1067,15 +1054,14 @@ public final class MultiPartMIMEReader {
      *
      */
     public void registerReaderCallback(final MultiPartMIMEReaderCallback clientCallback)
-            throws StreamFinishedException, StreamBusyException {
-
+            throws ReaderFinishedException, StreamBusyException {
         //First we throw exceptions for all _reader states where it is incorrect to transfer callbacks.
         //We have to handle all the individual incorrect states one by one so that we can that we can throw
         //fine grain exceptions.
 
         if (_multiPartReaderState == MultiPartReaderState.FINISHED || _multiPartReaderState
                 == MultiPartReaderState.READING_EPILOGUE) {
-            throw new StreamFinishedException("Unable to register a callback. This reader has already finished reading.");
+            throw new ReaderFinishedException("Unable to register a callback. This reader has already finished reading.");
         }
 
         if (_multiPartReaderState == MultiPartReaderState.CALLBACK_BOUND_AND_READING_PREAMBLE) {
@@ -1154,7 +1140,6 @@ public final class MultiPartMIMEReader {
      * to start the flow of data.
      */
     public class SinglePartMIMEReader implements MultiPartMIMEDataSource {
-
         private final Map<String, String> _headers;
         private volatile SinglePartMIMEReaderCallback _callback = null;
         private final R2MultiPartMIMEReader _r2MultiPartMIMEReader;
@@ -1213,7 +1198,6 @@ public final class MultiPartMIMEReader {
          * {@link com.linkedin.multipart.exceptions.PartFinishedException}.
          */
         public void requestPartData() {
-
             verifyState();
 
             //Additionally, unlike abandonPartData(), requestPartData() can only be used if a callback is registered.
@@ -1247,7 +1231,6 @@ public final class MultiPartMIMEReader {
          * {@link com.linkedin.multipart.exceptions.PartFinishedException}.
          */
         public void abandonPart() {
-
             verifyState();
 
             //We know we are now at SingleReaderState.CALLBACK_BOUND_AND_READY

@@ -4,7 +4,7 @@ import com.linkedin.common.callback.Callback;
 import com.linkedin.data.ByteString;
 import com.linkedin.multipart.exceptions.IllegalMultiPartMIMEFormatException;
 import com.linkedin.multipart.exceptions.PartFinishedException;
-import com.linkedin.multipart.exceptions.StreamFinishedException;
+import com.linkedin.multipart.exceptions.ReaderFinishedException;
 import com.linkedin.r2.filter.R2Constants;
 import com.linkedin.r2.message.rest.StreamRequest;
 import com.linkedin.r2.message.streaming.EntityStream;
@@ -24,7 +24,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import javax.mail.BodyPart;
 import javax.mail.Header;
-import javax.mail.internet.ContentType;
 import javax.mail.internet.MimeBodyPart;
 import javax.mail.internet.MimeMultipart;
 
@@ -568,7 +567,7 @@ public class TestMultiPartMimeReaderExceptions {
     try {
       reader.abandonAllParts();
       Assert.fail();
-    } catch (StreamFinishedException streamFinishedException) {
+    } catch (ReaderFinishedException readerFinishedException) {
       //pass
     }
 
@@ -628,11 +627,11 @@ public class TestMultiPartMimeReaderExceptions {
     }
 
     @Override
-    public void onPartDataAvailable(ByteString b) {
+    public void onPartDataAvailable(ByteString partData) {
      // log.info(
      //     "Just received " + new String(b.copyBytes()) +  " on the single part reader callback for part number " + partCounter);
       try {
-        _byteArrayOutputStream.write(b.copyBytes());
+        _byteArrayOutputStream.write(partData.copyBytes());
       } catch (IOException ioException) {
         Assert.fail();
       }
@@ -652,12 +651,12 @@ public class TestMultiPartMimeReaderExceptions {
     }
 
     @Override
-    public void onStreamError(Throwable e) {
+    public void onStreamError(Throwable throwable) {
       //Should only happen once.
       if (_streamError !=null) {
         Assert.fail();
       }
-      _streamError = e;
+      _streamError = throwable;
     }
   }
 
@@ -691,13 +690,13 @@ public class TestMultiPartMimeReaderExceptions {
     }
 
     @Override
-    public void onStreamError(Throwable e) {
+    public void onStreamError(Throwable throwable) {
       //We should only ever be invoked once.
       if (_streamError != null) {
         Assert.fail();
       }
-      _streamError = e;
-      _r2callback.onError(e);
+      _streamError = throwable;
+      _r2callback.onError(throwable);
     }
 
     MultiPartMIMEAbandonReaderCallbackImpl(final Callback<Void> r2callback,

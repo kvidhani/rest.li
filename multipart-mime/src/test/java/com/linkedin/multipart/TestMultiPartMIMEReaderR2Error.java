@@ -2,7 +2,6 @@ package com.linkedin.multipart;
 
 import com.linkedin.data.ByteString;
 import com.linkedin.multipart.exceptions.PartFinishedException;
-import com.linkedin.multipart.exceptions.StreamFinishedException;
 import com.linkedin.r2.message.rest.StreamRequest;
 import com.linkedin.r2.message.streaming.EntityStream;
 import com.linkedin.r2.message.streaming.ReadHandle;
@@ -215,7 +214,7 @@ public class TestMultiPartMIMEReaderR2Error {
     }
 
     @Override
-    public void onPartDataAvailable(ByteString b) {
+    public void onPartDataAvailable(ByteString partData) {
       if(_readCount > 0) {
         _singlePartMIMEReader.requestPartData();
       } else {
@@ -234,8 +233,8 @@ public class TestMultiPartMIMEReaderR2Error {
     }
 
     @Override
-    public void onStreamError(Throwable e) {
-      _streamError = e;
+    public void onStreamError(Throwable throwable) {
+      _streamError = throwable;
     }
   }
 
@@ -268,8 +267,8 @@ public class TestMultiPartMIMEReaderR2Error {
     }
 
     @Override
-    public void onStreamError(Throwable e) {
-      _streamError = e;
+    public void onStreamError(Throwable throwable) {
+      _streamError = throwable;
     }
 
     MultiPartMIMEAbandonReaderCallbackImpl(final CountDownLatch latch) {

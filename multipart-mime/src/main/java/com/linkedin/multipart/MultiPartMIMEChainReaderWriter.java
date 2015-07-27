@@ -4,7 +4,10 @@ import com.linkedin.r2.message.streaming.WriteHandle;
 import com.linkedin.r2.message.streaming.Writer;
 
 /**
- * Created by kvidhani on 7/25/15.
+ * @author Karim Vidhani
+ *
+ * The writer to consume the {@link com.linkedin.multipart.MultiPartMIMEReader} when
+ * chaining the entire reader itself as a data source.
  */
 class MultiPartMIMEChainReaderWriter implements Writer {
 
@@ -22,19 +25,16 @@ class MultiPartMIMEChainReaderWriter implements Writer {
     @Override
     public void onInit(WriteHandle wh) {
         _writeHandle = wh;
-
     }
 
     @Override
     public void onWritePossible() {
-
         if (_multiPartMIMEChainReaderCallback == null) {
             _multiPartMIMEChainReaderCallback = new MultiPartMIMEChainReaderCallback(_writeHandle, _normalEncapsulationBoundary);
             //Since this is not a MultiPartMIMEDataSource we can't use the regular mechanism for reading data.
-            //Instead of create a new callback that will use write to the writeHandle using the SinglePartMIMEReader
+            //Instead of create a new callback that will use to write to the writeHandle using the SinglePartMIMEReader.
 
             _multiPartMIMEReader.registerReaderCallback(_multiPartMIMEChainReaderCallback);
-
             //Note that by registering here, this will eventually lead to onNewPart() which will then requestPartData()
             //which will eventually lead to onPartDataAvailable() which will then write to the writeHandle thereby
             //honoring the original request here to write data. This initial write here will write out the boundary that this
@@ -44,10 +44,9 @@ class MultiPartMIMEChainReaderWriter implements Writer {
             //R2 asked us to read after initial setup is done.
             _multiPartMIMEChainReaderCallback.getCurrentSinglePartReader().requestPartData();
         }
-
     }
 
-    //todo ang is fixing this to make sure this is invoked by CompositeWriter
+    //todo Ang is fixing this to make sure this is invoked by CompositeWriter
     @Override
     public void onAbort(Throwable e) {
         //This will be invoked if R2 tells the composite writer to abort which will then tell this Writer to abort.
@@ -60,10 +59,6 @@ class MultiPartMIMEChainReaderWriter implements Writer {
         //in the chain need to be shut down.
         //This is in contrast to the case where if one SinglePartReader was sent down as a data source. In that
         //case we notify the custom client MultiPartMIMEReaderCallback and they can recover.
-
         _multiPartMIMEReader.getR2MultiPartMIMEReader().handleExceptions(e);
-
-        //TODO - open a jira to provide this behavior
     }
 }
-

@@ -3,19 +3,37 @@ package com.linkedin.multipart;
 import com.linkedin.data.ByteString;
 
 /**
- * Created by kvidhani on 6/5/15.
+ * @author Karim Vidhani
+ *
+ * Used to register with {@link com.linkedin.multipart.MultiPartMIMEReader.SinglePartMIMEReader} to
+ * asynchronously drive through the reading of a single part.
+ *
+ * Most implementations of this should pass along a reference to the {@link com.linkedin.multipart.MultiPartMIMEReader.SinglePartMIMEReader}
+ * during construction. This way when they are invoked on {@link SinglePartMIMEReaderCallback#onPartDataAvailable(com.linkedin.data.ByteString)},
+ * they can then turn around and call {@link com.linkedin.multipart.MultiPartMIMEReader.SinglePartMIMEReader#requestPartData()}.
  */
 public interface SinglePartMIMEReaderCallback {
-    //When data is available to be read on the current part
-    public void onPartDataAvailable(ByteString b);
+    /**
+     * Invoked when data is available to be read on the current part.
+     *
+     * @param partData the dat
+     */
+    public void onPartDataAvailable(ByteString partData);
 
-    //When the current part is finished being read
+    /**
+     * Invoked when the current part is finished being read.
+     */
     public void onFinished();
 
-    //When the current part is finished being abandoned.
+    /**
+     * Invoked when the current part is finished being abandoned.
+     */
     public void onAbandoned();
 
-    //When there is an error reading from the stream.
-    //Mention this can be called AT ANYTIME...because R2 may call this!
-    public void onStreamError(Throwable e);
+    /**
+     * Invoked when there was an error reading from the multipart envelope.
+     *
+     * @param throwable the Throwable that caused this to happen.
+     */
+    public void onStreamError(Throwable throwable);
 }

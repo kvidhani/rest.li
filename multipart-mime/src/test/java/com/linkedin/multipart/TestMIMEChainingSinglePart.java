@@ -1,6 +1,5 @@
 package com.linkedin.multipart;
 
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.linkedin.common.callback.Callback;
 import com.linkedin.data.ByteString;
@@ -116,7 +115,7 @@ public class TestMIMEChainingSinglePart {
         dataSources.add(bodyDDataSource);
 
         final MultiPartMIMEWriter writer =
-                new MultiPartMIMEWriter.MultiPartMIMEWriterBuilder()
+                new MultiPartMIMEWriter.Builder()
                         .appendDataSources(dataSources)
                         .build();
 
@@ -190,9 +189,9 @@ public class TestMIMEChainingSinglePart {
         }
 
         @Override
-        public void onPartDataAvailable(ByteString b) {
+        public void onPartDataAvailable(ByteString partData) {
             try {
-                _byteArrayOutputStream.write(b.copyBytes());
+                _byteArrayOutputStream.write(partData.copyBytes());
             } catch (IOException ioException) {
                 onStreamError(ioException);
             }
@@ -210,7 +209,7 @@ public class TestMIMEChainingSinglePart {
         }
 
         @Override
-        public void onStreamError(Throwable e) {
+        public void onStreamError(Throwable throwable) {
             Assert.fail();
         }
 
@@ -241,7 +240,7 @@ public class TestMIMEChainingSinglePart {
         }
 
         @Override
-        public void onStreamError(Throwable e) {
+        public void onStreamError(Throwable throwable) {
             Assert.fail();
         }
 
@@ -265,9 +264,9 @@ public class TestMIMEChainingSinglePart {
         }
 
         @Override
-        public void onPartDataAvailable(ByteString b) {
+        public void onPartDataAvailable(ByteString partData) {
             try {
-                _byteArrayOutputStream.write(b.copyBytes());
+                _byteArrayOutputStream.write(partData.copyBytes());
             } catch (IOException ioException) {
                 onStreamError(ioException);
             }
@@ -287,7 +286,7 @@ public class TestMIMEChainingSinglePart {
         }
 
         @Override
-        public void onStreamError(Throwable e) {
+        public void onStreamError(Throwable throwable) {
             Assert.fail();
         }
 
@@ -307,7 +306,7 @@ public class TestMIMEChainingSinglePart {
             if (!_firstPartEchoed) {
                 _firstPartEchoed = true;
                 final MultiPartMIMEWriter writer =
-                        new MultiPartMIMEWriter.MultiPartMIMEWriterBuilder().appendDataSource(singleParMIMEReader).build();
+                        new MultiPartMIMEWriter.Builder().appendDataSource(singleParMIMEReader).build();
 
                 final StreamResponse streamResponse = mock(StreamResponse.class);
                 when(streamResponse.getEntityStream()).thenReturn(writer.getEntityStream());
@@ -336,7 +335,7 @@ public class TestMIMEChainingSinglePart {
         }
 
         @Override
-        public void onStreamError(Throwable e) {
+        public void onStreamError(Throwable throwable) {
             Assert.fail();
         }
 

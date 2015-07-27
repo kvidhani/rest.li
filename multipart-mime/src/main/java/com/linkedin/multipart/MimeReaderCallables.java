@@ -11,10 +11,8 @@ import java.util.concurrent.Callable;
  * to avoid stack overflows.
  */
 public class MimeReaderCallables {
-
   //SinglePartMIMEReaderCallback callable wrappers:
   static class onPartDataCallable implements Callable<Void> {
-
     private final SinglePartMIMEReaderCallback _singlePartMIMEReaderCallback;
     private final ByteString _data;
 
@@ -30,13 +28,11 @@ public class MimeReaderCallables {
     }
   }
 
-  //////////////////////////////////////////////////////////////////////////////////////////////////////
   //MultiPartMIMEReader callable wrappers:
-
   static class onNewPartCallable implements Callable<Void> {
+    private final MultiPartMIMEReaderCallback _multiPartMIMEReaderCallback;
+    private final MultiPartMIMEReader.SinglePartMIMEReader _singlePartMIMEReader;
 
-    final MultiPartMIMEReaderCallback _multiPartMIMEReaderCallback;
-    final MultiPartMIMEReader.SinglePartMIMEReader _singlePartMIMEReader;
     @Override
     public Void call() throws Exception {
       _multiPartMIMEReaderCallback.onNewPart(_singlePartMIMEReader);
@@ -50,9 +46,10 @@ public class MimeReaderCallables {
     }
   }
 
-  static class recursiveCallable implements Callable<Void> {
+  static class recursiveCallable implements Callable<Void>
+  {
+    private final MultiPartMIMEReader.R2MultiPartMIMEReader _r2MultiPartMIMEReader;
 
-    final MultiPartMIMEReader.R2MultiPartMIMEReader _r2MultiPartMIMEReader;
     @Override
     public Void call() throws Exception {
       _r2MultiPartMIMEReader.onDataAvailable(ByteString.empty());
@@ -63,5 +60,4 @@ public class MimeReaderCallables {
       _r2MultiPartMIMEReader = r2MultiPartMIMEReader;
     }
   }
-
 }

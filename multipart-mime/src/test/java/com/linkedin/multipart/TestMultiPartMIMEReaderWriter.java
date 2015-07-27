@@ -160,7 +160,7 @@ public class TestMultiPartMIMEReaderWriter extends AbstractMultiPartMIMEIntegrat
                         .build();
 
         final MultiPartMIMEWriter writer =
-                new MultiPartMIMEWriter.MultiPartMIMEWriterBuilder("some preamble", "").appendDataSource(inputStreamDataSource).build();
+                new MultiPartMIMEWriter.Builder("some preamble", "").appendDataSource(inputStreamDataSource).build();
 
         executeRequestAndAssert(writer, ImmutableList.of(bodyPart));
     }
@@ -178,7 +178,7 @@ public class TestMultiPartMIMEReaderWriter extends AbstractMultiPartMIMEIntegrat
         }
 
         final MultiPartMIMEWriter writer =
-                new MultiPartMIMEWriter.MultiPartMIMEWriterBuilder("some preamble", "").appendDataSources(dataSources).build();
+                new MultiPartMIMEWriter.Builder("some preamble", "").appendDataSources(dataSources).build();
 
         executeRequestAndAssert(writer, ImmutableList.of(bodyPart, bodyPart, bodyPart, bodyPart));
     }
@@ -218,7 +218,7 @@ public class TestMultiPartMIMEReaderWriter extends AbstractMultiPartMIMEIntegrat
                         .build();
 
         final MultiPartMIMEWriter writer =
-                new MultiPartMIMEWriter.MultiPartMIMEWriterBuilder("some preamble", "").appendDataSource(normalBodyInputStream)
+                new MultiPartMIMEWriter.Builder("some preamble", "").appendDataSource(normalBodyInputStream)
                         .appendDataSource(headerLessBodyInputStream)
                         .appendDataSource(bodyLessBodyInputStream)
                         .appendDataSource(purelyEmptyBodyInputStream)
@@ -233,7 +233,7 @@ public class TestMultiPartMIMEReaderWriter extends AbstractMultiPartMIMEIntegrat
         //Javax mail does not support this, hence we can only test this using our writer
 
         final MultiPartMIMEWriter writer =
-                new MultiPartMIMEWriter.MultiPartMIMEWriterBuilder("some preamble", "").build();
+                new MultiPartMIMEWriter.Builder("some preamble", "").build();
 
         executeRequestAndAssert(writer, Collections.<MultiPartMIMEDataPartImpl>emptyList());
     }
@@ -290,10 +290,10 @@ public class TestMultiPartMIMEReaderWriter extends AbstractMultiPartMIMEIntegrat
         }
 
         @Override
-        public void onPartDataAvailable(ByteString b) {
-            log.info("Just received " + b.length() + " byte(s) on the single part reader callback for part number " + partCounter);
+        public void onPartDataAvailable(ByteString partData) {
+            log.info("Just received " + partData.length() + " byte(s) on the single part reader callback for part number " + partCounter);
             try {
-                _byteArrayOutputStream.write(b.copyBytes());
+                _byteArrayOutputStream.write(partData.copyBytes());
             } catch (IOException ioException) {
                 onStreamError(ioException);
             }
@@ -314,7 +314,7 @@ public class TestMultiPartMIMEReaderWriter extends AbstractMultiPartMIMEIntegrat
         }
 
         @Override
-        public void onStreamError(Throwable e) {
+        public void onStreamError(Throwable throwable) {
             //MultiPartMIMEReader will end up calling onStreamError(e) on our top level callback
             //which will fail the test
         }
@@ -349,8 +349,8 @@ public class TestMultiPartMIMEReaderWriter extends AbstractMultiPartMIMEIntegrat
         }
 
         @Override
-        public void onStreamError(Throwable e) {
-            RestException restException = new RestException(RestStatus.responseForError(400, e));
+        public void onStreamError(Throwable throwable) {
+            RestException restException = new RestException(RestStatus.responseForError(400, throwable));
             _r2callback.onError(restException);
 
         }

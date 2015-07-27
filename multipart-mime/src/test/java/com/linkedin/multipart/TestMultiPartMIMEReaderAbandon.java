@@ -2,7 +2,7 @@ package com.linkedin.multipart;
 
 import com.linkedin.common.callback.Callback;
 import com.linkedin.data.ByteString;
-import com.linkedin.multipart.exceptions.StreamFinishedException;
+import com.linkedin.multipart.exceptions.ReaderFinishedException;
 import com.linkedin.r2.filter.R2Constants;
 import com.linkedin.r2.message.rest.RestException;
 import com.linkedin.r2.message.rest.RestStatus;
@@ -452,7 +452,7 @@ public class TestMultiPartMIMEReaderAbandon {
       try {
         reader.abandonAllParts();
         Assert.fail();
-      } catch (StreamFinishedException streamFinishedException) {
+      } catch (ReaderFinishedException readerFinishedException) {
         //pass
       }
 
@@ -510,11 +510,11 @@ public class TestMultiPartMIMEReaderAbandon {
         }
 
         @Override
-        public void onPartDataAvailable(ByteString b) {
+        public void onPartDataAvailable(ByteString partData) {
             log.info(
-                    "Just received " + b.length() + " byte(s) on the single part reader callback for part number " + partCounter);
+                    "Just received " + partData.length() + " byte(s) on the single part reader callback for part number " + partCounter);
             try {
-                _byteArrayOutputStream.write(b.copyBytes());
+                _byteArrayOutputStream.write(partData.copyBytes());
             } catch (IOException ioException) {
                 Assert.fail();
             }
@@ -534,7 +534,7 @@ public class TestMultiPartMIMEReaderAbandon {
         }
 
         @Override
-        public void onStreamError(Throwable e) {
+        public void onStreamError(Throwable throwable) {
             //MultiPartMIMEReader will end up calling onStreamError(e) on our top level callback
             //which will fail the test
         }
@@ -612,8 +612,8 @@ public class TestMultiPartMIMEReaderAbandon {
         }
 
         @Override
-        public void onStreamError(Throwable e) {
-            RestException restException = new RestException(RestStatus.responseForError(400, e));
+        public void onStreamError(Throwable throwable) {
+            RestException restException = new RestException(RestStatus.responseForError(400, throwable));
             _r2callback.onError(restException);
         }
 

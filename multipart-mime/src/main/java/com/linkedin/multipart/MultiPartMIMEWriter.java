@@ -14,20 +14,21 @@ import java.util.List;
 
 
 /**
- * Created by kvidhani on 7/6/15.
+ * @author Karim Vidhani
+ *
+ * Used to aggregate multiple different data sources and subsequent construction of a multipart mime
+ * envelope.
  */
-//TODO note that Ang will look into fixing composite writer
-//todo evaluate all sitautions where callbacks can throw....ALL CALLBACKS CAN THROW POTENTIALLY!
-
 public final class MultiPartMIMEWriter {
-
   private final CompositeWriter _writer;
   private final EntityStream _entityStream;
   private final List<EntityStream> _allDataSources;
   private final String _rawBoundary;
 
-  public static class MultiPartMIMEWriterBuilder {
-
+  /**
+   * Builder to create the MultiPartMIMEWriter.
+   */
+  public static class Builder {
     private List<EntityStream> _allDataSources = new ArrayList<EntityStream>();
     private final String _preamble;
     private final String _epilogue;
@@ -40,7 +41,13 @@ public final class MultiPartMIMEWriter {
     //As per the RFC the final boundary has two extra hyphens at the end
     private final byte[] _finalEncapsulationBoundary = (MultiPartMIMEUtils.CRLF_STRING + "--" + _rawBoundary + "--").getBytes(Charset.forName("US-ASCII"));
 
-    public MultiPartMIMEWriterBuilder(final String preamble, final String epilogue) {
+    /**
+     * Create a MultiPartMIMEWriter using the specified preamble and epilogue.
+     *
+     * @param preamble to be placed before the multipart mime envelope according to the RFC.
+     * @param epilogue to be placed after the multipart mime enveloped according to the RFC
+     */
+    public Builder(final String preamble, final String epilogue) {
       _preamble = preamble;
       _epilogue = epilogue;
       //Append data source for preamble
@@ -50,12 +57,19 @@ public final class MultiPartMIMEWriter {
       }
     }
 
-    public MultiPartMIMEWriterBuilder() {
+    /**
+     * Create a MultiPartMIMEWriter without a preamble or epilogue.
+     */
+    public Builder() {
       this("", "");
     }
 
-    public MultiPartMIMEWriterBuilder appendDataSource(final MultiPartMIMEDataSource dataSource) {
-
+    /**
+     * Append a {@link com.linkedin.multipart.MultiPartMIMEDataSource} to be placed in the multipart mime envelope.
+     *
+     * @param dataSource the data source to be added.
+     */
+    public Builder appendDataSource(final MultiPartMIMEDataSource dataSource) {
       ByteString serializedBoundaryAndHeaders = null;
       try {
         serializedBoundaryAndHeaders = MultiPartMIMEUtils.serializeBoundaryAndHeaders(_normalEncapsulationBoundary, dataSource);
@@ -71,28 +85,47 @@ public final class MultiPartMIMEWriter {
       return this;
     }
 
-    public MultiPartMIMEWriterBuilder appendMultiPartDataSource(final MultiPartMIMEReader multiPartMIMEReader) {
+    /**
+     * Append a {@link com.linkedin.multipart.MultiPartMIMEReader} to be used as a data source
+     * within the multipart mime envelope. All the individual parts from the {@link com.linkedin.multipart.MultiPartMIMEReader}
+     * will be placed one by one into this new envelope with boundaries replaced.
+     *
+     * @param multiPartMIMEReader
+     */
+    public Builder appendMultiPartDataSource(final MultiPartMIMEReader multiPartMIMEReader) {
       final Writer multiPartMIMEReaderWriter = new MultiPartMIMEChainReaderWriter(multiPartMIMEReader, _normalEncapsulationBoundary);
       _allDataSources.add(EntityStreams.newEntityStream(multiPartMIMEReaderWriter));
       return this;
     }
 
-    public MultiPartMIMEWriterBuilder appendDataSources(final List<MultiPartMIMEDataSource> dataSources) {
+    /**
+     * Append multiple {@link com.linkedin.multipart.MultiPartMIMEDataSource}s into the multipart mime envelope.
+     *
+     * @param dataSources the data sources to be added.
+     */
+    public Builder appendDataSources(final List<MultiPartMIMEDataSource> dataSources) {
       for (final MultiPartMIMEDataSource dataSource : dataSources) {
         appendDataSource(dataSource);
       }
       return this;
     }
 
-    public MultiPartMIMEWriterBuilder appendMultiPartDataSources(final List<MultiPartMIMEReader> multiPartMIMEReaders) {
+    /**
+     * Append multiple {@link com.linkedin.multipart.MultiPartMIMEReader}s into the multipart mime envelope.
+     *
+     * @param multiPartMIMEReaders
+     */
+    public Builder appendMultiPartDataSources(final List<MultiPartMIMEReader> multiPartMIMEReaders) {
       for (MultiPartMIMEReader multiPartMIMEReader : multiPartMIMEReaders) {
         appendMultiPartDataSource(multiPartMIMEReader);
       }
       return this;
     }
 
+    /**
+     * Construct and return the newly formed MultiPartMIMEWriter.
+     */
     public MultiPartMIMEWriter build() {
-
       //Append the final boundary
       _boundaryHeaderByteArrayOutputStream.reset();
       try {
@@ -116,7 +149,6 @@ public final class MultiPartMIMEWriter {
   }
 
   private MultiPartMIMEWriter(final List<EntityStream> allDataSources, final String rawBoundary) {
-
     _allDataSources = allDataSources;
     _rawBoundary = rawBoundary;
     _writer = new CompositeWriter(_allDataSources);
@@ -130,5 +162,4 @@ public final class MultiPartMIMEWriter {
   String getBoundary() {
     return _rawBoundary;
   }
-
 }

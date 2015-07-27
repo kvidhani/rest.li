@@ -113,7 +113,7 @@ public class TestMultiPartMIMEWriter {
         new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(body.copyBytes()), scheduledExecutorService, headers).build();
 
     final MultiPartMIMEWriter multiPartMIMEWriter =
-        new MultiPartMIMEWriter.MultiPartMIMEWriterBuilder("preamble", "epilogue").appendDataSource(singleDataSource).build();
+        new MultiPartMIMEWriter.Builder("preamble", "epilogue").appendDataSource(singleDataSource).build();
 
     //final AtomicReference
     final FutureCallback<ByteString> futureCallback = new FutureCallback<ByteString>();
@@ -180,7 +180,7 @@ public class TestMultiPartMIMEWriter {
         _bodyLessHeaders).build());
 
     final MultiPartMIMEWriter multiPartMIMEWriter =
-        new MultiPartMIMEWriter.MultiPartMIMEWriterBuilder("preamble", "epilogue").appendDataSources(inputStreamDataSources).build();
+        new MultiPartMIMEWriter.Builder("preamble", "epilogue").appendDataSources(inputStreamDataSources).build();
 
     final FutureCallback<ByteString> futureCallback = new FutureCallback<ByteString>();
     final FullEntityReader fullEntityReader = new FullEntityReader(futureCallback);

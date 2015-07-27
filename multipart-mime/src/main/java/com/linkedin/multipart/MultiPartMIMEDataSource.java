@@ -5,16 +5,19 @@ import java.util.Map;
 
 
 /**
- * Created by kvidhani on 7/6/15.
+ * @author Karim Vidhani
+ *
+ * Interface that is required to be implemented by custom data sources for the
+ * {@link com.linkedin.multipart.MultiPartMIMEWriter}.
+ *
  */
-//todo javadoc indicating to consumers that they should write a good deal of bytes...as many as possible really without taking a perf hit
-  //otherwise the other side will just get a few bytes over and over
 public interface MultiPartMIMEDataSource extends Writer {
 
   /**
-   * Immediately return the headers need for this part. If no headers are provided, clients must return an empty list
-   * @return
+   * Immediately return the headers need for this part. If no headers are provided, clients must
+   * return an empty map.
+   *
+   * @return a Map representing the headers for this data source.
    */
   public Map<String, String> dataSourceHeaders();
-
 }

@@ -14,13 +14,11 @@ import java.util.TreeMap;
 
 
 /**
- * Created by kvidhani on 6/3/15.
+ * @author Karim Vidhani
+ *
+ * General Purpose utility functions.
  */
-//todo mention notes EVERYWHERE that our writer only uses ASCII values for hte boundary, meaning no encoded stuff
-  //even though RFC 2231 allows for it.
-  //Also our reader does not support encoded values for MIME Prameters, notably boundary in our case
-  //if encoded we will not decode and hence boundary will not be found
-public class MultiPartMIMEUtils {
+class MultiPartMIMEUtils {
 
   //R2 uses a case insensitive TreeMap so the casing here for the Content-Type header does not matter
   public static final String CONTENT_TYPE_HEADER = "Content-Type";
@@ -101,9 +99,6 @@ public class MultiPartMIMEUtils {
     return contentTypeBuilder.toString();
   }
 
-  //todo we can only do so much validation, we need javadocs to mention we make some assumptions
-  //todo - how can clients deal with these exceptions?
-  //todo compare to the sync version before committing
   static String extractBoundary(final String contentTypeHeader) throws IllegalMultiPartMIMEFormatException
   {
     if (!contentTypeHeader.toLowerCase().startsWith(MultiPartMIMEUtils.MULTIPART_PREFIX))
@@ -120,7 +115,6 @@ public class MultiPartMIMEUtils {
     final String[] contentTypeParameters = contentTypeHeader.split(";");
 
     //In case someone used something like bOuNdArY
-    //todo - do we want to be able to provide this as a getter inside of MultiPartMIMEReader?
     final Map<String, String> parameterMap = new TreeMap<String, String>(String.CASE_INSENSITIVE_ORDER);
     for (final String parameter : contentTypeParameters) {
 
@@ -138,10 +132,6 @@ public class MultiPartMIMEUtils {
         throw new IllegalMultiPartMIMEFormatException("Invalid parameter format.");
       }
 
-      //Todo - Should we actually go through each character in the boundary and make sure it matches acceptable
-      //characters from the RFC? This may not be necessary.
-      //normally only aceptable cahracters can go in without quotes
-      //see http://www.freesoft.org/CIE/RFC/1521/16.htm
       final String parameterKey = trimmedParameter.substring(0, firstEquals);
       String parameterValue = trimmedParameter.substring(firstEquals + 1, trimmedParameter.length());
       if(parameterValue.charAt(0) == '"') {
@@ -176,7 +166,6 @@ public class MultiPartMIMEUtils {
 
   static ByteString serializeBoundaryAndHeaders(final byte[] normalEncapsulationBoundary,
                                          final MultiPartMIMEDataSource dataSource) throws IOException {
-
     final ByteArrayOutputStream localOutputStream = threadLocalOutputStream.get();
     localOutputStream.reset();
 

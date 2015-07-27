@@ -10,19 +10,16 @@ import java.util.concurrent.*;
 
 
 /**
- * Created by kvidhani on 5/18/15.
+ * @author Karim Vidhani
+ *
+ * A wrapper around an {@link java.io.InputStream} to function as a data source to for a
+ * {@link com.linkedin.multipart.MultiPartMIMEWriter}.
+ *
+ * This class will close the underlying input stream when either of these happen:
+ * 1. The stream is finished being read
+ * 2. There was an exception reading the stream, so we then close the stream and call error on write handle
+ * 3. The write was aborted, in which case we also close the stream.
  */
-//Todo - Javadocs
-//Mention that this class closes the underlying input stream when either of the following happen:
-//1. The stream is finished being read
-//2. There was an exception reading the stream, so we then close the stream and call error on write handle
-//3. The write was aborted, in which case we also close the stream.
-
-  //todo what needs to be volatile?
-
-  //todo what happens if some data source keeps on reading only 0 bytes
-
-  //write a log in all safe-to-swallo scenarios
 public final class MultiPartMIMEInputStream implements MultiPartMIMEDataSource
 {
   public static final int DEFAULT_MAXIMUM_BLOCKING_DURATION = 3000;
@@ -53,10 +50,7 @@ public final class MultiPartMIMEInputStream implements MultiPartMIMEDataSource
     _currentReadTask = _executorService.submit(new InputStreamReaderManager());
   }
 
-  /**
-   * Indicates there was a request to abort writing that was not this particular part's fault.
-   * @param e the throwable that caused the writing from this data source to abort.
-   */
+  //Indicates there was a request to abort writing that was not this particular part's fault.
   @Override
   public void onAbort(Throwable e)
   {
@@ -64,11 +58,8 @@ public final class MultiPartMIMEInputStream implements MultiPartMIMEDataSource
     //we could be in the middle of a read. Hence we spawn a task that performs a close() on the
     //input stream any outstanding read tasks are finished. If there was already a manager thread in the middle of
     //attempting to honor all the writes on the write handle we let him finish first.
-
-    //todo open a jira so that we fail fast and don't make these unnecessary writes
     _executorService.submit(new InputStreamCloser());
   }
-
 
   @Override
   public Map<String, String> dataSourceHeaders() {
@@ -76,13 +67,11 @@ public final class MultiPartMIMEInputStream implements MultiPartMIMEDataSource
   }
 
   private class InputStreamCloser implements  Runnable {
-
     private InputStreamCloser() {}
 
     @Override
     public void run() {
       try {
-
         //In order to prevent the performance overhead of synchronization on the input stream,
         //we simply wait for the outstanding reader task on the input stream to finish before we
         //close it.
@@ -111,17 +100,14 @@ public final class MultiPartMIMEInputStream implements MultiPartMIMEDataSource
         }
       }
     }
-
   }
 
   private class InputStreamReaderManager implements Runnable {
-
     private InputStreamReaderManager() {
     }
 
     @Override
     public void run() {
-
       //We use two threads from the client provided thread pool. We must use this technique
       //because if the read from the input stream hangs, there is no way to recover.
       //Therefore we have a reader thread and a boss thread that waits for the reader to complete.
@@ -136,10 +122,8 @@ public final class MultiPartMIMEInputStream implements MultiPartMIMEDataSource
       //to invoke any callbacks. We want our boss thread to explicitly invoke error() in such cases.
 
         while (_writeHandle.remaining() > 0) {
-
           //Note that we follow the orthodox writer pattern here by honoring all writes available on the writeHandle.
           //Furthermore this logic will guarantee serial and sequential reading through the input stream.
-
           final CountDownLatch latch = new CountDownLatch(1);
           final InputStreamReader inputStreamReader = new InputStreamReader(latch);
           _executorService.submit(inputStreamReader);
@@ -172,9 +156,9 @@ public final class MultiPartMIMEInputStream implements MultiPartMIMEDataSource
                   _writeHandle.write(inputStreamReader._result);
                 }
               } else {
-                //This means the result is null which implies
-                //that a throwable exists. In this case the read on the InputStream threw an IOException
-                //First close the InputStream
+                //This means the result is null which implies that a throwable exists.
+                //In this case the read on the InputStream threw an IOException.
+                //First close the InputStream:
                 try {
                   _inputStream.close();
                 } catch (IOException ioException) {
@@ -182,14 +166,14 @@ public final class MultiPartMIMEInputStream implements MultiPartMIMEDataSource
                   //An exception thrown when we try to close the InputStream should not really
                   //make its way down as an error...
                 }
-                //Now mark is it an error using the correct throwable
+                //Now mark is it an error using the correct throwable:
                 _writeHandle.error(inputStreamReader._error);
                 //Break here, even though there may be more writes on the writeHandle.
                 //We cannot continue writing in this condition.
                 break;
               }
             } else {
-              //there was a timeout when trying to read
+              //There was a timeout when trying to read
               try {
                 //Close the input stream here since we won't be doing any more reading. This should also potentially
                 //free up any threads blocked on the read()
@@ -203,7 +187,6 @@ public final class MultiPartMIMEInputStream implements MultiPartMIMEDataSource
               break;
             }
           } catch (InterruptedException exception) {
-
             //If this thread interrupted, then we have no choice but to abort everything.
             try {
               //Close the input stream here since we won't be doing any more reading.
@@ -217,12 +200,10 @@ public final class MultiPartMIMEInputStream implements MultiPartMIMEDataSource
             break;
           }
         }
-
     }
   }
 
   private class InputStreamReader implements Runnable {
-
     private final CountDownLatch _countDownLatch;
     private ByteString _result = null;
     private Throwable _error = null;
@@ -257,17 +238,13 @@ public final class MultiPartMIMEInputStream implements MultiPartMIMEDataSource
     private InputStreamReader(final CountDownLatch latch) {
       _countDownLatch = latch;
     }
-
   }
 
-
-    /**
-   * Create a new instance of a MultiPartMIMEInputStream that wraps the provided InputStream to
+  /**
+   * Builder to create a new instance of a MultiPartMIMEInputStream that wraps the provided InputStream to
    * construct an individual multipart MIME part within the multipart MIME envelope.
    */
-  //todo do java docs and mention in java docs that the thread pool MUST have atleast three threads
   public static class Builder {
-
       private final InputStream _inputStream;
       private final ExecutorService _executorService;
       private final Map<String, String> _headers;
@@ -275,29 +252,54 @@ public final class MultiPartMIMEInputStream implements MultiPartMIMEDataSource
       private int _writeChunkSize = DEFAULT_WRITE_CHUNK_SIZE;
       private int _abortTimeout = DEFAULT_ABORT_INPUT_STREAM_TIMEOUT;
 
-
-    //These are all required
+    /**
+     * Construct the builder to eventually build a MultiPartMIMEInputStream.
+     *
+     * @param inputStream the input stream to wrap.
+     * @param executorService the thread pool to run jobs to read.
+     * @param headers the headers representing this part.
+     */
     public Builder(final InputStream inputStream, final ExecutorService executorService, final Map<String, String> headers) {
       _inputStream = inputStream;
       _executorService = executorService;
       _headers = headers;
     }
 
+    /**
+     * The maximum amount of time to wait, in milliseconds, on a synchronous read from the underlying input stream.
+     *
+     * @param maximumBlockingTime
+     */
     public Builder withMaximumBlockingTime(final int maximumBlockingTime) {
       _maximumBlockingTime = maximumBlockingTime;
       return this;
     }
 
+    /**
+     * The number of bytes to read from the input stream in order to fulfill write request.
+     *
+     * @param writeChunkSize
+     *
+     */
     public Builder withWriteChunkSize(final int writeChunkSize) {
       _writeChunkSize = writeChunkSize;
       return this;
     }
 
+    /**
+     * The maximum amount of time to wait, in milliseconds that a request to abort has to wait
+     * for any outstanding read (and therefore write) operations to finish.
+     *
+     * @param abortTimeout
+     */
       public Builder withDefaultAbortInputStreamTimeout(final int abortTimeout) {
         _abortTimeout = abortTimeout;
         return this;
       }
 
+    /**
+     * Build and return the MultiPartMIMEInputStraem.
+     */
     public MultiPartMIMEInputStream build()
     {
       return new MultiPartMIMEInputStream(_inputStream, _executorService, _headers, _maximumBlockingTime, _writeChunkSize, _abortTimeout);

@@ -109,7 +109,7 @@ public class TestMIMEChainingAlternate {
         dataSources.add(bodyDDataSource);
 
         final MultiPartMIMEWriter writer =
-                new MultiPartMIMEWriter.MultiPartMIMEWriterBuilder()
+                new MultiPartMIMEWriter.Builder()
                         .appendDataSources(dataSources)
                         .build();
 
@@ -187,9 +187,9 @@ public class TestMIMEChainingAlternate {
         }
 
         @Override
-        public void onPartDataAvailable(ByteString b) {
+        public void onPartDataAvailable(ByteString partData) {
             try {
-                _byteArrayOutputStream.write(b.copyBytes());
+                _byteArrayOutputStream.write(partData.copyBytes());
             } catch (IOException ioException) {
                 onStreamError(ioException);
             }
@@ -207,7 +207,7 @@ public class TestMIMEChainingAlternate {
         }
 
         @Override
-        public void onStreamError(Throwable e) {
+        public void onStreamError(Throwable throwable) {
             Assert.fail();
         }
 
@@ -238,7 +238,7 @@ public class TestMIMEChainingAlternate {
         }
 
         @Override
-        public void onStreamError(Throwable e) {
+        public void onStreamError(Throwable throwable) {
             Assert.fail();
         }
 
@@ -262,9 +262,9 @@ public class TestMIMEChainingAlternate {
         }
 
         @Override
-        public void onPartDataAvailable(ByteString b) {
+        public void onPartDataAvailable(ByteString partData) {
             try {
-                _byteArrayOutputStream.write(b.copyBytes());
+                _byteArrayOutputStream.write(partData.copyBytes());
             } catch (IOException ioException) {
                 onStreamError(ioException);
             }
@@ -283,7 +283,7 @@ public class TestMIMEChainingAlternate {
         }
 
         @Override
-        public void onStreamError(Throwable e) {
+        public void onStreamError(Throwable throwable) {
             Assert.fail();
         }
 
@@ -304,7 +304,7 @@ public class TestMIMEChainingAlternate {
             _currentPart ++;
             if (_currentPart == 1) {
                 final MultiPartMIMEWriter writer =
-                        new MultiPartMIMEWriter.MultiPartMIMEWriterBuilder().appendDataSource(singleParMIMEReader).build();
+                        new MultiPartMIMEWriter.Builder().appendDataSource(singleParMIMEReader).build();
 
                 final StreamResponse streamResponse = mock(StreamResponse.class);
                 when(streamResponse.getEntityStream()).thenReturn(writer.getEntityStream());
@@ -313,7 +313,7 @@ public class TestMIMEChainingAlternate {
                 _callbackA.onSuccess(streamResponse);
             } else if (_currentPart == 3) {
                 final MultiPartMIMEWriter writer =
-                        new MultiPartMIMEWriter.MultiPartMIMEWriterBuilder().appendDataSource(singleParMIMEReader).build();
+                        new MultiPartMIMEWriter.Builder().appendDataSource(singleParMIMEReader).build();
 
                 final StreamResponse streamResponse = mock(StreamResponse.class);
                 when(streamResponse.getEntityStream()).thenReturn(writer.getEntityStream());
@@ -342,7 +342,7 @@ public class TestMIMEChainingAlternate {
         }
 
         @Override
-        public void onStreamError(Throwable e) {
+        public void onStreamError(Throwable throwable) {
             Assert.fail();
         }
 

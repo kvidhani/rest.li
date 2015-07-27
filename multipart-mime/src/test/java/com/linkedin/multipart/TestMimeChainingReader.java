@@ -109,7 +109,7 @@ public class TestMimeChainingReader {
         dataSources.add(bodyDDataSource);
 
         final MultiPartMIMEWriter writer =
-                new MultiPartMIMEWriter.MultiPartMIMEWriterBuilder()
+                new MultiPartMIMEWriter.Builder()
                         .appendDataSources(dataSources)
                         .build();
 
@@ -182,9 +182,9 @@ public class TestMimeChainingReader {
         }
 
         @Override
-        public void onPartDataAvailable(ByteString b) {
+        public void onPartDataAvailable(ByteString partData) {
             try {
-                _byteArrayOutputStream.write(b.copyBytes());
+                _byteArrayOutputStream.write(partData.copyBytes());
             } catch (IOException ioException) {
                 onStreamError(ioException);
             }
@@ -202,7 +202,7 @@ public class TestMimeChainingReader {
         }
 
         @Override
-        public void onStreamError(Throwable e) {
+        public void onStreamError(Throwable throwable) {
             Assert.fail();
         }
 
@@ -234,7 +234,7 @@ public class TestMimeChainingReader {
         }
 
         @Override
-        public void onStreamError(Throwable e) {
+        public void onStreamError(Throwable throwable) {
             Assert.fail();
         }
 
@@ -254,7 +254,7 @@ public class TestMimeChainingReader {
         public void onNewPart(MultiPartMIMEReader.SinglePartMIMEReader singleParMIMEReader) {
 
                 final MultiPartMIMEWriter writer =
-                        new MultiPartMIMEWriter.MultiPartMIMEWriterBuilder().appendMultiPartDataSource(_reader).build();
+                        new MultiPartMIMEWriter.Builder().appendMultiPartDataSource(_reader).build();
                 final StreamResponse streamResponse = mock(StreamResponse.class);
                 when(streamResponse.getEntityStream()).thenReturn(writer.getEntityStream());
                 final String contentTypeHeader = "multipart/mixed; boundary=" + writer.getBoundary();
@@ -275,7 +275,7 @@ public class TestMimeChainingReader {
         }
 
         @Override
-        public void onStreamError(Throwable e) {
+        public void onStreamError(Throwable throwable) {
             Assert.fail();
         }
 

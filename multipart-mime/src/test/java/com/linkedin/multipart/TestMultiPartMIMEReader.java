@@ -3,7 +3,7 @@ package com.linkedin.multipart;
 import com.linkedin.common.callback.Callback;
 import com.linkedin.data.ByteString;
 import com.linkedin.multipart.exceptions.PartFinishedException;
-import com.linkedin.multipart.exceptions.StreamFinishedException;
+import com.linkedin.multipart.exceptions.ReaderFinishedException;
 import com.linkedin.r2.filter.R2Constants;
 import com.linkedin.r2.message.rest.RestException;
 import com.linkedin.r2.message.rest.RestStatus;
@@ -430,7 +430,7 @@ public class TestMultiPartMIMEReader {
       try {
         _reader.abandonAllParts();
         Assert.fail();
-      } catch (StreamFinishedException streamFinishedException) {
+      } catch (ReaderFinishedException readerFinishedException) {
 
       }
 
@@ -524,10 +524,10 @@ public class TestMultiPartMIMEReader {
         }
 
         @Override
-        public void onPartDataAvailable(ByteString b) {
+        public void onPartDataAvailable(ByteString partData) {
 
             try {
-                _byteArrayOutputStream.write(b.copyBytes());
+                _byteArrayOutputStream.write(partData.copyBytes());
             } catch (IOException ioException) {
                 onStreamError(ioException);
             }
@@ -556,7 +556,7 @@ public class TestMultiPartMIMEReader {
         }
 
         @Override
-        public void onStreamError(Throwable e) {
+        public void onStreamError(Throwable throwable) {
             Assert.fail();
         }
 
@@ -589,7 +589,7 @@ public class TestMultiPartMIMEReader {
         }
 
         @Override
-        public void onStreamError(Throwable e) {
+        public void onStreamError(Throwable throwable) {
             Assert.fail();
 
         }

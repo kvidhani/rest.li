@@ -5,7 +5,7 @@ import com.linkedin.multipart.exceptions.PartFinishedException;
 import com.linkedin.multipart.exceptions.PartNotInitializedException;
 import com.linkedin.multipart.exceptions.ReaderNotInitializedException;
 import com.linkedin.multipart.exceptions.StreamBusyException;
-import com.linkedin.multipart.exceptions.StreamFinishedException;
+import com.linkedin.multipart.exceptions.ReaderFinishedException;
 import com.linkedin.r2.message.rest.StreamRequest;
 import com.linkedin.r2.message.streaming.EntityStream;
 import java.util.Collections;
@@ -45,14 +45,14 @@ public class TestMultiPartMIMEReaderStateTransitions {
     try {
       reader.registerReaderCallback(null);
       Assert.fail();
-    } catch (StreamFinishedException streamFinishedException) {
+    } catch (ReaderFinishedException readerFinishedException) {
     }
 
     reader.setState(MultiPartMIMEReader.MultiPartReaderState.READING_EPILOGUE);
     try {
       reader.registerReaderCallback(null);
       Assert.fail();
-    } catch (StreamFinishedException streamFinishedException) {
+    } catch (ReaderFinishedException readerFinishedException) {
     }
 
     reader.setState(MultiPartMIMEReader.MultiPartReaderState.CALLBACK_BOUND_AND_READING_PREAMBLE);
@@ -105,14 +105,14 @@ public class TestMultiPartMIMEReaderStateTransitions {
     try {
       reader.abandonAllParts();
       Assert.fail();
-    } catch (StreamFinishedException streamFinishedException) {
+    } catch (ReaderFinishedException readerFinishedException) {
     }
 
     reader.setState(MultiPartMIMEReader.MultiPartReaderState.READING_EPILOGUE);
     try {
       reader.abandonAllParts();
       Assert.fail();
-    } catch (StreamFinishedException streamFinishedException) {
+    } catch (ReaderFinishedException readerFinishedException) {
     }
 
     reader.setState(MultiPartMIMEReader.MultiPartReaderState.CALLBACK_BOUND_AND_READING_PREAMBLE);

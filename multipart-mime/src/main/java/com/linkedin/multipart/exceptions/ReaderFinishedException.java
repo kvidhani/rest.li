@@ -3,10 +3,10 @@ package com.linkedin.multipart.exceptions;
 /**
  * Created by kvidhani on 6/5/15.
  */
-public class StreamFinishedException extends GeneralMultiPartMIMEStreamException {
+public class ReaderFinishedException extends GeneralMultiPartMIMEReaderStreamException {
   private static final long serialVersionUID = 1L;
 
-  public StreamFinishedException(String message) {
+  public ReaderFinishedException(String message) {
     super(message);
   }
 
