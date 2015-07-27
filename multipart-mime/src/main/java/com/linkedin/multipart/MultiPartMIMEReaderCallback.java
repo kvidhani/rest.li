@@ -13,16 +13,16 @@ public interface MultiPartMIMEReaderCallback {
     //Note that when this is called, it does not bind the callee to acquire and
     //commit to reading this part. Only upon registering with the SinglePartMIMEReader (init())
     //does the client then commit to reading that part.
-    void onNewPart(MultiPartMIMEReader.SinglePartMIMEReader singleParMIMEReader);
+    public void onNewPart(MultiPartMIMEReader.SinglePartMIMEReader singleParMIMEReader);
 
     //When the entire stream is finished
-    void onFinished();
+    public void onFinished();
 
     //When all parts are abandoned
-    void onAbandoned();
+    public void onAbandoned();
 
     //When there is an error reading from the stream.
     //todo mention that this may be called when chaining a single part
   //Mention this can be called AT ANYTIME...because R2 may call this!
-    void onStreamError(Throwable e);
+    public void onStreamError(Throwable e);
 }
