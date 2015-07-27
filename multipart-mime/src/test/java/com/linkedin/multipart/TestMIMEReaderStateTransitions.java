@@ -17,17 +17,13 @@ import static org.mockito.Mockito.when;
 
 
 /**
- * Created by kvidhani on 7/22/15.
+ * @author Karim Vidhani
+ *
+ * These tests will verify that the correct exceptions are thrown in the face of unorthodox clients.
  */
-public class TestMultiPartMIMEReaderStateTransitions {
-
-  //These tests will verify that the correct exceptions are thrown in the face of unorthodox clients.
-
-  ///////////////////////////////////////////////////////////////////////////////////////
+public class TestMIMEReaderStateTransitions {
 
   //MultiPartMIMEReader exceptions:
-
-
   @Test
   public void testRegisterCallbackMultiPartMIMEReader() {
 

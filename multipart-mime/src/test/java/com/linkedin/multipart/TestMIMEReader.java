@@ -41,17 +41,15 @@ import static org.mockito.Mockito.*;
 
 
 /**
- * Created by kvidhani on 7/19/15.
+ * @author Karim Vidhani
+ *
+ * Unit tests that mock R2 for testing the {@link com.linkedin.multipart.MultiPartMIMEReader}
  */
 //todo for all your tests have a global latch timeout
   //better yet switch all your tests to use FutureCallback with a timeout
 //test to make sure you can get the premable
-
-  //todo you can move the data sources into the tests here... clean up
-
-    //todo use immutable map and future callbacks everywhere
-public class TestMultiPartMIMEReader {
-
+    //and also a global timeout that's the same
+public class TestMIMEReader {
   private static int TEST_TIMEOUT = 60000;
 
     //We will have only one thread in our executor service so that when we submit tasks to write

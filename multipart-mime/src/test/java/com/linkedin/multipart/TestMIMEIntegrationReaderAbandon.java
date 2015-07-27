@@ -37,11 +37,11 @@ import static com.linkedin.multipart.DataSources.*;
 /**
  * Created by kvidhani on 7/11/15.
  */
-public class TestMultiPartMIMEIntegrationReaderAbandon extends AbstractMultiPartMIMEIntegrationStreamTest {
+public class TestMIMEIntegrationReaderAbandon extends AbstractMultiPartMIMEIntegrationStreamTest {
 
   private static final URI SERVER_URI = URI.create("/pegasusAbandonServer");
   private MimeServerRequestAbandonHandler _mimeServerRequestAbandonHandler;
-  private static final Logger log = LoggerFactory.getLogger(TestMultiPartMIMEIntegrationReaderAbandon.class);
+  private static final Logger log = LoggerFactory.getLogger(TestMIMEIntegrationReaderAbandon.class);
   private static final String ABANDON_HEADER = "AbandonMe";
 
   //Header values for different server side behavior:

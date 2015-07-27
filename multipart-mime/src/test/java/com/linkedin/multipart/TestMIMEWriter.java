@@ -38,7 +38,7 @@ import org.testng.annotations.Test;
  * {@link com.linkedin.multipart.MultiPartMIMEWriter}. There is no way to use mockito to mock EntitStreams.newEntityStream()
  * Therefore we have no choice but to use R2's functionality here.
  */
-public class TestMultiPartMIMEWriter {
+public class TestMIMEWriter {
   private static ScheduledExecutorService scheduledExecutorService;
   private static final int TEST_TIMEOUT = 90000;
 
@@ -49,10 +49,10 @@ public class TestMultiPartMIMEWriter {
 
   Map<String, String> _bodyLessHeaders;
 
-  TestMultiPartMIMEDataPart _normalBody;
-  TestMultiPartMIMEDataPart _headerLessBody;
-  TestMultiPartMIMEDataPart _bodyLessBody;
-  TestMultiPartMIMEDataPart _purelyEmptyBody;
+  MIMEDataPart _normalBody;
+  MIMEDataPart _headerLessBody;
+  MIMEDataPart _bodyLessBody;
+  MIMEDataPart _purelyEmptyBody;
 
   @BeforeTest
   public void setup() {
@@ -70,16 +70,16 @@ public class TestMultiPartMIMEWriter {
     _normalBodyHeaders.put("header3", "value3");
 
     _normalBody =
-        new TestMultiPartMIMEDataPart(ByteString.copy(_normalBodyData), _normalBodyHeaders);
+        new MIMEDataPart(ByteString.copy(_normalBodyData), _normalBodyHeaders);
 
     _headerLessBody =
-        new TestMultiPartMIMEDataPart(ByteString.copy(_headerLessBodyData), Collections.<String, String>emptyMap());
+        new MIMEDataPart(ByteString.copy(_headerLessBodyData), Collections.<String, String>emptyMap());
 
     _bodyLessBody =
-        new TestMultiPartMIMEDataPart(ByteString.empty(), _bodyLessHeaders);
+        new MIMEDataPart(ByteString.empty(), _bodyLessHeaders);
 
     _purelyEmptyBody =
-        new TestMultiPartMIMEDataPart(ByteString.empty(), Collections.<String, String>emptyMap());
+        new MIMEDataPart(ByteString.empty(), Collections.<String, String>emptyMap());
 
     scheduledExecutorService = Executors.newScheduledThreadPool(10);
   }
@@ -104,8 +104,8 @@ public class TestMultiPartMIMEWriter {
   @Test(dataProvider = "singleDataSources")
   public void testSingleDataSource(final ByteString body, final Map<String, String> headers) throws Exception
   {
-    final TestMultiPartMIMEDataPart expectedMultiPartMIMEDataPart =
-        new TestMultiPartMIMEDataPart(body, headers);
+    final MIMEDataPart expectedMultiPartMIMEDataPart =
+        new MIMEDataPart(body, headers);
 
     final MultiPartMIMEInputStream singleDataSource =
         new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(body.copyBytes()), scheduledExecutorService, headers).build();
@@ -129,7 +129,7 @@ public class TestMultiPartMIMEWriter {
     javaxMailMultiPartMIMEReader.parseRequestIntoParts();
 
 
-    List<TestMultiPartMIMEDataPart> dataSourceList = javaxMailMultiPartMIMEReader._dataSourceList;
+    List<MIMEDataPart> dataSourceList = javaxMailMultiPartMIMEReader._dataSourceList;
 
     Assert.assertEquals(dataSourceList.size(), 1);
     Assert.assertEquals(dataSourceList.get(0), expectedMultiPartMIMEDataPart);
@@ -141,7 +141,7 @@ public class TestMultiPartMIMEWriter {
   @Test
   public void testMultipleDataSources() throws Exception {
 
-    final List<TestMultiPartMIMEDataPart> expectedParts = new ArrayList<TestMultiPartMIMEDataPart>();
+    final List<MIMEDataPart> expectedParts = new ArrayList<MIMEDataPart>();
     expectedParts.add(_normalBody);
     expectedParts.add(_normalBody);
     expectedParts.add(_headerLessBody);
@@ -195,7 +195,7 @@ public class TestMultiPartMIMEWriter {
     javaxMailMultiPartMIMEReader.parseRequestIntoParts();
 
 
-    List<TestMultiPartMIMEDataPart> dataSourceList = javaxMailMultiPartMIMEReader._dataSourceList;
+    List<MIMEDataPart> dataSourceList = javaxMailMultiPartMIMEReader._dataSourceList;
 
     Assert.assertEquals(dataSourceList.size(), 12);
     for (int i = 0;i<dataSourceList.size(); i++) {
@@ -214,7 +214,7 @@ public class TestMultiPartMIMEWriter {
     final ByteString _payload;
     String _preamble; //javax mail only supports reading the preamble
 
-    final List<TestMultiPartMIMEDataPart> _dataSourceList = new ArrayList<TestMultiPartMIMEDataPart>();
+    final List<MIMEDataPart> _dataSourceList = new ArrayList<MIMEDataPart>();
 
     private JavaxMailMultiPartMIMEReader(final String contentTypeHeaderValue, final ByteString paylaod)
     {
@@ -270,7 +270,7 @@ public class TestMultiPartMIMEWriter {
               final Header header = (Header) allHeaders.nextElement();
               partHeaders.put(header.getName(), header.getValue());
             }
-            final TestMultiPartMIMEDataPart tempDataSource = new TestMultiPartMIMEDataPart(partData, partHeaders);
+            final MIMEDataPart tempDataSource = new MIMEDataPart(partData, partHeaders);
             _dataSourceList.add(tempDataSource);
           }
           catch (Exception exception)

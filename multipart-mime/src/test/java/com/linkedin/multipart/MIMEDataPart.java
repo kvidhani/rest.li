@@ -10,12 +10,12 @@ import java.util.Map;
  * Represents in an-memory multipart mime data source used for testing.
  *
  */
-public final class TestMultiPartMIMEDataPart
+public final class MIMEDataPart
 {
   private final ByteString _partData;
   private final Map<String, String> _headers;
 
-  public TestMultiPartMIMEDataPart(final ByteString partData, final Map<String, String> headers)
+  public MIMEDataPart(final ByteString partData, final Map<String, String> headers)
   {
     if (partData == null)
     {
@@ -46,12 +46,12 @@ public final class TestMultiPartMIMEDataPart
       return true;
     }
 
-    if (!(o instanceof TestMultiPartMIMEDataPart))
+    if (!(o instanceof MIMEDataPart))
     {
       return false;
     }
 
-    final TestMultiPartMIMEDataPart that = (TestMultiPartMIMEDataPart) o;
+    final MIMEDataPart that = (MIMEDataPart) o;
 
     if(!_headers.equals(that.getPartHeaders()))
     {

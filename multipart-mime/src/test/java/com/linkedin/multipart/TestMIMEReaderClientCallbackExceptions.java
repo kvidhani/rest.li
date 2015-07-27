@@ -30,9 +30,12 @@ import static org.mockito.Mockito.when;
 
 
 /**
- * Created by kvidhani on 7/22/15.
+ * @author Karim Vidhani
+ *
+ * Tests for making sure that the {@link com.linkedin.multipart.MultiPartMIMEReader} is resilient in the face of
+ * exceptions thrown by invoking client callbacks.
  */
-public class TestMultiPartMIMEReaderClientCallbackExceptions {
+public class TestMIMEReaderClientCallbackExceptions {
 
   private static ExecutorService threadPoolExecutor;
 

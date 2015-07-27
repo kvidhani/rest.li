@@ -29,9 +29,12 @@ import static org.mockito.Mockito.when;
 
 
 /**
- * Created by kvidhani on 7/22/15.
+ * @author Karim Vidhani
+ *
+ * Test to verify that the {@link com.linkedin.multipart.MultiPartMIMEReader} can properly handle onError()
+ * sent by R2.
  */
-public class TestMultiPartMIMEReaderR2Error {
+public class TestMIMEReaderR2Error {
 
   private static ExecutorService threadPoolExecutor;
 

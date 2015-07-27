@@ -28,7 +28,7 @@ import static org.mockito.Mockito.*;
  *
  * Tests for {@link com.linkedin.multipart.MultiPartMIMEInputStream}
  */
-public class TestMultiPartMIMEInputStream {
+public class TestMIMEInputStream {
     private static ScheduledExecutorService scheduledExecutorService;
     private static final int TEST_CHUNK_SIZE = 4;
     private static final int TEST_TIMEOUT = 90000;

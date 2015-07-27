@@ -45,11 +45,13 @@ import static org.mockito.Mockito.*;
 
 
 /**
- * Created by kvidhani on 7/21/15.
+ * @author Karim Vidhani
+ *
+ * Unit tests for testing various exceptions that could occur in the {@link com.linkedin.multipart.MultiPartMIMEReader}
  */
-public class TestMultiPartMimeReaderExceptions {
+public class TestMIMEReaderExceptions {
 
-  private static final Logger log = LoggerFactory.getLogger(TestMultiPartMimeReaderExceptions.class);
+  private static final Logger log = LoggerFactory.getLogger(TestMIMEReaderExceptions.class);
 
   //We will have only one thread in our executor service so that when we submit tasks to write
   //data from the writer we do it in order.

@@ -42,11 +42,11 @@ import org.testng.annotations.Test;
 
 import static com.linkedin.multipart.DataSources.*;
 
-public class TestMultiPartMIMEIntegrationReader extends AbstractMultiPartMIMEIntegrationStreamTest {
+public class TestMIMEIntegrationReader extends AbstractMultiPartMIMEIntegrationStreamTest {
 
   private static final URI SERVER_URI = URI.create("/pegasusMimeServer");
   private MimeServerRequestHandler _mimeServerRequestHandler;
-  private static final Logger log = LoggerFactory.getLogger(TestMultiPartMIMEIntegrationReader.class);
+  private static final Logger log = LoggerFactory.getLogger(TestMIMEIntegrationReader.class);
 
   @Override
   protected TransportDispatcher getTransportDispatcher()

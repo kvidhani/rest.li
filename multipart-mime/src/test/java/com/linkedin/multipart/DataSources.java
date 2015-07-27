@@ -6,9 +6,7 @@ import javax.mail.internet.ParameterList;
 
 import com.google.common.collect.ImmutableMap;
 import com.linkedin.data.ByteString;
-import com.linkedin.r2.filter.R2Constants;
 import junit.framework.Assert;
-import org.testng.annotations.DataProvider;
 
 import java.util.Collections;
 import java.util.Map;
@@ -35,15 +33,15 @@ public final class DataSources {
     static MimeBodyPart _purelyEmptyBody; //Represents a part with no headers and no body
 
     //Non javax, custom data sources
-    static TestMultiPartMIMEDataPart _bodyA;
-    static TestMultiPartMIMEDataPart _bodyB;
-    static TestMultiPartMIMEDataPart _bodyC;
-    static TestMultiPartMIMEDataPart _bodyD;
-    static TestMultiPartMIMEDataPart _body1;
-    static TestMultiPartMIMEDataPart _body2;
-    static TestMultiPartMIMEDataPart _body3;
-    static TestMultiPartMIMEDataPart _body4;
-    static TestMultiPartMIMEDataPart _body5;
+    static MIMEDataPart _bodyA;
+    static MIMEDataPart _bodyB;
+    static MIMEDataPart _bodyC;
+    static MIMEDataPart _bodyD;
+    static MIMEDataPart _body1;
+    static MIMEDataPart _body2;
+    static MIMEDataPart _body3;
+    static MIMEDataPart _body4;
+    static MIMEDataPart _body5;
 
     //Disable instantiation
     private DataSources() {
@@ -53,38 +51,38 @@ public final class DataSources {
         //Non javax mail sources:
         final byte[] bodyAbytes = "bodyA".getBytes();
         final Map<String, String> bodyAHeaders = ImmutableMap.of("headerA", "valueA");
-        _bodyA = new TestMultiPartMIMEDataPart(ByteString.copy(bodyAbytes), bodyAHeaders);
+        _bodyA = new MIMEDataPart(ByteString.copy(bodyAbytes), bodyAHeaders);
 
         final byte[] bodyBbytes = "bodyB".getBytes();
         final Map<String, String> bodyBHeaders = ImmutableMap.of("headerB", "valueB");
-        _bodyB = new TestMultiPartMIMEDataPart(ByteString.copy(bodyBbytes), bodyBHeaders);
+        _bodyB = new MIMEDataPart(ByteString.copy(bodyBbytes), bodyBHeaders);
 
         //body c has no headers
         final byte[] bodyCbytes = "bodyC".getBytes();
-        _bodyC = new TestMultiPartMIMEDataPart(ByteString.copy(bodyCbytes), Collections.<String, String>emptyMap());
+        _bodyC = new MIMEDataPart(ByteString.copy(bodyCbytes), Collections.<String, String>emptyMap());
 
         final byte[] bodyDbytes = "bodyD".getBytes();
         final Map<String, String> bodyDHeaders = ImmutableMap.of("headerD", "valueD");
-        _bodyD = new TestMultiPartMIMEDataPart(ByteString.copy(bodyDbytes), bodyDHeaders);
+        _bodyD = new MIMEDataPart(ByteString.copy(bodyDbytes), bodyDHeaders);
 
         final byte[] body1bytes = "body1".getBytes();
         final Map<String, String> body1Headers = ImmutableMap.of("header1", "value1");
-        _body1 = new TestMultiPartMIMEDataPart(ByteString.copy(body1bytes), body1Headers);
+        _body1 = new MIMEDataPart(ByteString.copy(body1bytes), body1Headers);
 
         final byte[] body2bytes = "body2".getBytes();
         final Map<String, String> body2Headers = ImmutableMap.of("header2", "value2");
-        _body2 = new TestMultiPartMIMEDataPart(ByteString.copy(body2bytes), body2Headers);
+        _body2 = new MIMEDataPart(ByteString.copy(body2bytes), body2Headers);
 
         //body 3 is completely empty
-        _body3 = new TestMultiPartMIMEDataPart(ByteString.empty(), Collections.<String, String>emptyMap());
+        _body3 = new MIMEDataPart(ByteString.empty(), Collections.<String, String>emptyMap());
 
         final byte[] body4bytes = "body4".getBytes();
         final Map<String, String> body4Headers = ImmutableMap.of("header4", "value4");
-        _body4 = new TestMultiPartMIMEDataPart(ByteString.copy(body4bytes), body4Headers);
+        _body4 = new MIMEDataPart(ByteString.copy(body4bytes), body4Headers);
 
         final byte[] localInputStreamBytes = "local input stream".getBytes();
         final Map<String, String> localInputStreamHeaders = ImmutableMap.of("local1", "local2");
-        _body5 = new TestMultiPartMIMEDataPart(ByteString.copy(localInputStreamBytes), localInputStreamHeaders);
+        _body5 = new MIMEDataPart(ByteString.copy(localInputStreamBytes), localInputStreamHeaders);
 
         //Now create the javax data sources:
         try {

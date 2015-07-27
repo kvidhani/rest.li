@@ -43,10 +43,11 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 
 /**
- * Created by kvidhani on 7/20/15.
+ * @author Karim Vidhani
+ *
+ * Unit tests that mock out R2 and test the abandoning behavior of {@link com.linkedin.multipart.MultiPartMIMEReader}.
  */
-public class TestMultiPartMIMEReaderAbandon {
-
+public class TestMIMEReaderAbandon {
   private static ExecutorService threadPoolExecutor;
 
   MultiPartMIMEAbandonReaderCallbackImpl _currentMultiPartMIMEReaderCallback;
@@ -62,7 +63,7 @@ public class TestMultiPartMIMEReaderAbandon {
     threadPoolExecutor.shutdownNow();
   }
 
-  private static final Logger log = LoggerFactory.getLogger(TestMultiPartMIMEReaderAbandon.class);
+  private static final Logger log = LoggerFactory.getLogger(TestMIMEReaderAbandon.class);
     private static final String ABANDON_HEADER = "AbandonMe";
 
     //Header values for different server side behavior:
