@@ -40,9 +40,9 @@ public final class MultiPartMIMEInputStream implements MultiPartMIMEDataSource
   private volatile Future<?> _currentReadTask = null;
 
   @Override
-  public void onInit(final WriteHandle writeHandle)
+  public void onInit(final WriteHandle wh)
   {
-    _writeHandle = writeHandle;
+    _writeHandle = wh;
   }
 
   @Override

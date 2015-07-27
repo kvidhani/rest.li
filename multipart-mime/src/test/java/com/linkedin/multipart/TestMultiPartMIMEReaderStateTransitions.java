@@ -1,11 +1,11 @@
 package com.linkedin.multipart;
 
-import com.linkedin.multipart.reader.exceptions.PartBindException;
-import com.linkedin.multipart.reader.exceptions.PartFinishedException;
-import com.linkedin.multipart.reader.exceptions.PartNotInitializedException;
-import com.linkedin.multipart.reader.exceptions.ReaderNotInitializedException;
-import com.linkedin.multipart.reader.exceptions.StreamBusyException;
-import com.linkedin.multipart.reader.exceptions.StreamFinishedException;
+import com.linkedin.multipart.exceptions.PartBindException;
+import com.linkedin.multipart.exceptions.PartFinishedException;
+import com.linkedin.multipart.exceptions.PartNotInitializedException;
+import com.linkedin.multipart.exceptions.ReaderNotInitializedException;
+import com.linkedin.multipart.exceptions.StreamBusyException;
+import com.linkedin.multipart.exceptions.StreamFinishedException;
 import com.linkedin.r2.message.rest.StreamRequest;
 import com.linkedin.r2.message.streaming.EntityStream;
 import java.util.Collections;
@@ -171,7 +171,9 @@ public class TestMultiPartMIMEReaderStateTransitions {
   @Test
   public void testSinglePartMIMEReaderVerifyState() {
 
-    //This will cover both requestPartData() and abandonPart();
+    //This will cover abandonPart() and most of requestPartData().
+    //The exception is that requestPartData() requires a callback to be registered. This
+    //will be covered in the next test.
 
     final EntityStream entityStream = mock(EntityStream.class);
 
@@ -191,13 +193,6 @@ public class TestMultiPartMIMEReaderStateTransitions {
     } catch (PartFinishedException partFinishedException) {
     }
 
-    singlePartMIMEReader.setState(MultiPartMIMEReader.SingleReaderState.CREATED);
-    try {
-      singlePartMIMEReader.verifyState();
-      Assert.fail();
-    } catch (PartNotInitializedException partNotInitializedException) {
-    }
-
     singlePartMIMEReader.setState(MultiPartMIMEReader.SingleReaderState.REQUESTED_DATA);
     try {
       singlePartMIMEReader.verifyState();
@@ -212,5 +207,29 @@ public class TestMultiPartMIMEReaderStateTransitions {
     } catch (StreamBusyException streamBusyException) {
     }
   }
+
+
+  @Test
+  public void testSinglePartMIMEReaderRequestData() {
+
+    //This test will try to request part data without a callback registered.
+
+    final EntityStream entityStream = mock(EntityStream.class);
+    final StreamRequest streamRequest = mock(StreamRequest.class);
+    when(streamRequest.getEntityStream()).thenReturn(entityStream);
+    when(streamRequest.getHeader(MultiPartMIMEUtils.CONTENT_TYPE_HEADER)).thenReturn("multipart/mixed; boundary=\"--123\"");
+    MultiPartMIMEReader reader = MultiPartMIMEReader.createAndAcquireStream(streamRequest);
+
+    final MultiPartMIMEReader.SinglePartMIMEReader singlePartMIMEReader = reader.new SinglePartMIMEReader(
+            Collections.<String, String>emptyMap());
+
+    singlePartMIMEReader.setState(MultiPartMIMEReader.SingleReaderState.CREATED);
+    try {
+      singlePartMIMEReader.requestPartData();
+      Assert.fail();
+    } catch (PartNotInitializedException partNotInitializedException) {
+    }
+  }
+
 
 }

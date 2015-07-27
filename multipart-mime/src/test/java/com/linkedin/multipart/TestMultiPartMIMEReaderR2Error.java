@@ -1,7 +1,8 @@
 package com.linkedin.multipart;
 
 import com.linkedin.data.ByteString;
-import com.linkedin.multipart.reader.exceptions.StreamFinishedException;
+import com.linkedin.multipart.exceptions.PartFinishedException;
+import com.linkedin.multipart.exceptions.StreamFinishedException;
 import com.linkedin.r2.message.rest.StreamRequest;
 import com.linkedin.r2.message.streaming.EntityStream;
 import com.linkedin.r2.message.streaming.ReadHandle;
@@ -37,6 +38,9 @@ public class TestMultiPartMIMEReaderR2Error {
 
   MultiPartMIMEReader _reader;
   MultiPartMIMEAbandonReaderCallbackImpl _currentMultiPartMIMEReaderCallback;
+  //We want to read one byte, _readCount many times before stop. This way we ensure stop somewhere between a part.
+  int _readCount;
+
 
   @BeforeTest
   public void setup() {
@@ -76,7 +80,7 @@ public class TestMultiPartMIMEReaderR2Error {
     final String content = (String)_largeDataSource.getContent();
     //We want to read one byte, _readCount many times before stop. This way we ensure stop somewhere between a part.
     //This logic will have us stop somewhere in the middle of the 2nd part.
-    SinglePartMIMEAbandonReaderCallbackImpl._readCount = (int)(Math.ceil(content.length() * 1.5));
+    _readCount = (int)(Math.ceil(content.length() * 1.8));
     CountDownLatch countDownLatch =
         executeRequestPartialReadWithException(requestPayload, 1, multiPartMimeBody.getContentType());
 
@@ -90,7 +94,7 @@ public class TestMultiPartMIMEReaderR2Error {
     try {
       _currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.get(0)._singlePartMIMEReader.requestPartData();
       Assert.fail();
-    } catch (StreamFinishedException streamFinishedException) {
+    } catch (PartFinishedException partFinishedException) {
       //pass
     }
 
@@ -102,8 +106,8 @@ public class TestMultiPartMIMEReaderR2Error {
     try {
       _currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.get(1)._singlePartMIMEReader.requestPartData();
       Assert.fail();
-    } catch (StreamFinishedException streamFinishedException) {
-      //pass
+    } catch (PartFinishedException partFinishedException) {
+      //
     }
   }
 
@@ -137,7 +141,7 @@ public class TestMultiPartMIMEReaderR2Error {
         final int chunksRequested = (Integer)args[0];
 
         for (int i = 0;i<chunksRequested; i++) {
-
+          _readCount--;
           //Our tests will run into a stack overflow unless we use a thread pool here to fire off the callbacks.
           //Especially in cases where the chunk size is 1. When the chunk size is one, the MultiPartMIMEReader
           //ends up doing many _rh.request(1) since each write is only 1 byte.
@@ -197,14 +201,11 @@ public class TestMultiPartMIMEReaderR2Error {
 
 
 
-  private static class SinglePartMIMEAbandonReaderCallbackImpl implements SinglePartMIMEReaderCallback {
+  private class SinglePartMIMEAbandonReaderCallbackImpl implements SinglePartMIMEReaderCallback {
 
     final MultiPartMIMEReader.SinglePartMIMEReader _singlePartMIMEReader;
     Throwable _streamError = null;
     final CountDownLatch _countDownLatch;
-
-    //We want to read one byte, _readCount many times before stop. This way we ensure stop somewhere between a part.
-    static int _readCount;
 
     SinglePartMIMEAbandonReaderCallbackImpl(final MultiPartMIMEReader.SinglePartMIMEReader singlePartMIMEReader, final CountDownLatch countDownLatch) {
       _singlePartMIMEReader = singlePartMIMEReader;
@@ -215,7 +216,7 @@ public class TestMultiPartMIMEReaderR2Error {
 
     @Override
     public void onPartDataAvailable(ByteString b) {
-      if(_readCount-- > 0) {
+      if(_readCount > 0) {
         _singlePartMIMEReader.requestPartData();
       } else {
         _countDownLatch.countDown();
@@ -238,7 +239,7 @@ public class TestMultiPartMIMEReaderR2Error {
     }
   }
 
-  private static class MultiPartMIMEAbandonReaderCallbackImpl implements MultiPartMIMEReaderCallback {
+  private class MultiPartMIMEAbandonReaderCallbackImpl implements MultiPartMIMEReaderCallback {
 
     final List<SinglePartMIMEAbandonReaderCallbackImpl> _singlePartMIMEReaderCallbacks =
         new ArrayList<SinglePartMIMEAbandonReaderCallbackImpl>();

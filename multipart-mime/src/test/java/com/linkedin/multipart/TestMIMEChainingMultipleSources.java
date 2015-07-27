@@ -5,7 +5,7 @@ import com.linkedin.common.callback.Callback;
 import com.linkedin.common.callback.FutureCallback;
 import com.linkedin.common.util.None;
 import com.linkedin.data.ByteString;
-import com.linkedin.multipart.reader.exceptions.IllegalMimeFormatException;
+import com.linkedin.multipart.exceptions.IllegalMultiPartMIMEFormatException;
 import com.linkedin.r2.filter.R2Constants;
 import com.linkedin.r2.message.RequestContext;
 import com.linkedin.r2.message.rest.*;
@@ -38,14 +38,11 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 /**
  * Created by kvidhani on 7/25/15.
  */
 public class TestMIMEChainingMultipleSources {
-
 
     private static final int PORT_SERVER_A = 8450;
     private static final int PORT_SERVER_B = 8451;
@@ -208,7 +205,7 @@ public class TestMIMEChainingMultipleSources {
                 _client.streamRequest(simplePost, responseCallback);
 
             }
-            catch (IllegalMimeFormatException illegalMimeFormatException)
+            catch (IllegalMultiPartMIMEFormatException illegalMimeFormatException)
             {
                 RestException restException = new RestException(RestStatus.responseForError(400, illegalMimeFormatException));
                 callback.onError(restException);
@@ -389,7 +386,7 @@ public class TestMIMEChainingMultipleSources {
                 callback.onSuccess(streamResponse);
 
             }
-            catch (IllegalMimeFormatException illegalMimeFormatException)
+            catch (IllegalMultiPartMIMEFormatException illegalMimeFormatException)
             {
                 RestException restException = new RestException(RestStatus.responseForError(400, illegalMimeFormatException));
                 callback.onError(restException);

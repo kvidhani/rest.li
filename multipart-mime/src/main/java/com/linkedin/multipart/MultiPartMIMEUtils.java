@@ -1,8 +1,10 @@
 package com.linkedin.multipart;
 
 import com.linkedin.data.ByteString;
-import com.linkedin.multipart.reader.exceptions.IllegalMimeFormatException;
+import com.linkedin.multipart.exceptions.IllegalMultiPartMIMEFormatException;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
@@ -47,9 +49,10 @@ public class MultiPartMIMEUtils {
   private static final char[] MULTIPART_CHARS =
       "-_1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ".toCharArray();
 
-  public static ByteString serializedHeaders(final Map<String, String> headers) {
+  static void serializeHeaders(final Map<String, String> headers,
+                                               final ByteArrayOutputStream outputStream) throws IOException {
 
-    final StringBuffer headerBuffer = new StringBuffer();
+    final StringBuilder headerBuffer = new StringBuilder();
     for (final Map.Entry<String, String> header : headers.entrySet()) {
       headerBuffer.append(formattedHeader(header.getKey(), header.getValue()));
     }
@@ -57,14 +60,14 @@ public class MultiPartMIMEUtils {
     //Headers should always be 7 bit ASCII according to the RFC. If characters provided in the header
     //are do not constitute a valid ASCII character, then this Charset will place (U+FFFD) or the
     //replacement character which is used to replace an unknown or unrepresentable character.
-    return ByteString.copyString(headerBuffer.toString(), Charset.forName("US-ASCII"));
+    outputStream.write(headerBuffer.toString().getBytes(Charset.forName("US-ASCII")));
   }
 
-  public static String formattedHeader(final String name, final String value) {
+  static String formattedHeader(final String name, final String value) {
     return ((name == null ? "" : name) + ": " + (null == value ? "" : value) + CRLF_STRING);
   }
 
-  public static String generateBoundary()
+  static String generateBoundary()
   {
     final StringBuilder buffer = new StringBuilder();
     final Random rand = new Random();
@@ -79,7 +82,7 @@ public class MultiPartMIMEUtils {
     return buffer.toString();
   }
 
-  public static String buildMIMEContentTypeHeader(final String mimeType, final String boundary,
+  static String buildMIMEContentTypeHeader(final String mimeType, final String boundary,
       final Map<String, String> contentTypeParameters) {
 
     final StringBuilder contentTypeBuilder = new StringBuilder();
@@ -101,16 +104,16 @@ public class MultiPartMIMEUtils {
   //todo we can only do so much validation, we need javadocs to mention we make some assumptions
   //todo - how can clients deal with these exceptions?
   //todo compare to the sync version before committing
-  public static String extractBoundary(final String contentTypeHeader) throws IllegalMimeFormatException
+  static String extractBoundary(final String contentTypeHeader) throws IllegalMultiPartMIMEFormatException
   {
     if (!contentTypeHeader.toLowerCase().startsWith(MultiPartMIMEUtils.MULTIPART_PREFIX))
     {
-      throw new IllegalMimeFormatException("Malformed multipart mime request. Not a valid multipart mime header.");
+      throw new IllegalMultiPartMIMEFormatException("Malformed multipart mime request. Not a valid multipart mime header.");
     }
 
     if(!contentTypeHeader.contains(";"))
     {
-      throw new IllegalMimeFormatException("Malformed multipart mime request. Improperly formatted Content-Type header. "
+      throw new IllegalMultiPartMIMEFormatException("Malformed multipart mime request. Improperly formatted Content-Type header. "
           + "Expected at least one parameter in addition to the content type.");
     }
 
@@ -132,7 +135,7 @@ public class MultiPartMIMEUtils {
       //We throw an exception if there is no equals sign, or if the equals is the first character or if the
       //equals is the last character.
       if (firstEquals == 0 || firstEquals == -1 || firstEquals == trimmedParameter.length() - 1) {
-        throw new IllegalMimeFormatException("Invalid parameter format.");
+        throw new IllegalMultiPartMIMEFormatException("Invalid parameter format.");
       }
 
       //Todo - Should we actually go through each character in the boundary and make sure it matches acceptable
@@ -143,14 +146,14 @@ public class MultiPartMIMEUtils {
       String parameterValue = trimmedParameter.substring(firstEquals + 1, trimmedParameter.length());
       if(parameterValue.charAt(0) == '"') {
         if(parameterValue.charAt(parameterValue.length()-1) != '"') {
-          throw new IllegalMimeFormatException("Invalid parameter format.");
+          throw new IllegalMultiPartMIMEFormatException("Invalid parameter format.");
         }
         //Remove the leading and trailing '"'
         parameterValue = parameterValue.substring(1, parameterValue.length()-1);
       }
 
       if (parameterMap.containsKey(parameterKey)) {
-        throw new IllegalMimeFormatException("Invalid parameter format. Multiple decelerations of the same parameter!");
+        throw new IllegalMultiPartMIMEFormatException("Invalid parameter format. Multiple decelerations of the same parameter!");
       }
       parameterMap.put(parameterKey, parameterValue);
     }
@@ -158,9 +161,39 @@ public class MultiPartMIMEUtils {
     final String boundaryValue = parameterMap.get(BOUNDARY_PARAMETER);
 
     if (boundaryValue == null) {
-      throw new IllegalMimeFormatException("No boundary parameter found!");
+      throw new IllegalMultiPartMIMEFormatException("No boundary parameter found!");
     }
 
     return boundaryValue;
+  }
+
+  static final ThreadLocal<ByteArrayOutputStream> threadLocalOutputStream = new ThreadLocal<ByteArrayOutputStream>() {
+    @Override
+    protected ByteArrayOutputStream initialValue() {
+      return new ByteArrayOutputStream();
+    }
+  };
+
+  static ByteString serializeBoundaryAndHeaders(final byte[] normalEncapsulationBoundary,
+                                         final MultiPartMIMEDataSource dataSource) throws IOException {
+
+    final ByteArrayOutputStream localOutputStream = threadLocalOutputStream.get();
+    localOutputStream.reset();
+
+      //Write the headers out for this new part
+      localOutputStream.write(normalEncapsulationBoundary);
+      localOutputStream.write(MultiPartMIMEUtils.CRLF_BYTES);
+
+      if (!dataSource.dataSourceHeaders().isEmpty()) {
+        //Serialize the headers
+        serializeHeaders(dataSource.dataSourceHeaders(), localOutputStream);
+      }
+
+      //Regardless of whether or not there were headers the RFC calls for another CRLF here.
+      //If there were no headers we end up with two CRLFs after the boundary
+      //If there were headers CRLF_BYTES we end up with one CRLF after the boundary and one after the last header
+      localOutputStream.write(MultiPartMIMEUtils.CRLF_BYTES);
+
+    return ByteString.copy(localOutputStream.toByteArray());
   }
 }

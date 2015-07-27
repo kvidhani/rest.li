@@ -56,30 +56,16 @@ public final class MultiPartMIMEWriter {
 
     public MultiPartMIMEWriterBuilder appendDataSource(final MultiPartMIMEDataSource dataSource) {
 
-      //Append the boundary and headers for this part as an EntityStream
-      _boundaryHeaderByteArrayOutputStream.reset();
+      ByteString serializedBoundaryAndHeaders = null;
       try {
-        _boundaryHeaderByteArrayOutputStream.write(_normalEncapsulationBoundary);
-        _boundaryHeaderByteArrayOutputStream.write(MultiPartMIMEUtils.CRLF_BYTES);
-
-        if (!dataSource.dataSourceHeaders().isEmpty()) {
-          //Serialize the headers
-          _boundaryHeaderByteArrayOutputStream
-              .write(MultiPartMIMEUtils.serializedHeaders(dataSource.dataSourceHeaders()).copyBytes());
-        }
-
-        //Regardless of whether or not there were headers the RFC calls for another CRLF here.
-        //If there were no headers we end up with two CRLFs after the boundary
-        //If there were headers CRLF_BYTES we end up with one CRLF after the boundary and one after the last header
-        _boundaryHeaderByteArrayOutputStream.write(MultiPartMIMEUtils.CRLF_BYTES);
-
-
+        serializedBoundaryAndHeaders = MultiPartMIMEUtils.serializeBoundaryAndHeaders(_normalEncapsulationBoundary, dataSource);
       } catch (IOException ioException) {
         //Should never happen
         throw new IllegalStateException("Serious error when constructing local byte buffer for the boundary and headers!");
       }
+
       //Note that that nothing happens if there is an abort in the middle of writing a boundary or headers.
-      final Writer boundaryHeaderWriter = new ByteStringWriter(ByteString.copy(_boundaryHeaderByteArrayOutputStream.toByteArray()));
+      final Writer boundaryHeaderWriter = new ByteStringWriter(serializedBoundaryAndHeaders);
       _allDataSources.add(EntityStreams.newEntityStream(boundaryHeaderWriter));
       _allDataSources.add(EntityStreams.newEntityStream(dataSource));
       return this;

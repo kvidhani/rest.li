@@ -1,7 +1,8 @@
 package com.linkedin.multipart;
 
 import com.linkedin.data.ByteString;
-import com.linkedin.multipart.reader.exceptions.StreamFinishedException;
+import com.linkedin.multipart.exceptions.PartFinishedException;
+import com.linkedin.multipart.exceptions.StreamFinishedException;
 import com.linkedin.r2.filter.R2Constants;
 import com.linkedin.r2.message.rest.StreamRequest;
 import com.linkedin.r2.message.streaming.EntityStream;
@@ -19,10 +20,7 @@ import javax.mail.internet.MimeMultipart;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 import org.testng.Assert;
-import org.testng.annotations.AfterTest;
-import org.testng.annotations.BeforeTest;
-import org.testng.annotations.DataProvider;
-import org.testng.annotations.Test;
+import org.testng.annotations.*;
 
 import static com.linkedin.multipart.DataSources.*;
 import static org.mockito.Matchers.isA;
@@ -36,21 +34,19 @@ import static org.mockito.Mockito.when;
  */
 public class TestMultiPartMIMEReaderClientCallbackExceptions {
 
-
-
   private static ExecutorService threadPoolExecutor;
 
   MultiPartMIMEReader _reader;
   MultiPartMIMEAbandonReaderCallbackImpl _currentMultiPartMIMEReaderCallback;
 
-  @BeforeTest
+  @BeforeMethod
   public void setup() {
     SinglePartMIMEAbandonReaderCallbackImpl.resetAllFlags();
     MultiPartMIMEAbandonReaderCallbackImpl.resetAllFlags();
     threadPoolExecutor = Executors.newFixedThreadPool(5);
   }
 
-  @AfterTest
+  @AfterMethod
   public void shutDown() {
     threadPoolExecutor.shutdownNow();
   }
@@ -157,7 +153,7 @@ public class TestMultiPartMIMEReaderClientCallbackExceptions {
       try {
         _currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.get(i)._singlePartMIMEReader.requestPartData();
         Assert.fail();
-      } catch (StreamFinishedException streamFinishedException) {
+      } catch (PartFinishedException partFinishedException) {
         //pass
       }
     }
@@ -245,7 +241,7 @@ public class TestMultiPartMIMEReaderClientCallbackExceptions {
     try {
       _currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.get(0)._singlePartMIMEReader.requestPartData();
       Assert.fail();
-    } catch (StreamFinishedException streamFinishedException) {
+    } catch (PartFinishedException partFinishedException) {
       //pass
     }
 
@@ -287,7 +283,7 @@ public class TestMultiPartMIMEReaderClientCallbackExceptions {
     try {
       _currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.get(0)._singlePartMIMEReader.requestPartData();
       Assert.fail();
-    } catch (StreamFinishedException streamFinishedException) {
+    } catch (PartFinishedException partFinishedException) {
       //pass
     }
   }
@@ -326,7 +322,7 @@ public class TestMultiPartMIMEReaderClientCallbackExceptions {
     try {
       _currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.get(0)._singlePartMIMEReader.requestPartData();
       Assert.fail();
-    } catch (StreamFinishedException streamFinishedException) {
+    } catch (PartFinishedException partFinishedException) {
       //pass
     }
   }
@@ -403,7 +399,6 @@ public class TestMultiPartMIMEReaderClientCallbackExceptions {
 
     when(streamRequest.getHeader(MultiPartMIMEUtils.CONTENT_TYPE_HEADER)).thenReturn(contentTypeHeader);
 
-    final AtomicReference<Throwable> throwable = new AtomicReference<Throwable>();
     final CountDownLatch latch = new CountDownLatch(1);
 
 

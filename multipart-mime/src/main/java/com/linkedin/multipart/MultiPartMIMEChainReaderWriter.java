@@ -1,23 +1,20 @@
 package com.linkedin.multipart;
 
-import com.linkedin.multipart.MultiPartMIMEChainReaderCallback;
-import com.linkedin.multipart.MultiPartMIMEReader;
 import com.linkedin.r2.message.streaming.WriteHandle;
 import com.linkedin.r2.message.streaming.Writer;
 
 /**
  * Created by kvidhani on 7/25/15.
  */
-
-  class MultiPartMIMEChainReaderWriter implements Writer {
+class MultiPartMIMEChainReaderWriter implements Writer {
 
     private final MultiPartMIMEReader _multiPartMIMEReader;
     private final byte[] _normalEncapsulationBoundary;
     private WriteHandle _writeHandle;
     private MultiPartMIMEChainReaderCallback _multiPartMIMEChainReaderCallback = null;
 
-     MultiPartMIMEChainReaderWriter(final MultiPartMIMEReader multiPartMIMEReader,
-                                    final byte[] normalEncapsulationBoundary) {
+    MultiPartMIMEChainReaderWriter(final MultiPartMIMEReader multiPartMIMEReader,
+                                   final byte[] normalEncapsulationBoundary) {
         _multiPartMIMEReader = multiPartMIMEReader;
         _normalEncapsulationBoundary = normalEncapsulationBoundary;
     }
