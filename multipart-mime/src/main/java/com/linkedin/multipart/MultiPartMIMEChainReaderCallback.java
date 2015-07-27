@@ -12,7 +12,7 @@ import java.io.IOException;
  *
  * Callback registered by the {@link com.linkedin.multipart.MultiPartMIMEWriter} to chain this as a data source.
  */
-class MultiPartMIMEChainReaderCallback implements MultiPartMIMEReaderCallback {
+final class MultiPartMIMEChainReaderCallback implements MultiPartMIMEReaderCallback {
     private final WriteHandle _writeHandle;
     private MultiPartMIMEReader.SinglePartMIMEReader _currentSinglePartReader;
     private final byte[] _normalEncapsulationBoundary;

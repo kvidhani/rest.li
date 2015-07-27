@@ -1139,7 +1139,7 @@ public final class MultiPartMIMEReader {
      * and then call {@link com.linkedin.multipart.MultiPartMIMEReader.SinglePartMIMEReader#requestPartData()}
      * to start the flow of data.
      */
-    public class SinglePartMIMEReader implements MultiPartMIMEDataSource {
+    public final class SinglePartMIMEReader implements MultiPartMIMEDataSource {
         private final Map<String, String> _headers;
         private volatile SinglePartMIMEReaderCallback _callback = null;
         private final R2MultiPartMIMEReader _r2MultiPartMIMEReader;

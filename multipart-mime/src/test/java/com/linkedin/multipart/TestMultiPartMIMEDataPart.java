@@ -5,14 +5,17 @@ import java.util.Map;
 
 
 /**
- * Created by kvidhani on 7/23/15.
+ * @author Karim Vidhani
+ *
+ * Represents in an-memory multipart mime data source used for testing.
+ *
  */
-public class MultiPartMIMEDataPartImpl
+public final class TestMultiPartMIMEDataPart
 {
   private final ByteString _partData;
   private final Map<String, String> _headers;
 
-  public MultiPartMIMEDataPartImpl(final ByteString partData, final Map<String, String> headers)
+  public TestMultiPartMIMEDataPart(final ByteString partData, final Map<String, String> headers)
   {
     if (partData == null)
     {
@@ -43,12 +46,12 @@ public class MultiPartMIMEDataPartImpl
       return true;
     }
 
-    if (!(o instanceof MultiPartMIMEDataPartImpl))
+    if (!(o instanceof TestMultiPartMIMEDataPart))
     {
       return false;
     }
 
-    final MultiPartMIMEDataPartImpl that = (MultiPartMIMEDataPartImpl) o;
+    final TestMultiPartMIMEDataPart that = (TestMultiPartMIMEDataPart) o;
 
     if(!_headers.equals(that.getPartHeaders()))
     {

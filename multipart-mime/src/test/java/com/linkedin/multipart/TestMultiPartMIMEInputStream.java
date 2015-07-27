@@ -24,14 +24,11 @@ import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.*;
 
 /**
- * Created by kvidhani on 7/17/15.
+ * @author Karim Vidhani
+ *
+ * Tests for {@link com.linkedin.multipart.MultiPartMIMEInputStream}
  */
-
-
-//lower the test timeout
-
 public class TestMultiPartMIMEInputStream {
-
     private static ScheduledExecutorService scheduledExecutorService;
     private static final int TEST_CHUNK_SIZE = 4;
     private static final int TEST_TIMEOUT = 90000;

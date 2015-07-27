@@ -25,43 +25,21 @@ import java.util.concurrent.TimeUnit;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static com.linkedin.multipart.DataSources.*;
 
 /**
- * Created by kvidhani on 7/25/15.
+ * @author Karim Vidhani
+ *         <p/>
+ *         Represents a test where we alternate between chaining and consuming a
+ *         {@link com.linkedin.multipart.MultiPartMIMEReader.SinglePartMIMEReader}.
  */
 public class TestMIMEChainingAlternate {
-
     private static ScheduledExecutorService scheduledExecutorService;
-
-    MultiPartMIMEDataPartImpl _bodyA;
-    MultiPartMIMEDataPartImpl _bodyB;
-    MultiPartMIMEDataPartImpl _bodyC;
-    MultiPartMIMEDataPartImpl _bodyD;
 
     @BeforeTest
     public void dataSourceSetup() {
-
         scheduledExecutorService = Executors.newScheduledThreadPool(10);
-
-        final byte[] bodyAbytes = "bodyA".getBytes();
-        final Map<String, String> bodyAHeaders = ImmutableMap.of("headerA", "valueA");
-        _bodyA = new MultiPartMIMEDataPartImpl(ByteString.copy(bodyAbytes), bodyAHeaders);
-
-        final byte[] bodyBbytes = "bodyB".getBytes();
-        final Map<String, String> bodyBHeaders = ImmutableMap.of("headerB", "valueB");
-        _bodyB = new MultiPartMIMEDataPartImpl(ByteString.copy(bodyBbytes), bodyBHeaders);
-
-        //body c has no headers
-        final byte[] bodyCbytes = "bodyC".getBytes();
-        _bodyC = new MultiPartMIMEDataPartImpl(ByteString.copy(bodyCbytes), Collections.<String, String>emptyMap());
-
-        final byte[] bodyDbytes = "bodyD".getBytes();
-        final Map<String, String> bodyDHeaders = ImmutableMap.of("headerD", "valueD");
-        _bodyD = new MultiPartMIMEDataPartImpl(ByteString.copy(bodyDbytes), bodyDHeaders);
-
     }
-
-
 
     //This test has the server alternate between consuming a part and sending a part as a data source
     //to a writer.
@@ -70,7 +48,6 @@ public class TestMIMEChainingAlternate {
     //the presence of each data source.
     //This violates the typical client/server http pattern, but accomplishes the purpose of this test
     //and it makes it easier to write.
-
     @DataProvider(name = "chunkSizes")
     public Object[][] chunkSizes() throws Exception {
         return new Object[][]{
@@ -156,7 +133,6 @@ public class TestMIMEChainingAlternate {
     }
 
     static Callback<StreamResponse> expectSuccessChainCallback(final ClientMultiPartMIMEReaderEchoReceiver receiver) {
-
         return new Callback<StreamResponse>() {
             @Override
             public void onError(Throwable e) {
@@ -174,7 +150,6 @@ public class TestMIMEChainingAlternate {
 
     //Client callbacks:
     private static class ClientSinglePartMIMEReaderEchoReceiver implements SinglePartMIMEReaderCallback {
-
         final MultiPartMIMEReader.SinglePartMIMEReader _singlePartMIMEReader;
         final ByteArrayOutputStream _byteArrayOutputStream = new ByteArrayOutputStream();
         Map<String, String> _headers;
@@ -215,7 +190,6 @@ public class TestMIMEChainingAlternate {
 
 
     private static class ClientMultiPartMIMEReaderEchoReceiver implements MultiPartMIMEReaderCallback {
-
         final List<ClientSinglePartMIMEReaderEchoReceiver> _singlePartMIMEReaderCallbacks =
                 new ArrayList<ClientSinglePartMIMEReaderEchoReceiver>();
 
@@ -246,10 +220,8 @@ public class TestMIMEChainingAlternate {
         }
     }
 
-
     //Server callbacks:
     private static class ServerSinglePartMIMEReader implements SinglePartMIMEReaderCallback {
-
         final MultiPartMIMEReader.SinglePartMIMEReader _singlePartMIMEReader;
         final ByteArrayOutputStream _byteArrayOutputStream = new ByteArrayOutputStream();
         Map<String, String> _headers;
@@ -286,12 +258,9 @@ public class TestMIMEChainingAlternate {
         public void onStreamError(Throwable throwable) {
             Assert.fail();
         }
-
     }
 
-
     private static class ServerMultiPartMIMEReaderSinglePartEcho implements MultiPartMIMEReaderCallback {
-
         final CountDownLatch _latch;
         final Callback<StreamResponse> _callbackA;
         final Callback<StreamResponse> _callbackB;
@@ -301,7 +270,7 @@ public class TestMIMEChainingAlternate {
 
         @Override
         public void onNewPart(MultiPartMIMEReader.SinglePartMIMEReader singleParMIMEReader) {
-            _currentPart ++;
+            _currentPart++;
             if (_currentPart == 1) {
                 final MultiPartMIMEWriter writer =
                         new MultiPartMIMEWriter.Builder().appendDataSource(singleParMIMEReader).build();
@@ -354,5 +323,4 @@ public class TestMIMEChainingAlternate {
             _callbackB = callbackB;
         }
     }
-
 }

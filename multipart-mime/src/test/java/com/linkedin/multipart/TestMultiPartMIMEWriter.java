@@ -32,15 +32,13 @@ import org.testng.annotations.Test;
 
 
 /**
- * Created by kvidhani on 7/7/15.
+ * @author Karim Vidhani
+ *
+ * Using Javax.mail on the server side to verify the integrity of our RFC implementation of the
+ * {@link com.linkedin.multipart.MultiPartMIMEWriter}. There is no way to use mockito to mock EntitStreams.newEntityStream()
+ * Therefore we have no choice but to use R2's functionality here.
  */
-//Using Javax.mail on the server side to verify the integrity of our RFC implementation of the MultiPartMIMEWriter
-
-//Read in all the bytes that the writer generates into memory and then use javax mail to verify things look correct
-//There is no way to use mockito to mock EntitStreams.newEntityStream()
-//Therefore we have no choice but to use R2's functionality here.
 public class TestMultiPartMIMEWriter {
-
   private static ScheduledExecutorService scheduledExecutorService;
   private static final int TEST_TIMEOUT = 90000;
 
@@ -51,14 +49,13 @@ public class TestMultiPartMIMEWriter {
 
   Map<String, String> _bodyLessHeaders;
 
-  MultiPartMIMEDataPartImpl _normalBody;
-  MultiPartMIMEDataPartImpl _headerLessBody;
-  MultiPartMIMEDataPartImpl _bodyLessBody;
-  MultiPartMIMEDataPartImpl _purelyEmptyBody;
+  TestMultiPartMIMEDataPart _normalBody;
+  TestMultiPartMIMEDataPart _headerLessBody;
+  TestMultiPartMIMEDataPart _bodyLessBody;
+  TestMultiPartMIMEDataPart _purelyEmptyBody;
 
   @BeforeTest
   public void setup() {
-
     _normalBodyData = "abc".getBytes();
     _normalBodyHeaders = new HashMap<String, String>();
     _normalBodyHeaders.put("simpleheader", "simplevalue");
@@ -73,16 +70,16 @@ public class TestMultiPartMIMEWriter {
     _normalBodyHeaders.put("header3", "value3");
 
     _normalBody =
-        new MultiPartMIMEDataPartImpl(ByteString.copy(_normalBodyData), _normalBodyHeaders);
+        new TestMultiPartMIMEDataPart(ByteString.copy(_normalBodyData), _normalBodyHeaders);
 
     _headerLessBody =
-        new MultiPartMIMEDataPartImpl(ByteString.copy(_headerLessBodyData), Collections.<String, String>emptyMap());
+        new TestMultiPartMIMEDataPart(ByteString.copy(_headerLessBodyData), Collections.<String, String>emptyMap());
 
     _bodyLessBody =
-        new MultiPartMIMEDataPartImpl(ByteString.empty(), _bodyLessHeaders);
+        new TestMultiPartMIMEDataPart(ByteString.empty(), _bodyLessHeaders);
 
     _purelyEmptyBody =
-        new MultiPartMIMEDataPartImpl(ByteString.empty(), Collections.<String, String>emptyMap());
+        new TestMultiPartMIMEDataPart(ByteString.empty(), Collections.<String, String>emptyMap());
 
     scheduledExecutorService = Executors.newScheduledThreadPool(10);
   }
@@ -103,11 +100,12 @@ public class TestMultiPartMIMEWriter {
     };
   }
 
+
   @Test(dataProvider = "singleDataSources")
   public void testSingleDataSource(final ByteString body, final Map<String, String> headers) throws Exception
   {
-    final MultiPartMIMEDataPartImpl expectedMultiPartMIMEDataPart =
-        new MultiPartMIMEDataPartImpl(body, headers);
+    final TestMultiPartMIMEDataPart expectedMultiPartMIMEDataPart =
+        new TestMultiPartMIMEDataPart(body, headers);
 
     final MultiPartMIMEInputStream singleDataSource =
         new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(body.copyBytes()), scheduledExecutorService, headers).build();
@@ -131,7 +129,7 @@ public class TestMultiPartMIMEWriter {
     javaxMailMultiPartMIMEReader.parseRequestIntoParts();
 
 
-    List<MultiPartMIMEDataPartImpl> dataSourceList = javaxMailMultiPartMIMEReader._dataSourceList;
+    List<TestMultiPartMIMEDataPart> dataSourceList = javaxMailMultiPartMIMEReader._dataSourceList;
 
     Assert.assertEquals(dataSourceList.size(), 1);
     Assert.assertEquals(dataSourceList.get(0), expectedMultiPartMIMEDataPart);
@@ -143,7 +141,7 @@ public class TestMultiPartMIMEWriter {
   @Test
   public void testMultipleDataSources() throws Exception {
 
-    final List<MultiPartMIMEDataPartImpl> expectedParts = new ArrayList<MultiPartMIMEDataPartImpl>();
+    final List<TestMultiPartMIMEDataPart> expectedParts = new ArrayList<TestMultiPartMIMEDataPart>();
     expectedParts.add(_normalBody);
     expectedParts.add(_normalBody);
     expectedParts.add(_headerLessBody);
@@ -197,7 +195,7 @@ public class TestMultiPartMIMEWriter {
     javaxMailMultiPartMIMEReader.parseRequestIntoParts();
 
 
-    List<MultiPartMIMEDataPartImpl> dataSourceList = javaxMailMultiPartMIMEReader._dataSourceList;
+    List<TestMultiPartMIMEDataPart> dataSourceList = javaxMailMultiPartMIMEReader._dataSourceList;
 
     Assert.assertEquals(dataSourceList.size(), 12);
     for (int i = 0;i<dataSourceList.size(); i++) {
@@ -216,7 +214,7 @@ public class TestMultiPartMIMEWriter {
     final ByteString _payload;
     String _preamble; //javax mail only supports reading the preamble
 
-    final List<MultiPartMIMEDataPartImpl> _dataSourceList = new ArrayList<MultiPartMIMEDataPartImpl>();
+    final List<TestMultiPartMIMEDataPart> _dataSourceList = new ArrayList<TestMultiPartMIMEDataPart>();
 
     private JavaxMailMultiPartMIMEReader(final String contentTypeHeaderValue, final ByteString paylaod)
     {
@@ -272,7 +270,7 @@ public class TestMultiPartMIMEWriter {
               final Header header = (Header) allHeaders.nextElement();
               partHeaders.put(header.getName(), header.getValue());
             }
-            final MultiPartMIMEDataPartImpl tempDataSource = new MultiPartMIMEDataPartImpl(partData, partHeaders);
+            final TestMultiPartMIMEDataPart tempDataSource = new TestMultiPartMIMEDataPart(partData, partHeaders);
             _dataSourceList.add(tempDataSource);
           }
           catch (Exception exception)

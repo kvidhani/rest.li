@@ -21,62 +21,25 @@ import java.util.concurrent.TimeUnit;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static com.linkedin.multipart.DataSources.*;
 
 /**
- * Created by kvidhani on 7/22/15.
+ * @author Karim Vidhani
+ *
+ * Tests sending a {@link com.linkedin.multipart.MultiPartMIMEReader.SinglePartMIMEReader} as a
+ * data source to a {@link com.linkedin.multipart.MultiPartMIMEWriter}
  */
-
 public class TestMIMEChainingSinglePart {
-
-
-    //todo - do this!
-    //todo change the name fo this file
-    //todo test the case where when we chain, and register a new top level multipart mime reader callback, we throw
-    //from:
-    //multipart mime reader callback:
-    //onNewPart both in the main logic and also in callback registration
-
 
     private static ScheduledExecutorService scheduledExecutorService;
 
-    MultiPartMIMEDataPartImpl _bodyA;
-    MultiPartMIMEDataPartImpl _bodyB;
-    MultiPartMIMEDataPartImpl _bodyC;
-    MultiPartMIMEDataPartImpl _bodyD;
-
     @BeforeTest
     public void dataSourceSetup() {
-
         scheduledExecutorService = Executors.newScheduledThreadPool(10);
-
-        final byte[] bodyAbytes = "bodyA".getBytes();
-        final Map<String, String> bodyAHeaders = ImmutableMap.of("headerA", "valueA");
-        _bodyA = new MultiPartMIMEDataPartImpl(ByteString.copy(bodyAbytes), bodyAHeaders);
-
-        final byte[] bodyBbytes = "bodyB".getBytes();
-        final Map<String, String> bodyBHeaders = ImmutableMap.of("headerB", "valueB");
-        _bodyB = new MultiPartMIMEDataPartImpl(ByteString.copy(bodyBbytes), bodyBHeaders);
-
-        //body c has no headers
-        final byte[] bodyCbytes = "bodyC".getBytes();
-        _bodyC = new MultiPartMIMEDataPartImpl(ByteString.copy(bodyCbytes), Collections.<String, String>emptyMap());
-
-        final byte[] bodyDbytes = "bodyD".getBytes();
-        final Map<String, String> bodyDHeaders = ImmutableMap.of("headerD", "valueD");
-        _bodyD = new MultiPartMIMEDataPartImpl(ByteString.copy(bodyDbytes), bodyDHeaders);
-
     }
 
-
-
-
-
     //Verifies that a single part mime reader can be used as a data source to the writer.
-//To make the test easier to write, we simply chain back to the client in the form of simulating a response.
-
-    //This test creates a multipart mime request. On the server side, upon invocation to onNewPart(), the server
-    //creates a writer to send back that first part. When the client finishes receiving this,
-    //the server picks up where they left off and consumes the rest.
+    //To make the test easier to write, we simply chain back to the client in the form of simulating a response.
     @DataProvider(name = "chunkSizes")
     public Object[][] chunkSizes() throws Exception {
         return new Object[][]{
@@ -87,7 +50,6 @@ public class TestMIMEChainingSinglePart {
 
     @Test(dataProvider = "chunkSizes")
     public void testSinglePartDataSource(final int chunkSize) throws Exception {
-
         final MultiPartMIMEInputStream bodyADataSource =
                 new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_bodyA.getPartData().copyBytes()), scheduledExecutorService, _bodyA.getPartHeaders())
                         .withWriteChunkSize(chunkSize)
@@ -158,7 +120,6 @@ public class TestMIMEChainingSinglePart {
     }
 
     static Callback<StreamResponse> expectSuccessChainCallback(final ClientMultiPartMIMEReaderEchoReceiver receiver) {
-
         return new Callback<StreamResponse>() {
             @Override
             public void onError(Throwable e) {

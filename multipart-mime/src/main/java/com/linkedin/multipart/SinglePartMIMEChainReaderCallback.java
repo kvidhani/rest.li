@@ -18,7 +18,7 @@ import com.linkedin.r2.message.streaming.WriteHandle;
  * {@link com.linkedin.multipart.MultiPartMIMEChainReaderCallback} will close the write handle when it recieves
  * an invocation on {@link MultiPartMIMEReaderCallback#onFinished()}.
  */
-class SinglePartMIMEChainReaderCallback implements SinglePartMIMEReaderCallback {
+final class SinglePartMIMEChainReaderCallback implements SinglePartMIMEReaderCallback {
   private final WriteHandle _writeHandle;
   private final MultiPartMIMEReader.SinglePartMIMEReader _singlePartMIMEReader;
   private final boolean _doneOnFinished;

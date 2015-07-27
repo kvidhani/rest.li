@@ -47,25 +47,12 @@ import org.testng.annotations.Test;
  */
 //Full integration
 
-public class TestMultiPartMIMEReaderWriter extends AbstractMultiPartMIMEIntegrationStreamTest {
-
-
-    //todo resume here!
-    //and then you have chaining
-    //and clean up stream request/stream response
-    //then code clena up
-    //then rb
-
-
+public class TestMultiPartMIMEIntegrationReaderWriter extends AbstractMultiPartMIMEIntegrationStreamTest {
     private static ScheduledExecutorService scheduledExecutorService;
-    private static final int TEST_CHUNK_SIZE = 4;
-    private static final int TEST_TIMEOUT = 90000;
-
 
     private static final URI SERVER_URI = URI.create("/pegasusMimeServer");
     private MimeServerRequestHandler _mimeServerRequestHandler;
     private static final Logger log = LoggerFactory.getLogger(TestMultiPartMIMEIntegrationReader.class);
-
 
     byte[] _normalBodyData;
     Map<String, String> _normalBodyHeaders;
@@ -74,10 +61,10 @@ public class TestMultiPartMIMEReaderWriter extends AbstractMultiPartMIMEIntegrat
 
     Map<String, String> _bodyLessHeaders;
 
-    MultiPartMIMEDataPartImpl _normalBody;
-    MultiPartMIMEDataPartImpl _headerLessBody;
-    MultiPartMIMEDataPartImpl _bodyLessBody;
-    MultiPartMIMEDataPartImpl _purelyEmptyBody;
+    TestMultiPartMIMEDataPart _normalBody;
+    TestMultiPartMIMEDataPart _headerLessBody;
+    TestMultiPartMIMEDataPart _bodyLessBody;
+    TestMultiPartMIMEDataPart _purelyEmptyBody;
 
     @BeforeTest
     public void dataSourceSetup() {
@@ -98,16 +85,16 @@ public class TestMultiPartMIMEReaderWriter extends AbstractMultiPartMIMEIntegrat
         _normalBodyHeaders.put("header3", "value3");
 
         _normalBody =
-                new MultiPartMIMEDataPartImpl(ByteString.copy(_normalBodyData), _normalBodyHeaders);
+                new TestMultiPartMIMEDataPart(ByteString.copy(_normalBodyData), _normalBodyHeaders);
 
         _headerLessBody =
-                new MultiPartMIMEDataPartImpl(ByteString.copy(_headerLessBodyData), Collections.<String, String>emptyMap());
+                new TestMultiPartMIMEDataPart(ByteString.copy(_headerLessBodyData), Collections.<String, String>emptyMap());
 
         _bodyLessBody =
-                new MultiPartMIMEDataPartImpl(ByteString.empty(), _bodyLessHeaders);
+                new TestMultiPartMIMEDataPart(ByteString.empty(), _bodyLessHeaders);
 
         _purelyEmptyBody =
-                new MultiPartMIMEDataPartImpl(ByteString.empty(), Collections.<String, String>emptyMap());
+                new TestMultiPartMIMEDataPart(ByteString.empty(), Collections.<String, String>emptyMap());
 
     }
 
@@ -151,7 +138,7 @@ public class TestMultiPartMIMEReaderWriter extends AbstractMultiPartMIMEIntegrat
     }
 
     @Test(dataProvider = "eachSingleBodyDataSource")
-    public void testEachSingleBodyDataSource(final int chunkSize, final MultiPartMIMEDataPartImpl bodyPart) throws Exception {
+    public void testEachSingleBodyDataSource(final int chunkSize, final TestMultiPartMIMEDataPart bodyPart) throws Exception {
 
         final MultiPartMIMEInputStream inputStreamDataSource =
                 new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(bodyPart.getPartData().copyBytes()), scheduledExecutorService, bodyPart.getPartHeaders())
@@ -166,7 +153,7 @@ public class TestMultiPartMIMEReaderWriter extends AbstractMultiPartMIMEIntegrat
 
 
     @Test(dataProvider = "eachSingleBodyDataSource")
-    public void testEachSingleBodyDataSourceMultipleTimes(final int chunkSize, final MultiPartMIMEDataPartImpl bodyPart) throws Exception {
+    public void testEachSingleBodyDataSourceMultipleTimes(final int chunkSize, final TestMultiPartMIMEDataPart bodyPart) throws Exception {
 
         final List<MultiPartMIMEDataSource> dataSources = new ArrayList<MultiPartMIMEDataSource>();
         for (int i = 0; i < 4; i++) {
@@ -234,13 +221,13 @@ public class TestMultiPartMIMEReaderWriter extends AbstractMultiPartMIMEIntegrat
         final MultiPartMIMEWriter writer =
                 new MultiPartMIMEWriter.Builder("some preamble", "").build();
 
-        executeRequestAndAssert(writer, Collections.<MultiPartMIMEDataPartImpl>emptyList());
+        executeRequestAndAssert(writer, Collections.<TestMultiPartMIMEDataPart>emptyList());
     }
 
 
     ///////////////////////////////////////////////////////////////////////////////////////
 
-    private void executeRequestAndAssert(final MultiPartMIMEWriter requestWriter, final List<MultiPartMIMEDataPartImpl> expectedParts) throws Exception {
+    private void executeRequestAndAssert(final MultiPartMIMEWriter requestWriter, final List<TestMultiPartMIMEDataPart> expectedParts) throws Exception {
 
         final StreamRequest multiPartMIMEStreamRequest =
                 new MultiPartMIMEStreamRequestBuilder(Bootstrap.createHttpURI(PORT, SERVER_URI),
@@ -263,7 +250,7 @@ public class TestMultiPartMIMEReaderWriter extends AbstractMultiPartMIMEIntegrat
             //Actual
             final TestSinglePartMIMEReaderCallbackImpl currentCallback = singlePartMIMEReaderCallbacks.get(i);
             //Expected
-            final MultiPartMIMEDataPartImpl currentExpectedPart = expectedParts.get(i);
+            final TestMultiPartMIMEDataPart currentExpectedPart = expectedParts.get(i);
 
             Assert.assertEquals(currentCallback._headers, currentExpectedPart.getPartHeaders());
             Assert.assertEquals(currentCallback._finishedData, currentExpectedPart.getPartData());

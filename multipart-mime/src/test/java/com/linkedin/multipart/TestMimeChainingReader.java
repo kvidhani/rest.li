@@ -26,51 +26,25 @@ import java.util.concurrent.TimeUnit;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import static com.linkedin.multipart.DataSources.*;
+
 /**
- * Created by kvidhani on 7/25/15.
+ * @author Karim Vidhani
+ *
+ * Tests passing a {@link com.linkedin.multipart.MultiPartMIMEReader} as a data source
+ * to the {@link com.linkedin.multipart.MultiPartMIMEWriter}.
  */
-
-//todo file radar about top level not called when tis passed on
-    //refr to comment in reader callback way below
-
-public class TestMimeChainingReader {
+public class TestMIMEChainingReader {
 
     private static ScheduledExecutorService scheduledExecutorService;
 
-    MultiPartMIMEDataPartImpl _bodyA;
-    MultiPartMIMEDataPartImpl _bodyB;
-    MultiPartMIMEDataPartImpl _bodyC;
-    MultiPartMIMEDataPartImpl _bodyD;
-
     @BeforeTest
     public void dataSourceSetup() {
-
         scheduledExecutorService = Executors.newScheduledThreadPool(10);
-
-        final byte[] bodyAbytes = "bodyA".getBytes();
-        final Map<String, String> bodyAHeaders = ImmutableMap.of("headerA", "valueA");
-        _bodyA = new MultiPartMIMEDataPartImpl(ByteString.copy(bodyAbytes), bodyAHeaders);
-
-        final byte[] bodyBbytes = "bodyB".getBytes();
-        final Map<String, String> bodyBHeaders = ImmutableMap.of("headerB", "valueB");
-        _bodyB = new MultiPartMIMEDataPartImpl(ByteString.copy(bodyBbytes), bodyBHeaders);
-
-        //body c has no headers
-        final byte[] bodyCbytes = "bodyC".getBytes();
-        _bodyC = new MultiPartMIMEDataPartImpl(ByteString.copy(bodyCbytes), Collections.<String, String>emptyMap());
-
-        final byte[] bodyDbytes = "bodyD".getBytes();
-        final Map<String, String> bodyDHeaders = ImmutableMap.of("headerD", "valueD");
-        _bodyD = new MultiPartMIMEDataPartImpl(ByteString.copy(bodyDbytes), bodyDHeaders);
-
     }
-
 
     //Verifies that a multi part mime reader can be used as a data source to the writer.
     //To make the test easier to write, we simply chain back to the client in the form of simulating a response.
-
-    //This test creates a multipart mime request. On the server side, upon invocation to onNewPart(), the server
-    //creates a writer to send back the entire reader first part.
     @DataProvider(name = "chunkSizes")
     public Object[][] chunkSizes() throws Exception {
         return new Object[][]{
@@ -81,7 +55,6 @@ public class TestMimeChainingReader {
 
     @Test(dataProvider = "chunkSizes")
     public void testMimeReaderDataSource(final int chunkSize) throws Exception {
-
         final MultiPartMIMEInputStream bodyADataSource =
                 new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_bodyA.getPartData().copyBytes()), scheduledExecutorService, _bodyA.getPartHeaders())
                         .withWriteChunkSize(chunkSize)
@@ -134,7 +107,6 @@ public class TestMimeChainingReader {
 
         latch.await(60000, TimeUnit.MILLISECONDS);
 
-
         //Verify client. No need to verify the server.
         List<ClientSinglePartMIMEReaderEchoReceiver> singlePartMIMEReaderCallbacks =
                 _clientReceiver._singlePartMIMEReaderCallbacks;
@@ -148,7 +120,6 @@ public class TestMimeChainingReader {
         Assert.assertEquals(singlePartMIMEReaderCallbacks.get(2)._headers, _bodyC.getPartHeaders());
         Assert.assertEquals(singlePartMIMEReaderCallbacks.get(3)._finishedData, _bodyD.getPartData());
         Assert.assertEquals(singlePartMIMEReaderCallbacks.get(3)._headers, _bodyD.getPartHeaders());
-
     }
 
     static Callback<StreamResponse> expectSuccessChainCallback(final ClientMultiPartMIMEReaderEchoReceiver receiver) {
@@ -205,12 +176,9 @@ public class TestMimeChainingReader {
         public void onStreamError(Throwable throwable) {
             Assert.fail();
         }
-
     }
 
-
     private static class ClientMultiPartMIMEReaderEchoReceiver implements MultiPartMIMEReaderCallback {
-
         final List<ClientSinglePartMIMEReaderEchoReceiver> _singlePartMIMEReaderCallbacks =
                 new ArrayList<ClientSinglePartMIMEReaderEchoReceiver>();
         final CountDownLatch _latch;
@@ -265,6 +233,7 @@ public class TestMimeChainingReader {
 
         @Override
         public void onFinished() {
+            //todo
             //Based on the current implementation, this will not be called.
             System.out.println("a");
         }
@@ -285,6 +254,4 @@ public class TestMimeChainingReader {
             _reader = reader;
         }
     }
-
-
 }

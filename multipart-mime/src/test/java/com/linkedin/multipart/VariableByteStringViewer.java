@@ -4,11 +4,11 @@ import com.linkedin.data.ByteString;
 import com.linkedin.util.ArgumentUtil;
 
 /**
- * Created by kvidhani on 7/20/15.
+ * @author Karim Vidhani
+ *
+ * Unit test equivalent of {@link com.linkedin.multipart.VariableByteStringWriter}.
  */
-
-//Unit test equivalent of VariableByteStringWriter
-class VariableByteStringViewer {
+public final class VariableByteStringViewer {
     private final ByteString _content;
     private final int _chunkSize;
     private int _offset;
@@ -31,8 +31,6 @@ class VariableByteStringViewer {
         ByteString slice = _content.slice(_offset, bytesToWrite);
         _offset += bytesToWrite;
         return slice;
-
     }
-
 }
 

@@ -27,10 +27,11 @@ import org.testng.annotations.BeforeMethod;
 import test.r2.integ.AbstractStreamTest;
 
 /**
- * Created by kvidhani on 7/11/15.
+ * @author Karim Vidhani
+ *
+ * Abstract class for async multipart mime integration tests.
  */
 public abstract class AbstractMultiPartMIMEIntegrationStreamTest  {
-
     protected static final int PORT = 8388;
     protected HttpServer _server;
     protected TransportClientFactory _clientFactory;
@@ -50,7 +51,6 @@ public abstract class AbstractMultiPartMIMEIntegrationStreamTest  {
     @AfterMethod
     public void tearDown() throws Exception
     {
-
         final FutureCallback<None> clientShutdownCallback = new FutureCallback<None>();
         _client.shutdown(clientShutdownCallback);
         clientShutdownCallback.get();
@@ -82,7 +82,6 @@ public abstract class AbstractMultiPartMIMEIntegrationStreamTest  {
     {
         return new HttpServerFactory();
     }
-
 
     protected static Callback<StreamResponse> expectSuccessCallback(final CountDownLatch latch,
                                                                     final AtomicInteger status,
