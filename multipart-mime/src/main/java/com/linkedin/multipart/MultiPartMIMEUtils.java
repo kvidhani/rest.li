@@ -1,4 +1,21 @@
+/*
+   Copyright (c) 2015 LinkedIn Corp.
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+*/
+
 package com.linkedin.multipart;
+
 
 import com.linkedin.data.ByteString;
 import com.linkedin.multipart.exceptions.IllegalMultiPartMIMEFormatException;
@@ -18,7 +35,8 @@ import java.util.TreeMap;
  *
  * @author Karim Vidhani
  */
-final class MultiPartMIMEUtils {
+final class MultiPartMIMEUtils
+{
   //R2 uses a case insensitive TreeMap so the casing here for the Content-Type header does not matter
   public static final String CONTENT_TYPE_HEADER = "Content-Type";
   public static final String MULTIPART_PREFIX = "multipart/";
@@ -30,15 +48,18 @@ final class MultiPartMIMEUtils {
   public static final byte[] CRLF_BYTES = "\r\n".getBytes();
   public static final List<Byte> CRLF_BYTE_LIST = new ArrayList<Byte>();
 
-  public static final String CONSECUTIVE_CRLFS_STRING = "\r\n\r\n";
   public static final byte[] CONSECUTIVE_CRLFS_BYTES = "\r\n\r\n".getBytes();
   public static final List<Byte> CONSECUTIVE_CRLFS_BYTE_LIST = new ArrayList<Byte>();
-  static {
-    for (final byte b : CONSECUTIVE_CRLFS_BYTES) {
+
+  static
+  {
+    for (final byte b : CONSECUTIVE_CRLFS_BYTES)
+    {
       CONSECUTIVE_CRLFS_BYTE_LIST.add(b);
     }
 
-    for (final byte b :CRLF_BYTES) {
+    for (final byte b : CRLF_BYTES)
+    {
       CRLF_BYTE_LIST.add(b);
     }
   }
@@ -46,11 +67,13 @@ final class MultiPartMIMEUtils {
   private static final char[] MULTIPART_CHARS =
       "-_1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ".toCharArray();
 
-  static void serializeHeaders(final Map<String, String> headers,
-                                               final ByteArrayOutputStream outputStream) throws IOException {
+  static void serializeHeaders(final Map<String, String> headers, final ByteArrayOutputStream outputStream)
+      throws IOException
+  {
 
     final StringBuilder headerBuffer = new StringBuilder();
-    for (final Map.Entry<String, String> header : headers.entrySet()) {
+    for (final Map.Entry<String, String> header : headers.entrySet())
+    {
       headerBuffer.append(formattedHeader(header.getKey(), header.getValue()));
     }
 
@@ -60,7 +83,8 @@ final class MultiPartMIMEUtils {
     outputStream.write(headerBuffer.toString().getBytes(Charset.forName("US-ASCII")));
   }
 
-  static String formattedHeader(final String name, final String value) {
+  static String formattedHeader(final String name, final String value)
+  {
     return ((name == null ? "" : name) + ": " + (null == value ? "" : value) + CRLF_STRING);
   }
 
@@ -71,7 +95,8 @@ final class MultiPartMIMEUtils {
     //The RFC limit is 70 characters, so we will create a boundary that is randomly
     //between 50 to 60 characters. This should ensure that we never see the boundary within the request
     final int count = rand.nextInt(11) + 50; // a random size from 50 to 60
-    for (int i = 0; i < count; i++) {
+    for (int i = 0; i < count; i++)
+    {
       buffer.append(MULTIPART_CHARS[rand.nextInt(MULTIPART_CHARS.length)]);
     }
     //RFC 2046 states a limited character set for the boundary but we don't have to explicitly encode to ASCII
@@ -80,16 +105,19 @@ final class MultiPartMIMEUtils {
   }
 
   static String buildMIMEContentTypeHeader(final String mimeType, final String boundary,
-      final Map<String, String> contentTypeParameters) {
+      final Map<String, String> contentTypeParameters)
+  {
 
     final StringBuilder contentTypeBuilder = new StringBuilder();
     contentTypeBuilder.append(MULTIPART_PREFIX).append(mimeType);
     //As per the RFC, parameters of the Content-Type header are separated by semi colons
     contentTypeBuilder.append("; ").append(BOUNDARY_PARAMETER).append("=").append(boundary);
 
-    for (final Map.Entry<String, String> parameter : contentTypeParameters.entrySet()) {
+    for (final Map.Entry<String, String> parameter : contentTypeParameters.entrySet())
+    {
       //Note we ignore the provided boundary parameter
-      if(!parameter.getKey().trim().equalsIgnoreCase(BOUNDARY_PARAMETER)) {
+      if (!parameter.getKey().trim().equalsIgnoreCase(BOUNDARY_PARAMETER))
+      {
         contentTypeBuilder.append("; ").append(parameter.getKey().trim()).append("=")
             .append(parameter.getValue().trim());
       }
@@ -102,23 +130,28 @@ final class MultiPartMIMEUtils {
   {
     if (!contentTypeHeader.toLowerCase().startsWith(MultiPartMIMEUtils.MULTIPART_PREFIX))
     {
-      throw new IllegalMultiPartMIMEFormatException("Malformed multipart mime request. Not a valid multipart mime header.");
+      throw new IllegalMultiPartMIMEFormatException(
+          "Malformed multipart mime request. Not a valid multipart mime header.");
     }
 
-    if(!contentTypeHeader.contains(";"))
+    if (!contentTypeHeader.contains(";"))
     {
-      throw new IllegalMultiPartMIMEFormatException("Malformed multipart mime request. Improperly formatted Content-Type header. "
-          + "Expected at least one parameter in addition to the content type.");
+      throw new IllegalMultiPartMIMEFormatException(
+          "Malformed multipart mime request. Improperly formatted Content-Type header. "
+              + "Expected at least one parameter in addition to the content type.");
     }
 
     final String[] contentTypeParameters = contentTypeHeader.split(";");
 
     //In case someone used something like bOuNdArY
     final Map<String, String> parameterMap = new TreeMap<String, String>(String.CASE_INSENSITIVE_ORDER);
-    for (final String parameter : contentTypeParameters) {
-
+    for (final String parameter : contentTypeParameters)
+    {
       //We don't need the first bit here.
-      if (parameter.startsWith(MULTIPART_PREFIX)) continue;
+      if (parameter.startsWith(MULTIPART_PREFIX))
+      {
+        continue;
+      }
 
       final String trimmedParameter = parameter.trim();
       //According to the RFC, there could be an '=' character in the boundary so we can't just split on =.
@@ -127,60 +160,70 @@ final class MultiPartMIMEUtils {
       final int firstEquals = trimmedParameter.indexOf("=");
       //We throw an exception if there is no equals sign, or if the equals is the first character or if the
       //equals is the last character.
-      if (firstEquals == 0 || firstEquals == -1 || firstEquals == trimmedParameter.length() - 1) {
+      if (firstEquals == 0 || firstEquals == -1 || firstEquals == trimmedParameter.length() - 1)
+      {
         throw new IllegalMultiPartMIMEFormatException("Invalid parameter format.");
       }
 
       final String parameterKey = trimmedParameter.substring(0, firstEquals);
       String parameterValue = trimmedParameter.substring(firstEquals + 1, trimmedParameter.length());
-      if(parameterValue.charAt(0) == '"') {
-        if(parameterValue.charAt(parameterValue.length()-1) != '"') {
+      if (parameterValue.charAt(0) == '"')
+      {
+        if (parameterValue.charAt(parameterValue.length() - 1) != '"')
+        {
           throw new IllegalMultiPartMIMEFormatException("Invalid parameter format.");
         }
         //Remove the leading and trailing '"'
-        parameterValue = parameterValue.substring(1, parameterValue.length()-1);
+        parameterValue = parameterValue.substring(1, parameterValue.length() - 1);
       }
 
-      if (parameterMap.containsKey(parameterKey)) {
-        throw new IllegalMultiPartMIMEFormatException("Invalid parameter format. Multiple decelerations of the same parameter!");
+      if (parameterMap.containsKey(parameterKey))
+      {
+        throw new IllegalMultiPartMIMEFormatException(
+            "Invalid parameter format. Multiple decelerations of the same parameter!");
       }
       parameterMap.put(parameterKey, parameterValue);
     }
 
     final String boundaryValue = parameterMap.get(BOUNDARY_PARAMETER);
 
-    if (boundaryValue == null) {
+    if (boundaryValue == null)
+    {
       throw new IllegalMultiPartMIMEFormatException("No boundary parameter found!");
     }
 
     return boundaryValue;
   }
 
-  static final ThreadLocal<ByteArrayOutputStream> threadLocalOutputStream = new ThreadLocal<ByteArrayOutputStream>() {
+  static final ThreadLocal<ByteArrayOutputStream> threadLocalOutputStream = new ThreadLocal<ByteArrayOutputStream>()
+  {
     @Override
-    protected ByteArrayOutputStream initialValue() {
+    protected ByteArrayOutputStream initialValue()
+    {
       return new ByteArrayOutputStream();
     }
   };
 
   static ByteString serializeBoundaryAndHeaders(final byte[] normalEncapsulationBoundary,
-                                         final MultiPartMIMEDataSource dataSource) throws IOException {
+      final MultiPartMIMEDataSource dataSource) throws IOException
+  {
     final ByteArrayOutputStream localOutputStream = threadLocalOutputStream.get();
     localOutputStream.reset();
 
-      //Write the headers out for this new part
-      localOutputStream.write(normalEncapsulationBoundary);
-      localOutputStream.write(MultiPartMIMEUtils.CRLF_BYTES);
+    //Write the headers out for this new part
+    localOutputStream.write(normalEncapsulationBoundary);
+    localOutputStream.write(MultiPartMIMEUtils.CRLF_BYTES);
 
-      if (!dataSource.dataSourceHeaders().isEmpty()) {
-        //Serialize the headers
-        serializeHeaders(dataSource.dataSourceHeaders(), localOutputStream);
-      }
+    if (!dataSource.dataSourceHeaders().isEmpty())
+    {
+      //Serialize the headers
+      serializeHeaders(dataSource.dataSourceHeaders(), localOutputStream);
+    }
 
-      //Regardless of whether or not there were headers the RFC calls for another CRLF here.
-      //If there were no headers we end up with two CRLFs after the boundary
-      //If there were headers CRLF_BYTES we end up with one CRLF after the boundary and one after the last header
-      localOutputStream.write(MultiPartMIMEUtils.CRLF_BYTES);
+    //Regardless of whether or not there were headers the RFC calls for another CRLF here.
+    //If there were no headers we end up with two CRLFs after the boundary
+    //If there were headers CRLF_BYTES we end up with one CRLF after the boundary and one after the last header
+    localOutputStream.write(MultiPartMIMEUtils.CRLF_BYTES);
 
     return ByteString.copy(localOutputStream.toByteArray());
   }
