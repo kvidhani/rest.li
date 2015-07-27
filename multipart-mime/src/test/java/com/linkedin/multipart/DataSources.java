@@ -8,14 +8,18 @@ import com.google.common.collect.ImmutableMap;
 import com.linkedin.data.ByteString;
 import junit.framework.Assert;
 
+import java.io.ByteArrayInputStream;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
 
 
 /**
- * @author Karim Vidhani
+ * Shared data sources and utilities for tests.
  *
- * Shared Javax mail multipart mime data sources for tests.
+ * @author Karim Vidhani
  */
 public final class DataSources {
 
@@ -45,6 +49,21 @@ public final class DataSources {
 
     //Disable instantiation
     private DataSources() {
+    }
+
+    //Javax mail always includes a final, trailing CRLF after the final boundary. Meaning something like
+    //--myFinalBoundary--/r/n
+    //
+    //This trailing CRLF is not considered part of the final boundary and is, presumably, some sort of default
+    //epilogue. We want to remove this, otherwise all of our data sources in all of our tests will always have some sort
+    //of epilogue at the end and we won't have any tests where the data sources end with JUST the final boundary.
+    static ByteString trimTrailingCRLF(final ByteString javaxMailPayload) {
+        //Assert the trailing CRLF does
+        final byte[] javaxMailPayloadBytes = javaxMailPayload.copyBytes();
+        //Verify, in case the version of javax mail is changed, that the last two bytes are still CRLF (13 and 10).
+        org.testng.Assert.assertEquals(javaxMailPayloadBytes[javaxMailPayloadBytes.length - 2], 13);
+        org.testng.Assert.assertEquals(javaxMailPayloadBytes[javaxMailPayloadBytes.length - 1], 10);
+        return javaxMailPayload.copySlice(0, javaxMailPayload.length()-2);
     }
 
     static {
@@ -185,4 +204,35 @@ public final class DataSources {
             Assert.fail();
         }
     }
+    //The chaining tests will use these:
+    static List<MultiPartMIMEDataSource> generateInputStreamDataSources(final int chunkSize, final ExecutorService executorService) {
+        final MultiPartMIMEInputStream bodyADataSource =
+                new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_bodyA.getPartData().copyBytes()), executorService, _bodyA.getPartHeaders())
+                        .withWriteChunkSize(chunkSize)
+                        .build();
+
+        final MultiPartMIMEInputStream bodyBDataSource =
+                new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_bodyB.getPartData().copyBytes()), executorService, _bodyB.getPartHeaders())
+                        .withWriteChunkSize(chunkSize)
+                        .build();
+
+        final MultiPartMIMEInputStream bodyCDataSource =
+                new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_bodyC.getPartData().copyBytes()), executorService, _bodyC.getPartHeaders())
+                        .withWriteChunkSize(chunkSize)
+                        .build();
+
+        final MultiPartMIMEInputStream bodyDDataSource =
+                new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_bodyD.getPartData().copyBytes()), executorService, _bodyD.getPartHeaders())
+                        .withWriteChunkSize(chunkSize)
+                        .build();
+
+        final List<MultiPartMIMEDataSource> dataSources = new ArrayList<MultiPartMIMEDataSource>();
+        dataSources.add(bodyADataSource);
+        dataSources.add(bodyBDataSource);
+        dataSources.add(bodyCDataSource);
+        dataSources.add(bodyDDataSource);
+
+        return dataSources;
+    }
+
 }

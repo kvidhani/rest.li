@@ -18,8 +18,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import javax.mail.BodyPart;
@@ -29,13 +27,8 @@ import javax.mail.internet.MimeMultipart;
 
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.testng.Assert;
-import org.testng.annotations.AfterTest;
-import org.testng.annotations.BeforeTest;
-import org.testng.annotations.DataProvider;
-import org.testng.annotations.Test;
+import org.testng.annotations.*;
 
 import static com.linkedin.multipart.DataSources.HEADER_CONTENT_TYPE;
 import static com.linkedin.multipart.DataSources._bodyLessBody;
@@ -45,34 +38,17 @@ import static org.mockito.Mockito.*;
 
 
 /**
- * @author Karim Vidhani
- *
  * Unit tests for testing various exceptions that could occur in the {@link com.linkedin.multipart.MultiPartMIMEReader}
+ *
+ * @author Karim Vidhani
  */
-public class TestMIMEReaderExceptions {
+public class TestMIMEReaderExceptions extends AbstractMIMEUnitTest {
+  MultiPartMIMEExceptionReaderCallbackImpl _currentMultiPartMIMEReaderCallback;
 
-  private static final Logger log = LoggerFactory.getLogger(TestMIMEReaderExceptions.class);
-
-  //We will have only one thread in our executor service so that when we submit tasks to write
-  //data from the writer we do it in order.
-  private static ExecutorService threadPoolExecutor;
-
-  MultiPartMIMEAbandonReaderCallbackImpl _currentMultiPartMIMEReaderCallback;
-
-  @BeforeTest
+  @BeforeMethod
   public void setup() {
     _currentMultiPartMIMEReaderCallback = null;
-    threadPoolExecutor = Executors.newFixedThreadPool(5);
   }
-
-  @AfterTest
-  public void shutDown() {
-    threadPoolExecutor.shutdownNow();
-  }
-
-
-  ///////////////////////////////////////////////////////////////////////////////////////
-
 
   @DataProvider(name = "multiplePartsDataSource")
   public Object[][] multiplePartsDataSource() throws Exception
@@ -87,20 +63,7 @@ public class TestMIMEReaderExceptions {
     };
   }
 
-
-  //When the test just needs chunk sizes
-  @DataProvider(name = "chunkSizes")
-  public Object[][] chunkSizes() throws Exception
-  {
-    return new Object[][] {
-        { 1 },
-        { R2Constants.DEFAULT_DATA_CHUNK_SIZE }
-    };
-  }
-  ///////////////////////////////////////////////////////////////////////////////////////
-
   //These tests all verify that we throw the correct exception in the face of RFC violating bodies:
-
   @Test
   public void missingContentTypeHeader()
   {
@@ -120,11 +83,9 @@ public class TestMIMEReaderExceptions {
     }
   }
 
-
   @Test
   public void invalidContentType() throws Exception
   {
-
     StreamRequest streamRequest = null;
     try {
 
@@ -140,8 +101,6 @@ public class TestMIMEReaderExceptions {
     }
   }
 
-
-
   @Test(dataProvider = "chunkSizes")
   public void payloadMissingBoundary(final int chunkSize) throws Exception
   {
@@ -152,7 +111,6 @@ public class TestMIMEReaderExceptions {
     //No single part readers should have been created.
     Assert.assertEquals(_currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.size(), 0);
   }
-
 
   @Test(dataProvider = "multiplePartsDataSource")
   public void payloadMissingFinalBoundary(final int chunkSize, final List<MimeBodyPart> bodyPartList)   throws
@@ -178,16 +136,15 @@ public class TestMIMEReaderExceptions {
     final ByteString requestPayload = ByteString.copy(trimmedMimePayload);
     executeRequestWithDesiredException(requestPayload, chunkSize, multiPartMimeBody.getContentType(), "Malformed multipart mime request. Finishing boundary missing!");
 
-    List<SinglePartMIMEAbandonReaderCallbackImpl> singlePartMIMEReaderCallbacks =
+    List<SinglePartMIMEExceptionReaderCallbackImpl> singlePartMIMEReaderCallbacks =
         _currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks;
     Assert.assertEquals(singlePartMIMEReaderCallbacks.size(), multiPartMimeBody.getCount());
 
-    //todo can this logic be moved into a resuable area
-    //the last one should have gotten a stream error
+    //The last one should have gotten a stream error
     for (int i = 0; i<singlePartMIMEReaderCallbacks.size() -1;i++)
     {
       //Actual
-      final SinglePartMIMEAbandonReaderCallbackImpl currentCallback = singlePartMIMEReaderCallbacks.get(i);
+      final SinglePartMIMEExceptionReaderCallbackImpl currentCallback = singlePartMIMEReaderCallbacks.get(i);
       //Expected
       final BodyPart currentExpectedPart = multiPartMimeBody.getBodyPart(i);
 
@@ -212,20 +169,18 @@ public class TestMIMEReaderExceptions {
       }
     }
 
-    SinglePartMIMEAbandonReaderCallbackImpl singlePartMIMEAbandonReaderCallback =
+    SinglePartMIMEExceptionReaderCallbackImpl singlePartMIMEExceptionReaderCallback =
         singlePartMIMEReaderCallbacks.get(singlePartMIMEReaderCallbacks.size() - 1);
-    Assert.assertNull(singlePartMIMEAbandonReaderCallback._finishedData);
-    Assert.assertTrue(singlePartMIMEAbandonReaderCallback._streamError instanceof IllegalMultiPartMIMEFormatException);
+    Assert.assertNull(singlePartMIMEExceptionReaderCallback._finishedData);
+    Assert.assertTrue(singlePartMIMEExceptionReaderCallback._streamError instanceof IllegalMultiPartMIMEFormatException);
 
     try {
-      singlePartMIMEAbandonReaderCallback._singlePartMIMEReader.requestPartData();
+      singlePartMIMEExceptionReaderCallback._singlePartMIMEReader.requestPartData();
       Assert.fail();
     } catch (PartFinishedException partFinishedException) {
       //pass
     }
   }
-
-
 
   @Test(dataProvider = "multiplePartsDataSource")
   public void boundaryPrematurelyTerminatedNoSubsequentCRLFs(final int chunkSize, final List<MimeBodyPart> bodyPartList)   throws
@@ -261,16 +216,15 @@ public class TestMIMEReaderExceptions {
     executeRequestWithDesiredException(requestPayload, chunkSize, multiPartMimeBody.getContentType(), "Malformed multipart mime request. Premature termination of multipart mime body due to a boundary without a subsequent consecutive CRLF.");
 
     //In this case we want all the parts to still make it over
-    List<SinglePartMIMEAbandonReaderCallbackImpl> singlePartMIMEReaderCallbacks =
+    List<SinglePartMIMEExceptionReaderCallbackImpl> singlePartMIMEReaderCallbacks =
             _currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks;
     Assert.assertEquals(singlePartMIMEReaderCallbacks.size(), multiPartMimeBody.getCount());
 
-    //todo can this logic be moved into a resuable area
-    //everything should have made it over
+    //Everything should have made it over
     for (int i = 0; i<singlePartMIMEReaderCallbacks.size();i++)
     {
       //Actual
-      final SinglePartMIMEAbandonReaderCallbackImpl currentCallback = singlePartMIMEReaderCallbacks.get(i);
+      final SinglePartMIMEExceptionReaderCallbackImpl currentCallback = singlePartMIMEReaderCallbacks.get(i);
       //Expected
       final BodyPart currentExpectedPart = multiPartMimeBody.getBodyPart(i);
 
@@ -294,22 +248,7 @@ public class TestMIMEReaderExceptions {
         Assert.assertEquals(new String(currentCallback._finishedData.copyBytes()), currentExpectedPart.getContent());
       }
     }
-/*
-    SinglePartMIMEAbandonReaderCallbackImpl singlePartMIMEAbandonReaderCallback =
-            singlePartMIMEReaderCallbacks.get(singlePartMIMEReaderCallbacks.size() - 1);
-    Assert.assertNull(singlePartMIMEAbandonReaderCallback._finishedData);
-    Assert.assertTrue(singlePartMIMEAbandonReaderCallback._streamError instanceof IllegalMultiPartMIMEFormatException);
-
-    try {
-      singlePartMIMEAbandonReaderCallback._singlePartMIMEReader.requestPartData();
-      Assert.fail();
-    } catch (PartFinishedException partFinishedException) {
-      //pass
-    }*/
   }
-
-
-
 
   @Test(dataProvider = "multiplePartsDataSource")
   public void prematureHeaderTermination(final int chunkSize, final List<MimeBodyPart> bodyPartList)   throws
@@ -347,7 +286,6 @@ public class TestMIMEReaderExceptions {
   }
 
 
-
   @Test(dataProvider = "multiplePartsDataSource")
   public void incorrectHeaderStart(final int chunkSize, final List<MimeBodyPart> bodyPartList)   throws
                                                                                                        Exception
@@ -383,9 +321,7 @@ public class TestMIMEReaderExceptions {
 
     //No single part readers should have been created.
     Assert.assertEquals(_currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.size(), 0);
-
   }
-
 
   @Test(dataProvider = "multiplePartsDataSource")
   public void incorrectHeaderFormat(final int chunkSize, final List<MimeBodyPart> bodyPartList)   throws
@@ -421,15 +357,9 @@ public class TestMIMEReaderExceptions {
 
     //No single part readers should have been created.
     Assert.assertEquals(_currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.size(), 0);
-
   }
 
-
-
-
-
   ///////////////////////////////////////////////////////////////////////////////////////
-
   //These tests will verify that we clean up properly when R2 invokes us with onError()
 
   //This can happen when we are already in an erroneous state. We want to make sure we don't invoke the client multiple times.
@@ -447,24 +377,9 @@ public class TestMIMEReaderExceptions {
 
   }
 
-
-
-
-
-
-
-
-
-
-
-
-//todo you don't need the callback, just pass the latch to the top level reader callback directly!!!
-
   ///////////////////////////////////////////////////////////////////////////////////////
-
   private void executeRequestWithDesiredException(final ByteString requestPayload, final int chunkSize, final String contentTypeHeader,
       final String desiredExceptionMessage) throws Exception {
-
 
     final EntityStream entityStream = mock(EntityStream.class);
     final ReadHandle readHandle = mock(ReadHandle.class);
@@ -487,12 +402,11 @@ public class TestMIMEReaderExceptions {
         final int chunksRequested = (Integer)args[0];
 
         for (int i = 0;i<chunksRequested; i++) {
-
           //Our tests will run into a stack overflow unless we use a thread pool here to fire off the callbacks.
           //Especially in cases where the chunk size is 1. When the chunk size is one, the MultiPartMIMEReader
           //ends up doing many _rh.request(1) since each write is only 1 byte.
           //R2 uses a different technique to avoid stack overflows here which is unnecessary to emulate.
-          threadPoolExecutor.submit(new Runnable() {
+          _scheduledExecutorService.submit(new Runnable() {
             @Override
             public void run() {
 
@@ -503,12 +417,9 @@ public class TestMIMEReaderExceptions {
               else {
                 reader.onDataAvailable(clientData);
               }
-
             }
           });
-
         }
-
         return null;
       }
     }).when(readHandle).request(isA(Integer.class));
@@ -527,43 +438,23 @@ public class TestMIMEReaderExceptions {
 
     final StreamRequest streamRequest = mock(StreamRequest.class);
     when(streamRequest.getEntityStream()).thenReturn(entityStream);
-
     when(streamRequest.getHeader(MultiPartMIMEUtils.CONTENT_TYPE_HEADER)).thenReturn(contentTypeHeader);
 
     final AtomicReference<Throwable> throwable = new AtomicReference<Throwable>();
     final CountDownLatch latch = new CountDownLatch(1);
-    Callback<Void> callback = expectFailureCallback(latch, throwable);
-
-
-
-    //We simulate _client.streamRequest(request, callback);
-    //MultiPartMIMEReader reader = MultiPartMIMEReader.createAndAcquireStream(streamRequest);
-    //TestMultiPartMIMEReaderCallbackImpl _currentMultiPartMIMEReaderCallback =
-    //    new TestMultiPartMIMEReaderCallbackImpl(callback);
-    //reader.registerReaderCallback(_currentMultiPartMIMEReaderCallback);
-
-
-
-
-    //      Callback<Integer> callback = expectSuccessCallback(latch, status, responseHeaders);
-//        _client.streamRequest(request, callback);
-
+    Callback<Void> callback = generateFailureCallback(latch, throwable);
 
     MultiPartMIMEReader reader = MultiPartMIMEReader.createAndAcquireStream(streamRequest);
     _currentMultiPartMIMEReaderCallback =
-        new MultiPartMIMEAbandonReaderCallbackImpl(callback, reader);
+        new MultiPartMIMEExceptionReaderCallbackImpl(callback, reader);
     reader.registerReaderCallback(_currentMultiPartMIMEReaderCallback);
 
-
-
-
-    latch.await(60000, TimeUnit.MILLISECONDS);
+    latch.await(TEST_TIMEOUT, TimeUnit.MILLISECONDS);
 
     //Verify the correct exception was sent to the reader callback. The test itself will then verify
     //if the correct error (if applicable) was sent to the single part reader callback.
     Assert.assertTrue(throwable.get() instanceof IllegalMultiPartMIMEFormatException);
     Assert.assertEquals(throwable.get().getMessage(), desiredExceptionMessage);
-
 
     //Verify these are unusable.
     try {
@@ -573,9 +464,6 @@ public class TestMIMEReaderExceptions {
       //pass
     }
 
-
-    //mock verifies
-
     //Unnecessary to verify how many times requestData on the read handle was called.
     verify(readHandle, atLeastOnce()).request(isA(Integer.class));
     verify(readHandle, times(1)).cancel();
@@ -584,12 +472,9 @@ public class TestMIMEReaderExceptions {
     verify(entityStream, times(1)).setReader(isA(MultiPartMIMEReader.R2MultiPartMIMEReader.class));
     verifyNoMoreInteractions(streamRequest);
     verifyNoMoreInteractions(entityStream);
-
   }
 
-
-
-  static Callback<Void> expectFailureCallback(final CountDownLatch latch,
+  private Callback<Void> generateFailureCallback(final CountDownLatch latch,
       final AtomicReference<Throwable> throwable)
   {
 
@@ -610,28 +495,20 @@ public class TestMIMEReaderExceptions {
     };
   }
 
-
-
-  private static class SinglePartMIMEAbandonReaderCallbackImpl implements SinglePartMIMEReaderCallback {
-
+  private static class SinglePartMIMEExceptionReaderCallbackImpl implements SinglePartMIMEReaderCallback {
     final MultiPartMIMEReader.SinglePartMIMEReader _singlePartMIMEReader;
     final ByteArrayOutputStream _byteArrayOutputStream = new ByteArrayOutputStream();
     Map<String, String> _headers;
     ByteString _finishedData = null;
     Throwable _streamError = null;
-    static int partCounter = 0;
 
-    SinglePartMIMEAbandonReaderCallbackImpl(final MultiPartMIMEReader.SinglePartMIMEReader singlePartMIMEReader) {
+    SinglePartMIMEExceptionReaderCallbackImpl(final MultiPartMIMEReader.SinglePartMIMEReader singlePartMIMEReader) {
       _singlePartMIMEReader = singlePartMIMEReader;
-      //log.info("The headers for the current part " + partCounter + " are: ");
-      log.info(singlePartMIMEReader.getHeaders().toString());
       _headers = singlePartMIMEReader.getHeaders();
     }
 
     @Override
     public void onPartDataAvailable(ByteString partData) {
-     // log.info(
-     //     "Just received " + new String(b.copyBytes()) +  " on the single part reader callback for part number " + partCounter);
       try {
         _byteArrayOutputStream.write(partData.copyBytes());
       } catch (IOException ioException) {
@@ -642,14 +519,11 @@ public class TestMIMEReaderExceptions {
 
     @Override
     public void onFinished() {
-      //log.info("Part " + partCounter++ + " is done!");
       _finishedData = ByteString.copy(_byteArrayOutputStream.toByteArray());
     }
 
-    //Delegate to the top level for now for these two
     @Override
     public void onAbandoned() {
-      log.info("Part " + partCounter++ + " is finished being abandoned!");
     }
 
     @Override
@@ -662,19 +536,19 @@ public class TestMIMEReaderExceptions {
     }
   }
 
-  private static class MultiPartMIMEAbandonReaderCallbackImpl implements MultiPartMIMEReaderCallback {
+  private static class MultiPartMIMEExceptionReaderCallbackImpl implements MultiPartMIMEReaderCallback {
 
     final Callback<Void> _r2callback;
     final MultiPartMIMEReader _reader;
-    final List<SinglePartMIMEAbandonReaderCallbackImpl> _singlePartMIMEReaderCallbacks =
-        new ArrayList<SinglePartMIMEAbandonReaderCallbackImpl>();
+    final List<SinglePartMIMEExceptionReaderCallbackImpl> _singlePartMIMEReaderCallbacks =
+        new ArrayList<SinglePartMIMEExceptionReaderCallbackImpl>();
     Throwable _streamError = null;
 
     @Override
     public void onNewPart(MultiPartMIMEReader.SinglePartMIMEReader singlePartMIMEReader) {
 
-      SinglePartMIMEAbandonReaderCallbackImpl singlePartMIMEReaderCallback =
-          new SinglePartMIMEAbandonReaderCallbackImpl(singlePartMIMEReader);
+      SinglePartMIMEExceptionReaderCallbackImpl singlePartMIMEReaderCallback =
+          new SinglePartMIMEExceptionReaderCallbackImpl(singlePartMIMEReader);
       singlePartMIMEReader.registerReaderCallback(singlePartMIMEReaderCallback);
       _singlePartMIMEReaderCallbacks.add(singlePartMIMEReaderCallback);
 
@@ -701,13 +575,10 @@ public class TestMIMEReaderExceptions {
       _r2callback.onError(throwable);
     }
 
-    MultiPartMIMEAbandonReaderCallbackImpl(final Callback<Void> r2callback,
-        final MultiPartMIMEReader reader) {
+    MultiPartMIMEExceptionReaderCallbackImpl(final Callback<Void> r2callback,
+                                             final MultiPartMIMEReader reader) {
       _r2callback = r2callback;
       _reader = reader;
     }
   }
-
-
-
 }

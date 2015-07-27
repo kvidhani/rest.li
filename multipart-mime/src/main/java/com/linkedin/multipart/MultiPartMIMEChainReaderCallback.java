@@ -8,9 +8,10 @@ import java.io.IOException;
 
 
 /**
- * @author Karim Vidhani
+ * Callback registered by the {@link com.linkedin.multipart.MultiPartMIMEWriter} to chain
+ * a {@link com.linkedin.multipart.MultiPartMIMEReader} as a data source.
  *
- * Callback registered by the {@link com.linkedin.multipart.MultiPartMIMEWriter} to chain this as a data source.
+ * @author Karim Vidhani
  */
 final class MultiPartMIMEChainReaderCallback implements MultiPartMIMEReaderCallback {
     private final WriteHandle _writeHandle;

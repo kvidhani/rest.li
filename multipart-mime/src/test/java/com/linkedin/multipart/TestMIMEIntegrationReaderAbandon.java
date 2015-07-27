@@ -33,15 +33,16 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static com.linkedin.multipart.DataSources.*;
 
 
-
 /**
- * Created by kvidhani on 7/11/15.
+ * A series of integration tests that write multipart mime envelopes using Javax mail, and then use
+ * {@link com.linkedin.multipart.MultiPartMIMEReader} on the server side to read and subsequently
+ * abandon the data using different strategies.
+ *
+ * @author Karim Vidhani
  */
-public class TestMIMEIntegrationReaderAbandon extends AbstractMultiPartMIMEIntegrationStreamTest {
-
+public class TestMIMEIntegrationReaderAbandon extends AbstractMIMEIntegrationStreamTest {
   private static final URI SERVER_URI = URI.create("/pegasusAbandonServer");
   private MimeServerRequestAbandonHandler _mimeServerRequestAbandonHandler;
-  private static final Logger log = LoggerFactory.getLogger(TestMIMEIntegrationReaderAbandon.class);
   private static final String ABANDON_HEADER = "AbandonMe";
 
   //Header values for different server side behavior:
@@ -260,7 +261,6 @@ public class TestMIMEIntegrationReaderAbandon extends AbstractMultiPartMIMEInteg
     }
   }
 
-
   @Test(dataProvider = "allTypesOfBodiesDataSource")
   public void testSingleAlternate(final int chunkSize, final List<MimeBodyPart> bodyPartList)
       throws Exception {
@@ -356,7 +356,7 @@ public class TestMIMEIntegrationReaderAbandon extends AbstractMultiPartMIMEInteg
     final Map<String, String> responseHeaders = new HashMap<String, String>();
     Callback<StreamResponse> callback = expectSuccessCallback(latch, status, responseHeaders);
     _client.streamRequest(request, callback);
-    latch.await(60000, TimeUnit.MILLISECONDS);
+    latch.await(TEST_TIMEOUT, TimeUnit.MILLISECONDS);
     Assert.assertEquals(status.get(), RestStatus.OK);
     Assert.assertEquals(responseHeaders.get(ABANDON_HEADER), serverHeaderPrefix + abandonStrategy);
     return multiPartMimeBody;
@@ -373,15 +373,11 @@ public class TestMIMEIntegrationReaderAbandon extends AbstractMultiPartMIMEInteg
 
     SinglePartMIMEAbandonReaderCallbackImpl(final MultiPartMIMEReader.SinglePartMIMEReader singlePartMIMEReader) {
       _singlePartMIMEReader = singlePartMIMEReader;
-      log.info("The headers for the current part " + partCounter + " are: ");
-      log.info(singlePartMIMEReader.getHeaders().toString());
       _headers = singlePartMIMEReader.getHeaders();
     }
 
     @Override
     public void onPartDataAvailable(ByteString partData) {
-      log.info(
-          "Just received " + partData.length() + " byte(s) on the single part reader callback for part number " + partCounter);
       try {
         _byteArrayOutputStream.write(partData.copyBytes());
       } catch (IOException ioException) {
@@ -392,14 +388,14 @@ public class TestMIMEIntegrationReaderAbandon extends AbstractMultiPartMIMEInteg
 
     @Override
     public void onFinished() {
-      log.info("Part " + partCounter++ + " is done!");
+      partCounter++;
       _finishedData = ByteString.copy(_byteArrayOutputStream.toByteArray());
     }
 
     //Delegate to the top level for now for these two
     @Override
     public void onAbandoned() {
-      log.info("Part " + partCounter++ + " is finished being abandoned!");
+      partCounter++;
     }
 
     @Override
@@ -427,7 +423,6 @@ public class TestMIMEIntegrationReaderAbandon extends AbstractMultiPartMIMEInteg
 
       if (_abandonValue.equalsIgnoreCase(TOP_ALL)) {
         _reader.abandonAllParts();
-        //todo what happens if they continue on from here? write a test for this
         return;
       }
       if (_abandonValue.equalsIgnoreCase(SINGLE_PARTIAL_TOP_REMAINING) && _singlePartMIMEReaderCallbacks.size() == 6) {
@@ -504,7 +499,6 @@ public class TestMIMEIntegrationReaderAbandon extends AbstractMultiPartMIMEInteg
     public void handleRequest(StreamRequest request, RequestContext requestContext,
         final Callback<StreamResponse> callback) {
       try {
-        //todo assert the request has multipart content type
         MultiPartMIMEReader reader = MultiPartMIMEReader.createAndAcquireStream(request);
         final String shouldAbandonValue = request.getHeader(ABANDON_HEADER);
         _testMultiPartMIMEReaderCallback =

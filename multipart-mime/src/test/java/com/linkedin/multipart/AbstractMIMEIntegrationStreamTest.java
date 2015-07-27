@@ -27,21 +27,20 @@ import org.testng.annotations.BeforeMethod;
 import test.r2.integ.AbstractStreamTest;
 
 /**
- * @author Karim Vidhani
- *
  * Abstract class for async multipart mime integration tests.
+ *
+ * @author Karim Vidhani
  */
-public abstract class AbstractMultiPartMIMEIntegrationStreamTest  {
+public abstract class AbstractMIMEIntegrationStreamTest {
     protected static final int PORT = 8388;
+    protected static final int TEST_TIMEOUT = 30000;
     protected HttpServer _server;
     protected TransportClientFactory _clientFactory;
     protected Client _client;
-    protected ScheduledExecutorService _scheduler;
 
     @BeforeMethod
     public void setup() throws IOException
     {
-        _scheduler = Executors.newSingleThreadScheduledExecutor();
         _clientFactory = getClientFactory();
         _client = new TransportClientAdapter(_clientFactory.getClient(getClientProperties()));
         _server = getServerFactory().createServer(PORT, getTransportDispatcher());
@@ -59,7 +58,6 @@ public abstract class AbstractMultiPartMIMEIntegrationStreamTest  {
         _clientFactory.shutdown(factoryShutdownCallback);
         factoryShutdownCallback.get();
 
-        _scheduler.shutdown();
         if (_server != null) {
             _server.stop();
             _server.waitForStop();

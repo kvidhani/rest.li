@@ -11,10 +11,10 @@ import org.testng.Assert;
 import java.util.Random;
 
 /**
- * @author Karim Vidhani
- *
  * Writes bytes out from a {@link com.linkedin.data.ByteString} based on customizable
  * chunk sizes.
+ *
+ * @author Karim Vidhani
  */
 public class VariableByteStringWriter implements Writer {
     private final ByteString _content;

@@ -33,8 +33,6 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.testng.Assert;
 import org.testng.annotations.AfterTest;
 import org.testng.annotations.BeforeTest;
@@ -43,17 +41,16 @@ import org.testng.annotations.Test;
 
 
 /**
- * @author Karim Vidhani
- *
  * Represents integration tests that work between the {@link com.linkedin.multipart.MultiPartMIMEWriter} and
  * the {@link com.linkedin.multipart.MultiPartMIMEReader}
+ *
+ * @author Karim Vidhani
  */
-public class TestMIMEIntegrationReaderWriter extends AbstractMultiPartMIMEIntegrationStreamTest {
+public class TestMIMEIntegrationReaderWriter extends AbstractMIMEIntegrationStreamTest {
     private static ScheduledExecutorService scheduledExecutorService;
 
     private static final URI SERVER_URI = URI.create("/pegasusMimeServer");
     private MimeServerRequestHandler _mimeServerRequestHandler;
-    private static final Logger log = LoggerFactory.getLogger(TestMIMEIntegrationReader.class);
 
     byte[] _normalBodyData;
     Map<String, String> _normalBodyHeaders;
@@ -134,7 +131,6 @@ public class TestMIMEIntegrationReaderWriter extends AbstractMultiPartMIMEIntegr
                 {R2Constants.DEFAULT_DATA_CHUNK_SIZE, _bodyLessBody},
                 {1, _purelyEmptyBody},
                 {R2Constants.DEFAULT_DATA_CHUNK_SIZE, _purelyEmptyBody},
-
         };
     }
 
@@ -152,7 +148,6 @@ public class TestMIMEIntegrationReaderWriter extends AbstractMultiPartMIMEIntegr
         executeRequestAndAssert(writer, ImmutableList.of(bodyPart));
     }
 
-
     @Test(dataProvider = "eachSingleBodyDataSource")
     public void testEachSingleBodyDataSourceMultipleTimes(final int chunkSize, final MIMEDataPart bodyPart) throws Exception {
 
@@ -169,7 +164,6 @@ public class TestMIMEIntegrationReaderWriter extends AbstractMultiPartMIMEIntegr
 
         executeRequestAndAssert(writer, ImmutableList.of(bodyPart, bodyPart, bodyPart, bodyPart));
     }
-
 
     ///////////////////////////////////////////////////////////////////////////////////////
 
@@ -214,7 +208,6 @@ public class TestMIMEIntegrationReaderWriter extends AbstractMultiPartMIMEIntegr
         executeRequestAndAssert(writer, ImmutableList.of(_normalBody, _headerLessBody, _bodyLessBody, _purelyEmptyBody));
     }
 
-
     @Test
     public void testEmptyEnvelope() throws Exception {
         //Javax mail does not support this, hence we can only test this using our writer
@@ -225,11 +218,8 @@ public class TestMIMEIntegrationReaderWriter extends AbstractMultiPartMIMEIntegr
         executeRequestAndAssert(writer, Collections.<MIMEDataPart>emptyList());
     }
 
-
     ///////////////////////////////////////////////////////////////////////////////////////
-
     private void executeRequestAndAssert(final MultiPartMIMEWriter requestWriter, final List<MIMEDataPart> expectedParts) throws Exception {
-
         final StreamRequest multiPartMIMEStreamRequest =
                 new MultiPartMIMEStreamRequestBuilder(Bootstrap.createHttpURI(PORT, SERVER_URI),
                         "mixed",
@@ -240,16 +230,15 @@ public class TestMIMEIntegrationReaderWriter extends AbstractMultiPartMIMEIntegr
         final CountDownLatch latch = new CountDownLatch(1);
         Callback<StreamResponse> callback = expectSuccessCallback(latch, status, new HashMap<String, String>());
         _client.streamRequest(multiPartMIMEStreamRequest, callback);
-        latch.await(60000, TimeUnit.MILLISECONDS);
+        latch.await(TEST_TIMEOUT, TimeUnit.MILLISECONDS);
         Assert.assertEquals(status.get(), RestStatus.OK);
 
-
-        List<TestSinglePartMIMEReaderCallbackImpl> singlePartMIMEReaderCallbacks =
+        List<SinglePartMIMEReaderCallbackImpl> singlePartMIMEReaderCallbacks =
                 _mimeServerRequestHandler._testMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks;
         Assert.assertEquals(singlePartMIMEReaderCallbacks.size(), expectedParts.size());
         for (int i = 0; i < singlePartMIMEReaderCallbacks.size(); i++) {
             //Actual
-            final TestSinglePartMIMEReaderCallbackImpl currentCallback = singlePartMIMEReaderCallbacks.get(i);
+            final SinglePartMIMEReaderCallbackImpl currentCallback = singlePartMIMEReaderCallbacks.get(i);
             //Expected
             final MIMEDataPart currentExpectedPart = expectedParts.get(i);
 
@@ -258,7 +247,7 @@ public class TestMIMEIntegrationReaderWriter extends AbstractMultiPartMIMEIntegr
         }
     }
 
-    private static class TestSinglePartMIMEReaderCallbackImpl implements SinglePartMIMEReaderCallback {
+    private static class SinglePartMIMEReaderCallbackImpl implements SinglePartMIMEReaderCallback {
 
         final MultiPartMIMEReaderCallback _topLevelCallback;
         final MultiPartMIMEReader.SinglePartMIMEReader _singlePartMIMEReader;
@@ -267,18 +256,15 @@ public class TestMIMEIntegrationReaderWriter extends AbstractMultiPartMIMEIntegr
         ByteString _finishedData = null;
         static int partCounter = 0;
 
-        TestSinglePartMIMEReaderCallbackImpl(final MultiPartMIMEReaderCallback topLevelCallback, final
+        SinglePartMIMEReaderCallbackImpl(final MultiPartMIMEReaderCallback topLevelCallback, final
         MultiPartMIMEReader.SinglePartMIMEReader singlePartMIMEReader) {
             _topLevelCallback = topLevelCallback;
             _singlePartMIMEReader = singlePartMIMEReader;
-            log.info("The headers for the current part " + partCounter + " are: ");
-            log.info(singlePartMIMEReader.getHeaders().toString());
             _headers = singlePartMIMEReader.getHeaders();
         }
 
         @Override
         public void onPartDataAvailable(ByteString partData) {
-            log.info("Just received " + partData.length() + " byte(s) on the single part reader callback for part number " + partCounter);
             try {
                 _byteArrayOutputStream.write(partData.copyBytes());
             } catch (IOException ioException) {
@@ -289,7 +275,7 @@ public class TestMIMEIntegrationReaderWriter extends AbstractMultiPartMIMEIntegr
 
         @Override
         public void onFinished() {
-            log.info("Part " + partCounter++ + " is done!");
+            partCounter++;
             _finishedData = ByteString.copy(_byteArrayOutputStream.toByteArray());
         }
 
@@ -305,18 +291,17 @@ public class TestMIMEIntegrationReaderWriter extends AbstractMultiPartMIMEIntegr
             //MultiPartMIMEReader will end up calling onStreamError(e) on our top level callback
             //which will fail the test
         }
-
     }
 
-    private static class TestMultiPartMIMEReaderCallbackImpl implements MultiPartMIMEReaderCallback {
+    private static class MultiPartMIMEReaderCallbackImpl implements MultiPartMIMEReaderCallback {
 
         final Callback<StreamResponse> _r2callback;
-        final List<TestSinglePartMIMEReaderCallbackImpl> _singlePartMIMEReaderCallbacks =
-                new ArrayList<TestSinglePartMIMEReaderCallbackImpl>();
+        final List<SinglePartMIMEReaderCallbackImpl> _singlePartMIMEReaderCallbacks =
+                new ArrayList<SinglePartMIMEReaderCallbackImpl>();
 
         @Override
         public void onNewPart(MultiPartMIMEReader.SinglePartMIMEReader singleParMIMEReader) {
-            TestSinglePartMIMEReaderCallbackImpl singlePartMIMEReaderCallback = new TestSinglePartMIMEReaderCallbackImpl(this, singleParMIMEReader);
+            SinglePartMIMEReaderCallbackImpl singlePartMIMEReaderCallback = new SinglePartMIMEReaderCallbackImpl(this, singleParMIMEReader);
             singleParMIMEReader.registerReaderCallback(singlePartMIMEReaderCallback);
             _singlePartMIMEReaderCallbacks.add(singlePartMIMEReaderCallback);
             singleParMIMEReader.requestPartData();
@@ -324,7 +309,6 @@ public class TestMIMEIntegrationReaderWriter extends AbstractMultiPartMIMEIntegr
 
         @Override
         public void onFinished() {
-            log.info("All parts finished for the request!");
             RestResponse response = RestStatus.responseForStatus(RestStatus.OK, "");
             _r2callback.onSuccess(Messages.toStreamResponse(response));
         }
@@ -342,24 +326,22 @@ public class TestMIMEIntegrationReaderWriter extends AbstractMultiPartMIMEIntegr
 
         }
 
-        TestMultiPartMIMEReaderCallbackImpl(final Callback<StreamResponse> r2callback) {
+        MultiPartMIMEReaderCallbackImpl(final Callback<StreamResponse> r2callback) {
             _r2callback = r2callback;
         }
     }
 
     private static class MimeServerRequestHandler implements StreamRequestHandler {
-        private TestMultiPartMIMEReaderCallbackImpl _testMultiPartMIMEReaderCallback;
+        private MultiPartMIMEReaderCallbackImpl _testMultiPartMIMEReaderCallback;
 
         MimeServerRequestHandler() {
-            System.out.println("A");
         }
 
         @Override
         public void handleRequest(StreamRequest request, RequestContext requestContext, final Callback<StreamResponse> callback) {
             try {
-                //todo assert the request has multipart content type
                 MultiPartMIMEReader reader = MultiPartMIMEReader.createAndAcquireStream(request);
-                _testMultiPartMIMEReaderCallback = new TestMultiPartMIMEReaderCallbackImpl(callback);
+                _testMultiPartMIMEReaderCallback = new MultiPartMIMEReaderCallbackImpl(callback);
                 reader.registerReaderCallback(_testMultiPartMIMEReaderCallback);
             } catch (IllegalMultiPartMIMEFormatException illegalMimeFormatException) {
                 RestException restException = new RestException(RestStatus.responseForError(400, illegalMimeFormatException));
@@ -367,6 +349,4 @@ public class TestMIMEIntegrationReaderWriter extends AbstractMultiPartMIMEIntegr
             }
         }
     }
-
-
 }

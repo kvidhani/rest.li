@@ -3,14 +3,14 @@ package com.linkedin.multipart;
 import com.linkedin.data.ByteString;
 
 /**
- * @author Karim Vidhani
- *
  * Used to register with {@link com.linkedin.multipart.MultiPartMIMEReader.SinglePartMIMEReader} to
  * asynchronously drive through the reading of a single part.
  *
  * Most implementations of this should pass along a reference to the {@link com.linkedin.multipart.MultiPartMIMEReader.SinglePartMIMEReader}
  * during construction. This way when they are invoked on {@link SinglePartMIMEReaderCallback#onPartDataAvailable(com.linkedin.data.ByteString)},
  * they can then turn around and call {@link com.linkedin.multipart.MultiPartMIMEReader.SinglePartMIMEReader#requestPartData()}.
+ *
+ * @author Karim Vidhani
  */
 public interface SinglePartMIMEReaderCallback {
     /**

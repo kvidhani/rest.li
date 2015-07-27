@@ -5,10 +5,10 @@ import java.util.concurrent.Callable;
 
 
 /**
- * @author Karim Vidhani
- *
  * These are all essentially function pointers to use in our iterative callback invocation scheme in MultiPartMIMEReader
  * to avoid stack overflows.
+ *
+ * @author Karim Vidhani
  */
 final class MimeReaderCallables {
   //SinglePartMIMEReaderCallback callable wrappers:

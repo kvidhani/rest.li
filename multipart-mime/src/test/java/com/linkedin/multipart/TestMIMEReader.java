@@ -18,8 +18,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -30,8 +28,6 @@ import javax.mail.internet.MimeMultipart;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 import org.testng.Assert;
-import org.testng.annotations.AfterTest;
-import org.testng.annotations.BeforeTest;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -41,48 +37,12 @@ import static org.mockito.Mockito.*;
 
 
 /**
- * @author Karim Vidhani
- *
  * Unit tests that mock R2 for testing the {@link com.linkedin.multipart.MultiPartMIMEReader}
+ *
+ * @author Karim Vidhani
  */
-//todo for all your tests have a global latch timeout
-  //better yet switch all your tests to use FutureCallback with a timeout
-//test to make sure you can get the premable
-    //and also a global timeout that's the same
-public class TestMIMEReader {
-  private static int TEST_TIMEOUT = 60000;
-
-    //We will have only one thread in our executor service so that when we submit tasks to write
-    //data from the writer we do it in order.
-    private static ExecutorService threadPoolExecutor;
+public class TestMIMEReader extends AbstractMIMEUnitTest {
     private MultiPartMIMEReader _reader;
-
-    @BeforeTest
-    public void setup() {
-        threadPoolExecutor = Executors.newFixedThreadPool(5);
-    }
-
-    @AfterTest
-    public void shutDown() {
-        threadPoolExecutor.shutdownNow();
-    }
-
-    //Javax mail always includes a final, trailing CRLF after the final boundary. Meaning something like
-    //--myFinalBoundary--/r/n
-    //
-    //This trailing CRLF is not considered part of the final boundary and is, presumably, some sort of default
-    //epilogue. We want to remove this, otherwise all of our data sources in all of our tests will always have some sort
-    //of epilogue at the end and we won't have any tests where the data sources end with JUST the final boundary.
-    private ByteString trimTrailingCRLF(final ByteString javaxMailPayload) {
-       //Assert the trailing CRLF does
-        final byte[] javaxMailPayloadBytes = javaxMailPayload.copyBytes();
-        //Verify, in case the version of javax mail is changed, that the last two bytes are still CRLF (13 and 10).
-        Assert.assertEquals(javaxMailPayloadBytes[javaxMailPayloadBytes.length-2], 13);
-        Assert.assertEquals(javaxMailPayloadBytes[javaxMailPayloadBytes.length-1], 10);
-        return javaxMailPayload.copySlice(0, javaxMailPayload.length()-2);
-    }
-
-    ///////////////////////////////////////////////////////////////////////////////////////
 
     @DataProvider(name = "eachSingleBodyDataSource")
     public Object[][] eachSingleBodyDataSource() throws Exception
@@ -100,7 +60,6 @@ public class TestMIMEReader {
                 { R2Constants.DEFAULT_DATA_CHUNK_SIZE, _bytesBody },
                 { 1, _purelyEmptyBody  },
                 { R2Constants.DEFAULT_DATA_CHUNK_SIZE, _purelyEmptyBody },
-
         };
     }
 
@@ -296,11 +255,9 @@ public class TestMIMEReader {
         executeRequestAndAssert(requestPayload, chunkSize, multiPartMimeBody);
     }
 
+   ///////////////////////////////////////////////////////////////////////////////////////
 
-    ///////////////////////////////////////////////////////////////////////////////////////
-
-
-    //Special test to make sure we don't stack overflow.
+  //Special test to make sure we don't stack overflow.
   //Have tons of small parts that are all read in at once due to the huge chunk size.
   @Test
   public void testStackOverflow() throws Exception
@@ -336,10 +293,6 @@ public class TestMIMEReader {
     _reader.getR2MultiPartMIMEReader().onError(new NullPointerException());
   }
 
-
-
-
-
   ///////////////////////////////////////////////////////////////////////////////////////
     private void executeRequestAndAssert(final ByteString payload, final int chunkSize, final MimeMultipart mimeMultipart) throws Exception {
 
@@ -372,7 +325,7 @@ public class TestMIMEReader {
                   //Especially in cases where the chunk size is 1. When the chunk size is one, the MultiPartMIMEReader
                   //ends up doing many _rh.request(1) since each write is only 1 byte.
                   //R2 uses a different technique to avoid stack overflows here which is unnecessary to emulate.
-                  threadPoolExecutor.submit(new Runnable() {
+                  _scheduledExecutorService.submit(new Runnable() {
                     @Override
                     public void run() {
 
@@ -383,10 +336,8 @@ public class TestMIMEReader {
                       else {
                         reader.onDataAvailable(clientData);
                       }
-
                     }
                   });
-
                 }
 
                 return null;
@@ -413,17 +364,16 @@ public class TestMIMEReader {
 
         final AtomicInteger status = new AtomicInteger(-1);
         final CountDownLatch latch = new CountDownLatch(1);
-        Callback<Integer> callback = expectSuccessCallback(latch, status);
+        Callback<Integer> callback = generateSuccessCallback(latch, status);
 
         //We simulate _client.streamRequest(request, callback);
         _reader = MultiPartMIMEReader.createAndAcquireStream(streamRequest);
-        TestMultiPartMIMEReaderCallbackImpl _testMultiPartMIMEReaderCallback =
-                new TestMultiPartMIMEReaderCallbackImpl(callback);
+        MultiPartMIMEReaderCallbackImpl _testMultiPartMIMEReaderCallback =
+                new MultiPartMIMEReaderCallbackImpl(callback);
         _reader.registerReaderCallback(_testMultiPartMIMEReaderCallback);
 
         latch.await(TEST_TIMEOUT, TimeUnit.MILLISECONDS);
         Assert.assertEquals(status.get(), RestStatus.OK);
-
 
       try {
         _reader.abandonAllParts();
@@ -432,13 +382,13 @@ public class TestMIMEReader {
 
       }
 
-        List<TestSinglePartMIMEReaderCallbackImpl> singlePartMIMEReaderCallbacks =
+        List<SinglePartMIMEReaderCallbackImpl> singlePartMIMEReaderCallbacks =
                 _testMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks;
         Assert.assertEquals(singlePartMIMEReaderCallbacks.size(), mimeMultipart.getCount());
         for (int i = 0; i<singlePartMIMEReaderCallbacks.size();i++)
         {
             //Actual
-            final TestSinglePartMIMEReaderCallbackImpl currentCallback = singlePartMIMEReaderCallbacks.get(i);
+            final SinglePartMIMEReaderCallbackImpl currentCallback = singlePartMIMEReaderCallbacks.get(i);
             //Expected
             final BodyPart currentExpectedPart = mimeMultipart.getBodyPart(i);
 
@@ -477,14 +427,7 @@ public class TestMIMEReader {
       verifyNoMoreInteractions(readHandle);
     }
 
-
-
-    //todo - test with callback in construction
-    //todo no need for callback. just use a latch
-
-
-
-    static Callback<Integer> expectSuccessCallback(final CountDownLatch latch,
+    private Callback<Integer> generateSuccessCallback(final CountDownLatch latch,
                                                                     final AtomicInteger status)
     {
         return new Callback<Integer>()
@@ -505,16 +448,14 @@ public class TestMIMEReader {
         };
     }
 
-
-    private static class TestSinglePartMIMEReaderCallbackImpl implements SinglePartMIMEReaderCallback {
-
+    private static class SinglePartMIMEReaderCallbackImpl implements SinglePartMIMEReaderCallback {
         final MultiPartMIMEReaderCallback _topLevelCallback;
         final MultiPartMIMEReader.SinglePartMIMEReader _singlePartMIMEReader;
         final ByteArrayOutputStream _byteArrayOutputStream = new ByteArrayOutputStream();
         Map<String, String> _headers;
         ByteString _finishedData = null;
 
-        TestSinglePartMIMEReaderCallbackImpl(final MultiPartMIMEReaderCallback topLevelCallback, final
+        SinglePartMIMEReaderCallbackImpl(final MultiPartMIMEReaderCallback topLevelCallback, final
         MultiPartMIMEReader.SinglePartMIMEReader singlePartMIMEReader) {
             _topLevelCallback = topLevelCallback;
             _singlePartMIMEReader = singlePartMIMEReader;
@@ -560,15 +501,14 @@ public class TestMIMEReader {
 
     }
 
-    private static class TestMultiPartMIMEReaderCallbackImpl implements MultiPartMIMEReaderCallback {
-
+    private static class MultiPartMIMEReaderCallbackImpl implements MultiPartMIMEReaderCallback {
         final Callback<Integer> _r2callback;
-        final List<TestSinglePartMIMEReaderCallbackImpl> _singlePartMIMEReaderCallbacks =
-                new ArrayList<TestSinglePartMIMEReaderCallbackImpl>();
+        final List<SinglePartMIMEReaderCallbackImpl> _singlePartMIMEReaderCallbacks =
+                new ArrayList<SinglePartMIMEReaderCallbackImpl>();
 
         @Override
         public void onNewPart(MultiPartMIMEReader.SinglePartMIMEReader singleParMIMEReader) {
-            TestSinglePartMIMEReaderCallbackImpl singlePartMIMEReaderCallback = new TestSinglePartMIMEReaderCallbackImpl(this, singleParMIMEReader);
+            SinglePartMIMEReaderCallbackImpl singlePartMIMEReaderCallback = new SinglePartMIMEReaderCallbackImpl(this, singleParMIMEReader);
             singleParMIMEReader.registerReaderCallback(singlePartMIMEReaderCallback);
             _singlePartMIMEReaderCallbacks.add(singlePartMIMEReaderCallback);
             singleParMIMEReader.requestPartData();
@@ -576,7 +516,6 @@ public class TestMIMEReader {
 
         @Override
         public void onFinished() {
-
             _r2callback.onSuccess(200);
         }
 
@@ -589,12 +528,10 @@ public class TestMIMEReader {
         @Override
         public void onStreamError(Throwable throwable) {
             Assert.fail();
-
         }
 
-        TestMultiPartMIMEReaderCallbackImpl(final Callback<Integer> r2callback) {
+        MultiPartMIMEReaderCallbackImpl(final Callback<Integer> r2callback) {
             _r2callback = r2callback;
         }
     }
-
 }

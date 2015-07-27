@@ -5,11 +5,10 @@ import java.util.Map;
 
 
 /**
- * @author Karim Vidhani
- *
- * Interface that is required to be implemented by custom data sources for the
+ * Interface that is required to be implemented by custom data sources when constructing a
  * {@link com.linkedin.multipart.MultiPartMIMEWriter}.
  *
+ * @author Karim Vidhani
  */
 public interface MultiPartMIMEDataSource extends Writer {
 

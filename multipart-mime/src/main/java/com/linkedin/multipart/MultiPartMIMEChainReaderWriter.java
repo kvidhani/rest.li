@@ -4,13 +4,12 @@ import com.linkedin.r2.message.streaming.WriteHandle;
 import com.linkedin.r2.message.streaming.Writer;
 
 /**
- * @author Karim Vidhani
- *
  * The writer to consume the {@link com.linkedin.multipart.MultiPartMIMEReader} when
  * chaining the entire reader itself as a data source.
+ *
+ * @author Karim Vidhani
  */
 class MultiPartMIMEChainReaderWriter implements Writer {
-
     private final MultiPartMIMEReader _multiPartMIMEReader;
     private final byte[] _normalEncapsulationBoundary;
     private WriteHandle _writeHandle;

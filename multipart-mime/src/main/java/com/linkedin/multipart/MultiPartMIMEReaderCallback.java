@@ -1,10 +1,10 @@
 package com.linkedin.multipart;
 
 /**
- * @author Karim Vidhani
- *
  * Used to register with {@link com.linkedin.multipart.MultiPartMIMEReader} to asynchronously
  * drive through the reading of a multipart mime envelope.
+ *
+ * @author Karim Vidhani
  */
 public interface MultiPartMIMEReaderCallback {
     /**

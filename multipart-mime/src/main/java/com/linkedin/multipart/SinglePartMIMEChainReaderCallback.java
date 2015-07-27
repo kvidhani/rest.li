@@ -5,18 +5,18 @@ import com.linkedin.r2.message.streaming.WriteHandle;
 
 
 /**
- * @author Karim Vidhani
- *
  * Used to chain a {@link com.linkedin.multipart.MultiPartMIMEReader.SinglePartMIMEReader} as a data source
  * when creating a {@link com.linkedin.multipart.MultiPartMIMEWriter}.
  *
- * This class can be used by:
+ * This class can be used:
  * 1. When chaining along a {@link com.linkedin.multipart.MultiPartMIMEReader.SinglePartMIMEReader} directly. In
  * such a case we close the write handle upon invocation of {@link SinglePartMIMEChainReaderCallback#onFinished()}
  *
  * 2. When chaining along a top level {@link com.linkedin.multipart.MultiPartMIMEReader}. In this case the
- * {@link com.linkedin.multipart.MultiPartMIMEChainReaderCallback} will close the write handle when it recieves
+ * {@link com.linkedin.multipart.MultiPartMIMEChainReaderCallback} will close the write handle when it receives
  * an invocation on {@link MultiPartMIMEReaderCallback#onFinished()}.
+ *
+ * @author Karim Vidhani
  */
 final class SinglePartMIMEChainReaderCallback implements SinglePartMIMEReaderCallback {
   private final WriteHandle _writeHandle;

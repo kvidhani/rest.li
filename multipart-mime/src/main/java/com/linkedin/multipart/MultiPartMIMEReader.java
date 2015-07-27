@@ -28,8 +28,6 @@ import org.apache.commons.lang.ArrayUtils;
 
 
 /**
- * @author Karim Vidhani
- *
  * Async streaming multipart mime reader based on the official RFC.
  *
  * This class uses R2 streaming and a look-ahead buffer to allow clients to walk through all the part data using an async,
@@ -48,9 +46,10 @@ import org.apache.commons.lang.ArrayUtils;
  * Note that NONE of the APIs in this class are thread safe. Furthermore it is to be noted that everything is event driven.
  * For example, asking for more part data using {@link com.linkedin.multipart.MultiPartMIMEReader.SinglePartMIMEReader#requestPartData()}
  * can only be done either upon binding to the {@link com.linkedin.multipart.MultiPartMIMEReader.SinglePartMIMEReader} or
- * after recieving data on {@link SinglePartMIMEReaderCallback#onPartDataAvailable(com.linkedin.data.ByteString)}. Therefore
+ * after receiving data on {@link SinglePartMIMEReaderCallback#onPartDataAvailable(com.linkedin.data.ByteString)}. Therefore
  * attempting to queue multiple reads, instead of waiting for callback invocations to drive forward, will result in runtime exceptions.
  *
+ * @author Karim Vidhani
  */
 public final class MultiPartMIMEReader {
     private final R2MultiPartMIMEReader _reader;

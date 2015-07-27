@@ -24,24 +24,12 @@ import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.*;
 
 /**
- * @author Karim Vidhani
- *
  * Tests for {@link com.linkedin.multipart.MultiPartMIMEInputStream}
+ *
+ * @author Karim Vidhani
  */
-public class TestMIMEInputStream {
-    private static ScheduledExecutorService scheduledExecutorService;
+public class TestMIMEInputStream extends AbstractMIMEUnitTest {
     private static final int TEST_CHUNK_SIZE = 4;
-    private static final int TEST_TIMEOUT = 90000;
-
-    @BeforeTest
-    public void setup() {
-        scheduledExecutorService = Executors.newScheduledThreadPool(10);
-    }
-
-    @AfterTest
-    public void shutDown() {
-        scheduledExecutorService.shutdownNow();
-    }
 
     ///////////////////////////////////////////////////////////////////////////////////////
     //Classes for tests below
@@ -164,7 +152,7 @@ public class TestMIMEInputStream {
         //Setup:
         final WriteHandle writeHandle = Mockito.mock(WriteHandle.class);
         final MultiPartMIMEInputStream multiPartMIMEInputStream =
-                new MultiPartMIMEInputStream.Builder(inputStream,  scheduledExecutorService, Collections.<String, String>emptyMap())
+                new MultiPartMIMEInputStream.Builder(inputStream,  _scheduledExecutorService, Collections.<String, String>emptyMap())
                         .withWriteChunkSize(TEST_CHUNK_SIZE)
                         .build();
 
@@ -286,7 +274,7 @@ public class TestMIMEInputStream {
         //Setup:
         final WriteHandle writeHandle = Mockito.mock(WriteHandle.class);
         final MultiPartMIMEInputStream multiPartMIMEInputStream =
-                new MultiPartMIMEInputStream.Builder(inputStream,  scheduledExecutorService, Collections.<String, String>emptyMap())
+                new MultiPartMIMEInputStream.Builder(inputStream,  _scheduledExecutorService, Collections.<String, String>emptyMap())
                         .withWriteChunkSize(TEST_CHUNK_SIZE)
                         .build();
 
@@ -322,7 +310,7 @@ public class TestMIMEInputStream {
                     //There is no better way to do this with mockito. R2 observes that 0 has been returned and THEN
                     //invokes onWritePossible(). We need to make sure that the value of 0 is returned
                     //and then onWritePossible() is invoked afterwards.
-                    scheduledExecutorService.schedule(new Runnable() {
+                    _scheduledExecutorService.schedule(new Runnable() {
                         @Override
                         public void run() {
                             multiPartMIMEInputStream.onWritePossible();
@@ -428,7 +416,7 @@ public class TestMIMEInputStream {
         //Setup:
         final WriteHandle writeHandle = Mockito.mock(WriteHandle.class);
         final MultiPartMIMEInputStream multiPartMIMEInputStream =
-                new MultiPartMIMEInputStream.Builder(slowByteArrayInputStream,  scheduledExecutorService, Collections.<String, String>emptyMap())
+                new MultiPartMIMEInputStream.Builder(slowByteArrayInputStream,  _scheduledExecutorService, Collections.<String, String>emptyMap())
                         .withWriteChunkSize(TEST_CHUNK_SIZE)
                         .withMaximumBlockingTime(45)
                         .build();
@@ -530,7 +518,7 @@ public class TestMIMEInputStream {
         //Setup:
         final WriteHandle writeHandle = Mockito.mock(WriteHandle.class);
         final MultiPartMIMEInputStream multiPartMIMEInputStream =
-                new MultiPartMIMEInputStream.Builder(exceptionThrowingByteArrayInputStream,  scheduledExecutorService, Collections.<String, String>emptyMap())
+                new MultiPartMIMEInputStream.Builder(exceptionThrowingByteArrayInputStream,  _scheduledExecutorService, Collections.<String, String>emptyMap())
                         .withWriteChunkSize(TEST_CHUNK_SIZE)
                         .build();
 
@@ -648,7 +636,7 @@ public class TestMIMEInputStream {
         //Setup:
         final WriteHandle writeHandle = Mockito.mock(WriteHandle.class);
         final MultiPartMIMEInputStream multiPartMIMEInputStream =
-                new MultiPartMIMEInputStream.Builder(inputStream,  scheduledExecutorService, Collections.<String, String>emptyMap())
+                new MultiPartMIMEInputStream.Builder(inputStream,  _scheduledExecutorService, Collections.<String, String>emptyMap())
                         .withWriteChunkSize(TEST_CHUNK_SIZE)
                         .build();
 
@@ -740,7 +728,7 @@ public class TestMIMEInputStream {
         //Setup:
         final WriteHandle writeHandle = Mockito.mock(WriteHandle.class);
         final MultiPartMIMEInputStream multiPartMIMEInputStream =
-                new MultiPartMIMEInputStream.Builder(spyInputStream,  scheduledExecutorService, Collections.<String, String>emptyMap())
+                new MultiPartMIMEInputStream.Builder(spyInputStream,  _scheduledExecutorService, Collections.<String, String>emptyMap())
                         .withWriteChunkSize(TEST_CHUNK_SIZE)
                         .build();
 
@@ -801,7 +789,7 @@ public class TestMIMEInputStream {
         //Setup:
         final WriteHandle writeHandle = Mockito.mock(WriteHandle.class);
         final MultiPartMIMEInputStream multiPartMIMEInputStream =
-                new MultiPartMIMEInputStream.Builder(spyInputStream,  scheduledExecutorService, Collections.<String, String>emptyMap())
+                new MultiPartMIMEInputStream.Builder(spyInputStream,  _scheduledExecutorService, Collections.<String, String>emptyMap())
                         .withWriteChunkSize(TEST_CHUNK_SIZE)
                         .build();
 
@@ -865,7 +853,6 @@ public class TestMIMEInputStream {
         verifyNoMoreInteractions(writeHandle);
 
     }
-
 
     private void appendByteStringToBuffer(final ByteArrayOutputStream outputStream, final ByteString byteString)
     {

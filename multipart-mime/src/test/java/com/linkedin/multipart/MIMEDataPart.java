@@ -5,10 +5,9 @@ import java.util.Map;
 
 
 /**
- * @author Karim Vidhani
- *
  * Represents in an-memory multipart mime data source used for testing.
  *
+ * @author Karim Vidhani
  */
 public final class MIMEDataPart
 {

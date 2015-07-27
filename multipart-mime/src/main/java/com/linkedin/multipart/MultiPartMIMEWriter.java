@@ -14,10 +14,10 @@ import java.util.List;
 
 
 /**
- * @author Karim Vidhani
- *
- * Used to aggregate multiple different data sources and subsequent construction of a multipart mime
+ * Used to aggregate multiple different data sources and subsequently construct a multipart mime
  * envelope.
+ *
+ * @author Karim Vidhani
  */
 public final class MultiPartMIMEWriter {
   private final CompositeWriter _writer;

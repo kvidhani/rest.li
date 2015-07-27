@@ -17,7 +17,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import javax.activation.DataSource;
 import javax.mail.BodyPart;
@@ -32,16 +31,13 @@ import org.testng.annotations.Test;
 
 
 /**
- * @author Karim Vidhani
- *
  * Using Javax.mail on the server side to verify the integrity of our RFC implementation of the
  * {@link com.linkedin.multipart.MultiPartMIMEWriter}. There is no way to use mockito to mock EntitStreams.newEntityStream()
  * Therefore we have no choice but to use R2's functionality here.
+ *
+ * @author Karim Vidhani
  */
-public class TestMIMEWriter {
-  private static ScheduledExecutorService scheduledExecutorService;
-  private static final int TEST_TIMEOUT = 90000;
-
+public class TestMIMEWriter extends AbstractMIMEUnitTest {
   byte[] _normalBodyData;
   Map<String, String> _normalBodyHeaders;
 
@@ -80,13 +76,6 @@ public class TestMIMEWriter {
 
     _purelyEmptyBody =
         new MIMEDataPart(ByteString.empty(), Collections.<String, String>emptyMap());
-
-    scheduledExecutorService = Executors.newScheduledThreadPool(10);
-  }
-
-  @AfterTest
-  public void shutDown() {
-    scheduledExecutorService.shutdownNow();
   }
 
   @DataProvider(name = "singleDataSources")
@@ -100,7 +89,6 @@ public class TestMIMEWriter {
     };
   }
 
-
   @Test(dataProvider = "singleDataSources")
   public void testSingleDataSource(final ByteString body, final Map<String, String> headers) throws Exception
   {
@@ -108,7 +96,7 @@ public class TestMIMEWriter {
         new MIMEDataPart(body, headers);
 
     final MultiPartMIMEInputStream singleDataSource =
-        new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(body.copyBytes()), scheduledExecutorService, headers).build();
+        new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(body.copyBytes()), _scheduledExecutorService, headers).build();
 
     final MultiPartMIMEWriter multiPartMIMEWriter =
         new MultiPartMIMEWriter.Builder("preamble", "epilogue").appendDataSource(singleDataSource).build();
@@ -128,7 +116,6 @@ public class TestMIMEWriter {
             futureCallback.get());
     javaxMailMultiPartMIMEReader.parseRequestIntoParts();
 
-
     List<MIMEDataPart> dataSourceList = javaxMailMultiPartMIMEReader._dataSourceList;
 
     Assert.assertEquals(dataSourceList.size(), 1);
@@ -137,10 +124,8 @@ public class TestMIMEWriter {
     Assert.assertEquals(javaxMailMultiPartMIMEReader._preamble.trim(), "preamble");
   }
 
-
   @Test
   public void testMultipleDataSources() throws Exception {
-
     final List<MIMEDataPart> expectedParts = new ArrayList<MIMEDataPart>();
     expectedParts.add(_normalBody);
     expectedParts.add(_normalBody);
@@ -156,25 +141,25 @@ public class TestMIMEWriter {
     expectedParts.add(_bodyLessBody);
 
     final List<MultiPartMIMEDataSource> inputStreamDataSources = new ArrayList<MultiPartMIMEDataSource>();
-    inputStreamDataSources.add(new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_normalBodyData), scheduledExecutorService,
+    inputStreamDataSources.add(new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_normalBodyData), _scheduledExecutorService,
         _normalBodyHeaders).build());
-    inputStreamDataSources.add(new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_normalBodyData), scheduledExecutorService,
+    inputStreamDataSources.add(new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_normalBodyData), _scheduledExecutorService,
         _normalBodyHeaders).build());
-    inputStreamDataSources.add(new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_headerLessBodyData), scheduledExecutorService, Collections.<String, String>emptyMap()).build());
-    inputStreamDataSources.add(new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_normalBodyData), scheduledExecutorService,
+    inputStreamDataSources.add(new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_headerLessBodyData), _scheduledExecutorService, Collections.<String, String>emptyMap()).build());
+    inputStreamDataSources.add(new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_normalBodyData), _scheduledExecutorService,
         _normalBodyHeaders).build());
-    inputStreamDataSources.add(new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(new byte[0]), scheduledExecutorService,
+    inputStreamDataSources.add(new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(new byte[0]), _scheduledExecutorService,
         _bodyLessHeaders).build());
-    inputStreamDataSources.add(new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(new byte[0]), scheduledExecutorService,
+    inputStreamDataSources.add(new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(new byte[0]), _scheduledExecutorService,
         Collections.<String, String>emptyMap()).build());
-    inputStreamDataSources.add(new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(new byte[0]), scheduledExecutorService,
+    inputStreamDataSources.add(new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(new byte[0]), _scheduledExecutorService,
         Collections.<String, String>emptyMap()).build());
-    inputStreamDataSources.add(new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_headerLessBodyData), scheduledExecutorService, Collections.<String, String>emptyMap()).build());
-    inputStreamDataSources.add(new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_headerLessBodyData), scheduledExecutorService, Collections.<String, String>emptyMap()).build());
-    inputStreamDataSources.add(new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_headerLessBodyData), scheduledExecutorService, Collections.<String, String>emptyMap()).build());
-    inputStreamDataSources.add(new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_normalBodyData), scheduledExecutorService,
+    inputStreamDataSources.add(new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_headerLessBodyData), _scheduledExecutorService, Collections.<String, String>emptyMap()).build());
+    inputStreamDataSources.add(new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_headerLessBodyData), _scheduledExecutorService, Collections.<String, String>emptyMap()).build());
+    inputStreamDataSources.add(new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_headerLessBodyData), _scheduledExecutorService, Collections.<String, String>emptyMap()).build());
+    inputStreamDataSources.add(new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_normalBodyData), _scheduledExecutorService,
         _normalBodyHeaders).build());
-    inputStreamDataSources.add(new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(new byte[0]), scheduledExecutorService,
+    inputStreamDataSources.add(new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(new byte[0]), _scheduledExecutorService,
         _bodyLessHeaders).build());
 
     final MultiPartMIMEWriter multiPartMIMEWriter =
@@ -194,7 +179,6 @@ public class TestMIMEWriter {
             futureCallback.get());
     javaxMailMultiPartMIMEReader.parseRequestIntoParts();
 
-
     List<MIMEDataPart> dataSourceList = javaxMailMultiPartMIMEReader._dataSourceList;
 
     Assert.assertEquals(dataSourceList.size(), 12);
@@ -206,14 +190,11 @@ public class TestMIMEWriter {
     Assert.assertEquals(javaxMailMultiPartMIMEReader._preamble.trim(), "preamble");
   }
 
-
-
   private static class JavaxMailMultiPartMIMEReader
   {
     final String _contentTypeHeaderValue;
     final ByteString _payload;
     String _preamble; //javax mail only supports reading the preamble
-
     final List<MIMEDataPart> _dataSourceList = new ArrayList<MIMEDataPart>();
 
     private JavaxMailMultiPartMIMEReader(final String contentTypeHeaderValue, final ByteString paylaod)
@@ -286,6 +267,4 @@ public class TestMIMEWriter {
       }
     }
   }
-
-
 }

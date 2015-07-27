@@ -10,15 +10,18 @@ import java.util.concurrent.*;
 
 
 /**
- * @author Karim Vidhani
- *
  * A wrapper around an {@link java.io.InputStream} to function as a data source to for a
- * {@link com.linkedin.multipart.MultiPartMIMEWriter}.
+ * {@link com.linkedin.multipart.MultiPartMIMEWriter}. This class uses the provided
+ * {@link java.util.concurrent.ExecutorService} to perform blocking reads and respond to write requests
+ * asynchronously.
  *
- * This class will close the underlying input stream when either of these happen:
- * 1. The stream is finished being read
- * 2. There was an exception reading the stream, so we then close the stream and call error on write handle
- * 3. The write was aborted, in which case we also close the stream.
+ * This class will close the underlying input stream when either of these events happen:
+ * 1. The stream is finished being read.
+ * 2. There was an exception reading the stream, at which point the stream is closed and error() is called on the write
+ * handle.
+ * 3. The writer was aborted.
+ *
+ * @author Karim Vidhani
  */
 public final class MultiPartMIMEInputStream implements MultiPartMIMEDataSource
 {

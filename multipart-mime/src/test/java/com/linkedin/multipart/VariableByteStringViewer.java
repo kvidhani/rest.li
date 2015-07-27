@@ -4,9 +4,9 @@ import com.linkedin.data.ByteString;
 import com.linkedin.util.ArgumentUtil;
 
 /**
- * @author Karim Vidhani
- *
  * Unit test equivalent of {@link com.linkedin.multipart.VariableByteStringWriter}.
+ *
+ * @author Karim Vidhani
  */
 public final class VariableByteStringViewer {
     private final ByteString _content;

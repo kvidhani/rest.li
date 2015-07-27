@@ -17,9 +17,9 @@ import static org.mockito.Mockito.when;
 
 
 /**
- * @author Karim Vidhani
- *
  * These tests will verify that the correct exceptions are thrown in the face of unorthodox clients.
+ *
+ * @author Karim Vidhani
  */
 public class TestMIMEReaderStateTransitions {
 
@@ -28,11 +28,9 @@ public class TestMIMEReaderStateTransitions {
   public void testRegisterCallbackMultiPartMIMEReader() {
 
     final EntityStream entityStream = mock(EntityStream.class);
-
     final StreamRequest streamRequest = mock(StreamRequest.class);
     when(streamRequest.getEntityStream()).thenReturn(entityStream);
     when(streamRequest.getHeader(MultiPartMIMEUtils.CONTENT_TYPE_HEADER)).thenReturn("multipart/mixed; boundary=\"--123\"");
-
     MultiPartMIMEReader reader = MultiPartMIMEReader.createAndAcquireStream(streamRequest);
 
     //Test each possible exception:
@@ -76,7 +74,6 @@ public class TestMIMEReaderStateTransitions {
     } catch (StreamBusyException streamBusyException) {
     }
   }
-
 
   @Test
   public void testAbandonAllPartsMultiPartMIMEReader() {
@@ -138,9 +135,7 @@ public class TestMIMEReaderStateTransitions {
   }
 
   ///////////////////////////////////////////////////////////////////////////////////////
-
-
-
+  //SinglePartMIMEReader exceptions:
 
   @Test
   public void testRegisterSinglePartMIMEReaderCallbackTwice() {
@@ -163,12 +158,11 @@ public class TestMIMEReaderStateTransitions {
     }
   }
 
-
   @Test
   public void testSinglePartMIMEReaderVerifyState() {
 
     //This will cover abandonPart() and most of requestPartData().
-    //The exception is that requestPartData() requires a callback to be registered. This
+    //The caveat is that requestPartData() requires a callback to be registered. This
     //will be covered in the next test.
 
     final EntityStream entityStream = mock(EntityStream.class);
@@ -204,11 +198,8 @@ public class TestMIMEReaderStateTransitions {
     }
   }
 
-
   @Test
   public void testSinglePartMIMEReaderRequestData() {
-
-    //This test will try to request part data without a callback registered.
 
     final EntityStream entityStream = mock(EntityStream.class);
     final StreamRequest streamRequest = mock(StreamRequest.class);
@@ -226,6 +217,4 @@ public class TestMIMEReaderStateTransitions {
     } catch (PartNotInitializedException partNotInitializedException) {
     }
   }
-
-
 }
