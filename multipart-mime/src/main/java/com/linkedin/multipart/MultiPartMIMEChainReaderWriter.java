@@ -62,8 +62,8 @@ class MultiPartMIMEChainReaderWriter implements Writer
       //which will eventually lead to onPartDataAvailable() which will then write to the writeHandle thereby
       //honoring the original request here to write data. This initial write here will write out the boundary that this
       //writer is using followed by the headers.
-
-    } else
+    }
+    else
     {
       //R2 asked us to read after initial setup is done.
       _multiPartMIMEChainReaderCallback.getCurrentSinglePartReader().requestPartData();

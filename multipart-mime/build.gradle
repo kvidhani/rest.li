@@ -9,5 +9,3 @@ dependencies {
   testCompile externalDependency.mockito
   testCompile externalDependency.guava
 }
-
-

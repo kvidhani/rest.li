@@ -37,7 +37,8 @@ public final class MIMEDataPart
     if (partData == null)
     {
       _partData = ByteString.empty();
-    } else
+    }
+    else
     {
       _partData = partData;
     }

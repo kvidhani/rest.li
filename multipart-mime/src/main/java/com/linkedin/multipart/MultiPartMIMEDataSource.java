@@ -30,7 +30,6 @@ import java.util.Map;
  */
 public interface MultiPartMIMEDataSource extends Writer
 {
-
   /**
    * Immediately return the headers need for this part. If no headers are provided, clients must
    * return an empty map.

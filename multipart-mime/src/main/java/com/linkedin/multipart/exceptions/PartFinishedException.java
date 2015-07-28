@@ -20,7 +20,7 @@ package com.linkedin.multipart.exceptions;
 /**
  * @author Karim Vidhani
  *
- * Represents an error when trying to use a already finished
+ * Represents an error when trying to use an already finished
  * {@link com.linkedin.multipart.MultiPartMIMEReader.SinglePartMIMEReader}.
  */
 public class PartFinishedException extends GeneralMultiPartMIMEReaderStreamException

@@ -19,12 +19,18 @@ package com.linkedin.multipart;
 
 import com.linkedin.data.ByteString;
 import com.linkedin.r2.message.streaming.WriteHandle;
-
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.*;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 
 /**
@@ -87,7 +93,7 @@ public final class MultiPartMIMEInputStream implements MultiPartMIMEDataSource
   @Override
   public Map<String, String> dataSourceHeaders()
   {
-    return _headers;
+    return Collections.unmodifiableMap(_headers);
   }
 
   private class InputStreamCloser implements Runnable
@@ -156,13 +162,14 @@ public final class MultiPartMIMEInputStream implements MultiPartMIMEDataSource
     {
       //We use two threads from the client provided thread pool. We must use this technique
       //because if the read from the input stream hangs, there is no way to recover.
-      //Therefore we have a reader thread and a boss thread that waits for the reader to complete.
+      //Therefore we have a reader thread which performs the actual read and and a boss thread that waits for the reader
+      //to complete.
 
       //We want to invoke the callback on only one (boss) thread because:
       //1. It makes the threading model more complicated if the reader thread invokes the callbacks as well as
       //the boss thread.
       //2. In cases where there is a timeout, meaning the read took too long, we want to close the
-      //input stream on the boss thread to unblock the reader thread pool thread. In such cases it is indeterminate
+      //input stream on the boss thread to unblock the reader thread. In such cases it is indeterminate
       //as to what the behavior is when the aforementioned blocked thread wakes up. This thread could receive an IOException
       //or come back with a few bytes. Due to this indeterminate behavior we don't want to trust the reader thread
       //to invoke any callbacks. We want our boss thread to explicitly invoke error() in such cases.
@@ -206,12 +213,14 @@ public final class MultiPartMIMEInputStream implements MultiPartMIMEDataSource
                 //Break here, even though there may be more writes on the writeHandle.
                 //We cannot continue writing if our data source has finished.
                 break;
-              } else
+              }
+              else
               {
                 //Just a normal write
                 _writeHandle.write(inputStreamReader._result);
               }
-            } else
+            }
+            else
             {
               //This means the result is null which implies that a throwable exists.
               //In this case the read on the InputStream threw an IOException.
@@ -232,7 +241,8 @@ public final class MultiPartMIMEInputStream implements MultiPartMIMEDataSource
               //We cannot continue writing in this condition.
               break;
             }
-          } else
+          }
+          else
           {
             //There was a timeout when trying to read
             try
@@ -281,11 +291,10 @@ public final class MultiPartMIMEInputStream implements MultiPartMIMEDataSource
     @Override
     public void run()
     {
-
       try
       {
-        byte[] bytes = new byte[_writeChunkSize];
-        int bytesRead = _inputStream.read(bytes);
+        final byte[] bytes = new byte[_writeChunkSize];
+        final int bytesRead = _inputStream.read(bytes);
         //The number of bytes 'N' here could be the following:
         if (bytesRead == -1)
         {
@@ -293,11 +302,13 @@ public final class MultiPartMIMEInputStream implements MultiPartMIMEDataSource
           //last read from the InputStream.
           _dataSourceFinished = true;
           _result = ByteString.empty();
-        } else if (bytesRead == _writeChunkSize)
+        }
+        else if (bytesRead == _writeChunkSize)
         {
           //2. N==Capacity. This signifies the most common case which is that we read as many bytes as we originally desired.
           _result = ByteString.copy(bytes);
-        } else
+        }
+        else
         {
           //3. Capacity > N >= 0. This signifies that the input stream is wrapping up and we just got the last few bytes.
           _dataSourceFinished = true;
@@ -321,8 +332,7 @@ public final class MultiPartMIMEInputStream implements MultiPartMIMEDataSource
   }
 
   /**
-   * Builder to create a new instance of a MultiPartMIMEInputStream that wraps the provided InputStream to
-   * construct an individual multipart MIME part within the multipart MIME envelope.
+   * Builder to create a new instance of a MultiPartMIMEInputStream that wraps the provided InputStream.
    */
   public static class Builder
   {
@@ -340,8 +350,7 @@ public final class MultiPartMIMEInputStream implements MultiPartMIMEDataSource
      * @param executorService the thread pool to run jobs to read.
      * @param headers the headers representing this part.
      */
-    public Builder(final InputStream inputStream, final ExecutorService executorService,
-        final Map<String, String> headers)
+    public Builder(final InputStream inputStream, final ExecutorService executorService, final Map<String, String> headers)
     {
       _inputStream = inputStream;
       _executorService = executorService;
@@ -372,7 +381,7 @@ public final class MultiPartMIMEInputStream implements MultiPartMIMEDataSource
     }
 
     /**
-     * The maximum amount of time to wait, in milliseconds that a request to abort has to wait
+     * The maximum amount of time to wait, in milliseconds, that a request to abort has to wait
      * for any outstanding read (and therefore write) operations to finish.
      *
      * @param abortTimeout
@@ -384,7 +393,7 @@ public final class MultiPartMIMEInputStream implements MultiPartMIMEDataSource
     }
 
     /**
-     * Build and return the MultiPartMIMEInputStraem.
+     * Build and return the MultiPartMIMEInputStream.
      */
     public MultiPartMIMEInputStream build()
     {

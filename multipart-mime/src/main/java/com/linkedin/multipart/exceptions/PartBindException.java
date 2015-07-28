@@ -18,10 +18,10 @@ package com.linkedin.multipart.exceptions;
 
 
 /**
- * @author Karim Vidhani
- *
  * Represents an error when trying to re-register a callback with a
  * {@link com.linkedin.multipart.MultiPartMIMEReader.SinglePartMIMEReader}.
+ *
+ * @author Karim Vidhani
  */
 public class PartBindException extends GeneralMultiPartMIMEReaderStreamException
 {

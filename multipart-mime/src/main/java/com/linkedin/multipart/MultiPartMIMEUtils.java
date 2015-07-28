@@ -107,7 +107,6 @@ final class MultiPartMIMEUtils
   static String buildMIMEContentTypeHeader(final String mimeType, final String boundary,
       final Map<String, String> contentTypeParameters)
   {
-
     final StringBuilder contentTypeBuilder = new StringBuilder();
     contentTypeBuilder.append(MULTIPART_PREFIX).append(mimeType);
     //As per the RFC, parameters of the Content-Type header are separated by semi colons
@@ -177,10 +176,11 @@ final class MultiPartMIMEUtils
         parameterValue = parameterValue.substring(1, parameterValue.length() - 1);
       }
 
+      //The purpose of storing all of the parameters we have seen in the map is so that we can detect the case when
+      //there are multiple boundary parameters.
       if (parameterMap.containsKey(parameterKey))
       {
-        throw new IllegalMultiPartMIMEFormatException(
-            "Invalid parameter format. Multiple decelerations of the same parameter!");
+        throw new IllegalMultiPartMIMEFormatException("Invalid parameter format. Multiple decelerations of the same parameter!");
       }
       parameterMap.put(parameterKey, parameterValue);
     }
