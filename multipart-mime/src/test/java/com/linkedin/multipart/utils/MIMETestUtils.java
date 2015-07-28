@@ -14,7 +14,7 @@
    limitations under the License.
 */
 
-package com.linkedin.multipart;
+package com.linkedin.multipart.utils;
 
 
 import com.linkedin.data.ByteString;
@@ -25,6 +25,8 @@ import javax.mail.internet.ContentType;
 import javax.mail.internet.MimeBodyPart;
 import javax.mail.internet.ParameterList;
 
+import com.linkedin.multipart.MultiPartMIMEDataSource;
+import com.linkedin.multipart.MultiPartMIMEInputStream;
 import junit.framework.Assert;
 
 import java.io.ByteArrayInputStream;
@@ -40,35 +42,52 @@ import java.util.concurrent.ExecutorService;
  *
  * @author Karim Vidhani
  */
-public final class DataSources
+public final class MIMETestUtils
 {
-  static final String HEADER_CONTENT_TYPE = "Content-Type";
-  static final String _textPlainType = "text/plain";
-  static final String _binaryType = "application/octet-stream";
+  public static final String HEADER_CONTENT_TYPE = "Content-Type";
+  public static final String _textPlainType = "text/plain";
+  public static final String _binaryType = "application/octet-stream";
+
+  //For the abandoning tests:
+  public static final String ABANDON_HEADER = "AbandonMe";
+  //Header values for different server side behavior:
+  //Single part abandons all individually but doesn't use a callback:
+  public static final String SINGLE_ALL_NO_CALLBACK = "SINGLE_ALL_NO_CALLBACK";
+  //Top level abandons all without ever registering a reader with the SinglePartMIMEReader:
+  public static final String TOP_ALL = "TOP_ALL";
+  //Single part abandons the first 6 (using registered callbacks) and then the top level abandons all of remaining:
+  public static final String SINGLE_PARTIAL_TOP_REMAINING = "SINGLE_PARTIAL_TOP_REMAINING";
+  //Single part alternates between consumption and abandoning the first 6 parts (using registered callbacks), then top
+  //level abandons all of remaining. This means that parts 0, 2, 4 will be consumed and parts 1, 3, 5 will be abandoned.
+  public static final String SINGLE_ALTERNATE_TOP_REMAINING = "SINGLE_ALTERNATE_TOP_REMAINING";
+  //Single part abandons all individually (using registered callbacks):
+  public static final String SINGLE_ALL = "SINGLE_ALL";
+  //Single part alternates between consumption and abandoning all the way through (using registered callbacks):
+  public static final String SINGLE_ALTERNATE = "SINGLE_ALTERNATE";
 
   //Javax mail data sources
-  static MimeBodyPart _tinyDataSource;
+  public static MimeBodyPart _tinyDataSource;
   //Represents a tiny part with no headers. Used exclusively for the stack overflow test.
-  static MimeBodyPart _smallDataSource; //Represents a small part with headers and a body composed of simple text
-  static MimeBodyPart _largeDataSource; //Represents a large part with headers and a body composed of simple text
-  static MimeBodyPart _headerLessBody; //Represents a part with a body and no headers
-  static MimeBodyPart _bodyLessBody; //Represents a part with headers but no body
-  static MimeBodyPart _bytesBody; //Represents a part with bytes
-  static MimeBodyPart _purelyEmptyBody; //Represents a part with no headers and no body
+  public static MimeBodyPart _smallDataSource; //Represents a small part with headers and a body composed of simple text
+  public static MimeBodyPart _largeDataSource; //Represents a large part with headers and a body composed of simple text
+  public static MimeBodyPart _headerLessBody; //Represents a part with a body and no headers
+  public static MimeBodyPart _bodyLessBody; //Represents a part with headers but no body
+  public static MimeBodyPart _bytesBody; //Represents a part with bytes
+  public static MimeBodyPart _purelyEmptyBody; //Represents a part with no headers and no body
 
   //Non javax, custom data sources
-  static MIMEDataPart _bodyA;
-  static MIMEDataPart _bodyB;
-  static MIMEDataPart _bodyC;
-  static MIMEDataPart _bodyD;
-  static MIMEDataPart _body1;
-  static MIMEDataPart _body2;
-  static MIMEDataPart _body3;
-  static MIMEDataPart _body4;
-  static MIMEDataPart _body5;
+  public static MIMEDataPart _bodyA;
+  public static MIMEDataPart _bodyB;
+  public static MIMEDataPart _bodyC;
+  public static MIMEDataPart _bodyD;
+  public static MIMEDataPart _body1;
+  public static MIMEDataPart _body2;
+  public static MIMEDataPart _body3;
+  public static MIMEDataPart _body4;
+  public static MIMEDataPart _body5;
 
   //Disable instantiation
-  private DataSources()
+  private MIMETestUtils()
   {
   }
 
@@ -78,7 +97,7 @@ public final class DataSources
   //This trailing CRLF is not considered part of the final boundary and is, presumably, some sort of default
   //epilogue. We want to remove this, otherwise all of our data sources in all of our tests will always have some sort
   //of epilogue at the end and we won't have any tests where the data sources end with JUST the final boundary.
-  static ByteString trimTrailingCRLF(final ByteString javaxMailPayload)
+  public static ByteString trimTrailingCRLF(final ByteString javaxMailPayload)
   {
     //Assert the trailing CRLF does
     final byte[] javaxMailPayloadBytes = javaxMailPayload.copyBytes();
@@ -234,7 +253,7 @@ public final class DataSources
   }
 
   //The chaining tests will use these:
-  static List<MultiPartMIMEDataSource> generateInputStreamDataSources(final int chunkSize,
+  public static List<MultiPartMIMEDataSource> generateInputStreamDataSources(final int chunkSize,
       final ExecutorService executorService)
   {
     final MultiPartMIMEInputStream bodyADataSource =

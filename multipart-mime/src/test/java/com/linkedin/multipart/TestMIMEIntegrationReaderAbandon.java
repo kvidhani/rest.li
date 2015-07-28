@@ -20,6 +20,7 @@ package com.linkedin.multipart;
 import com.linkedin.common.callback.Callback;
 import com.linkedin.data.ByteString;
 import com.linkedin.multipart.exceptions.IllegalMultiPartMIMEFormatException;
+import com.linkedin.multipart.utils.VariableByteStringWriter;
 import com.linkedin.r2.filter.R2Constants;
 import com.linkedin.r2.message.RequestContext;
 import com.linkedin.r2.message.rest.Messages;
@@ -59,7 +60,7 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import static com.linkedin.multipart.DataSources.*;
+import static com.linkedin.multipart.utils.MIMETestUtils.*;
 
 
 /**
@@ -74,21 +75,6 @@ public class TestMIMEIntegrationReaderAbandon extends AbstractMIMEIntegrationStr
   private static final URI SERVER_URI = URI.create("/pegasusAbandonServer");
   private MimeServerRequestAbandonHandler _mimeServerRequestAbandonHandler;
   private static final String ABANDON_HEADER = "AbandonMe";
-
-  //Header values for different server side behavior:
-  //Single part abandons all individually but doesn't use a callback:
-  private static final String SINGLE_ALL_NO_CALLBACK = "SINGLE_ALL_NO_CALLBACK";
-  //Top level abandons all without ever registering a reader with the SinglePartMIMEReader:
-  private static final String TOP_ALL = "TOP_ALL";
-  //Single part abandons the first 6 (using registered callbacks) and then the top level abandons all of remaining:
-  private static final String SINGLE_PARTIAL_TOP_REMAINING = "SINGLE_PARTIAL_TOP_REMAINING";
-  //Single part alternates between consumption and abandoning the first 6 parts (using registered callbacks), then top
-  //level abandons all of remaining. This means that parts 0, 2, 4 will be consumed and parts 1, 3, 5 will be abandoned.
-  private static final String SINGLE_ALTERNATE_TOP_REMAINING = "SINGLE_ALTERNATE_TOP_REMAINING";
-  //Single part abandons all individually (using registered callbacks):
-  private static final String SINGLE_ALL = "SINGLE_ALL";
-  //Single part alternates between consumption and abandoning all the way through (using registered callbacks):
-  private static final String SINGLE_ALTERNATE = "SINGLE_ALTERNATE";
 
   @Override
   protected TransportDispatcher getTransportDispatcher()

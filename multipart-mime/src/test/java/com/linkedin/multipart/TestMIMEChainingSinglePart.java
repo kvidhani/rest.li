@@ -31,7 +31,7 @@ import org.testng.annotations.Test;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-import static com.linkedin.multipart.DataSources.*;
+import static com.linkedin.multipart.utils.MIMETestUtils.*;
 
 
 /**

@@ -52,7 +52,7 @@ import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
-import static com.linkedin.multipart.DataSources.*;
+import static com.linkedin.multipart.utils.MIMETestUtils.*;
 
 
 /**
@@ -254,7 +254,8 @@ public class TestMIMEChainingMultipleSources extends AbstractMIMEUnitTest
         final StreamResponse streamResponse =
             new MultiPartMIMEStreamResponseBuilder("mixed", writer, Collections.<String, String>emptyMap()).build();
         _incomingRequestCallback.onSuccess(streamResponse);
-      } else
+      }
+      else
       {
         ServerASinglePartCallback singlePartMIMEReaderCallback = new ServerASinglePartCallback(singleParMIMEReader);
         singleParMIMEReader.registerReaderCallback(singlePartMIMEReaderCallback);

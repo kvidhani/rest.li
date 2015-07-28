@@ -20,6 +20,7 @@ package com.linkedin.multipart;
 import com.linkedin.data.ByteString;
 import com.linkedin.multipart.exceptions.PartFinishedException;
 import com.linkedin.multipart.exceptions.ReaderFinishedException;
+import com.linkedin.multipart.utils.VariableByteStringViewer;
 import com.linkedin.r2.filter.R2Constants;
 import com.linkedin.r2.message.rest.StreamRequest;
 import com.linkedin.r2.message.streaming.EntityStream;
@@ -39,7 +40,7 @@ import org.mockito.stubbing.Answer;
 import org.testng.Assert;
 import org.testng.annotations.*;
 
-import static com.linkedin.multipart.DataSources.*;
+import static com.linkedin.multipart.utils.MIMETestUtils.*;
 import static org.mockito.Matchers.isA;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
@@ -358,75 +359,7 @@ public class TestMIMEReaderClientCallbackExceptions extends AbstractMIMEUnitTest
   private CountDownLatch executeRequestPartialReadWithException(final ByteString requestPayload, final int chunkSize,
       final String contentTypeHeader) throws Exception
   {
-    final EntityStream entityStream = mock(EntityStream.class);
-    final ReadHandle readHandle = mock(ReadHandle.class);
-
-    //We have to use the AtomicReference holder technique to modify the current remaining buffer since the inner class
-    //in doAnswer() can only access final variables.
-    final AtomicReference<MultiPartMIMEReader.R2MultiPartMIMEReader> r2Reader =
-        new AtomicReference<MultiPartMIMEReader.R2MultiPartMIMEReader>();
-
-    //This takes the place of VariableByteStringWriter if we were to use R2 directly.
-    final VariableByteStringViewer variableByteStringViewer = new VariableByteStringViewer(requestPayload, chunkSize);
-
-    doAnswer(new Answer()
-    {
-      @Override
-      public Object answer(InvocationOnMock invocation) throws Throwable
-      {
-        final MultiPartMIMEReader.R2MultiPartMIMEReader reader = r2Reader.get();
-        Object[] args = invocation.getArguments();
-
-        //will always be 1 since MultiPartMIMEReader only does _rh.request(1)
-        final int chunksRequested = (Integer) args[0];
-
-        for (int i = 0; i < chunksRequested; i++)
-        {
-
-          //Our tests will run into a stack overflow unless we use a thread pool here to fire off the callbacks.
-          //Especially in cases where the chunk size is 1. When the chunk size is one, the MultiPartMIMEReader
-          //ends up doing many _rh.request(1) since each write is only 1 byte.
-          //R2 uses a different technique to avoid stack overflows here which is unnecessary to emulate.
-          _scheduledExecutorService.submit(new Runnable()
-          {
-            @Override
-            public void run()
-            {
-              ByteString clientData = variableByteStringViewer.onWritePossible();
-              if (clientData.equals(ByteString.empty()))
-              {
-                reader.onDone();
-              } else
-              {
-                reader.onDataAvailable(clientData);
-              }
-            }
-          });
-        }
-
-        return null;
-      }
-    }).when(readHandle).request(isA(Integer.class));
-
-    doAnswer(new Answer()
-    {
-      @Override
-      public Object answer(InvocationOnMock invocation) throws Throwable
-      {
-        Object[] args = invocation.getArguments();
-        final MultiPartMIMEReader.R2MultiPartMIMEReader reader = (MultiPartMIMEReader.R2MultiPartMIMEReader) args[0];
-        r2Reader.set(reader);
-        //R2 calls init immediately upon setting the reader
-        reader.onInit(readHandle);
-        return null;
-      }
-    }).when(entityStream).setReader(isA(MultiPartMIMEReader.R2MultiPartMIMEReader.class));
-
-    final StreamRequest streamRequest = mock(StreamRequest.class);
-    when(streamRequest.getEntityStream()).thenReturn(entityStream);
-
-    when(streamRequest.getHeader(MultiPartMIMEUtils.CONTENT_TYPE_HEADER)).thenReturn(contentTypeHeader);
-
+    mockR2AndWrite(requestPayload, chunkSize, contentTypeHeader);
     final CountDownLatch latch = new CountDownLatch(1);
 
     _reader = MultiPartMIMEReader.createAndAcquireStream(streamRequest);
@@ -466,11 +399,13 @@ public class TestMIMEReaderClientCallbackExceptions extends AbstractMIMEUnitTest
       if (throwOnPartDataAvailable)
       {
         throw new NullPointerException();
-      } else if (throwOnAbandoned)
+      }
+      else if (throwOnAbandoned)
       {
         _singlePartMIMEReader.abandonPart();
         return;
-      } else
+      }
+      else
       {
         _singlePartMIMEReader.requestPartData();
       }

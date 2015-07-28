@@ -14,7 +14,7 @@
    limitations under the License.
 */
 
-package com.linkedin.multipart;
+package com.linkedin.multipart.utils;
 
 
 import com.linkedin.data.ByteString;
@@ -22,7 +22,7 @@ import com.linkedin.util.ArgumentUtil;
 
 
 /**
- * Unit test equivalent of {@link com.linkedin.multipart.VariableByteStringWriter}.
+ * Unit test equivalent of {@link VariableByteStringWriter}.
  *
  * @author Karim Vidhani
  */

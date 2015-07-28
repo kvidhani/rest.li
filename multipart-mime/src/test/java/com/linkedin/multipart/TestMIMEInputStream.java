@@ -59,9 +59,7 @@ public class TestMIMEInputStream extends AbstractMIMEUnitTest
   //after closing. ByteArrayInputStream is convenient, but out of the box its too flexible.
   private static class StrictByteArrayInputStream extends ByteArrayInputStream
   {
-
     private boolean _isClosed = false;
-
     private StrictByteArrayInputStream(final byte[] bytes)
     {
       super(bytes);

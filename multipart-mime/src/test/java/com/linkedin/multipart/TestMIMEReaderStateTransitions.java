@@ -54,7 +54,6 @@ public class TestMIMEReaderStateTransitions
     MultiPartMIMEReader reader = MultiPartMIMEReader.createAndAcquireStream(streamRequest);
 
     //Test each possible exception:
-
     reader.setState(MultiPartMIMEReader.MultiPartReaderState.FINISHED);
     try
     {
@@ -123,7 +122,6 @@ public class TestMIMEReaderStateTransitions
     MultiPartMIMEReader reader = MultiPartMIMEReader.createAndAcquireStream(streamRequest);
 
     //Test each possible exception:
-
     reader.setState(MultiPartMIMEReader.MultiPartReaderState.CREATED);
     try
     {
@@ -228,7 +226,6 @@ public class TestMIMEReaderStateTransitions
     //will be covered in the next test.
 
     final EntityStream entityStream = mock(EntityStream.class);
-
     final StreamRequest streamRequest = mock(StreamRequest.class);
     when(streamRequest.getEntityStream()).thenReturn(entityStream);
     when(streamRequest.getHeader(MultiPartMIMEUtils.CONTENT_TYPE_HEADER))

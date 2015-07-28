@@ -19,6 +19,7 @@ package com.linkedin.multipart;
 
 import com.linkedin.common.callback.FutureCallback;
 import com.linkedin.data.ByteString;
+import com.linkedin.multipart.utils.MIMEDataPart;
 import com.linkedin.r2.message.rest.StreamRequest;
 import com.linkedin.r2.message.streaming.FullEntityReader;
 

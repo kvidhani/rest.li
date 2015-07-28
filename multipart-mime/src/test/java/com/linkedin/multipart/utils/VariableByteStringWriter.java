@@ -14,7 +14,7 @@
    limitations under the License.
 */
 
-package com.linkedin.multipart;
+package com.linkedin.multipart.utils;
 
 
 import com.linkedin.data.ByteString;

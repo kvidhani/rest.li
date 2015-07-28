@@ -35,7 +35,7 @@ import java.util.concurrent.TimeUnit;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-import static com.linkedin.multipart.DataSources.*;
+import static com.linkedin.multipart.utils.MIMETestUtils.*;
 
 
 /**
@@ -274,7 +274,8 @@ public class TestMIMEChainingAlternate extends AbstractMIMEUnitTest
         final String contentTypeHeader = "multipart/mixed; boundary=" + writer.getBoundary();
         when(streamResponse.getHeader(MultiPartMIMEUtils.CONTENT_TYPE_HEADER)).thenReturn(contentTypeHeader);
         _callbackA.onSuccess(streamResponse);
-      } else if (_currentPart == 3)
+      }
+      else if (_currentPart == 3)
       {
         final MultiPartMIMEWriter writer =
             new MultiPartMIMEWriter.Builder().appendDataSource(singleParMIMEReader).build();
@@ -284,7 +285,8 @@ public class TestMIMEChainingAlternate extends AbstractMIMEUnitTest
         final String contentTypeHeader = "multipart/mixed; boundary=" + writer.getBoundary();
         when(streamResponse.getHeader(MultiPartMIMEUtils.CONTENT_TYPE_HEADER)).thenReturn(contentTypeHeader);
         _callbackB.onSuccess(streamResponse);
-      } else
+      }
+      else
       {
         //Consume 2 and 4
         ServerSinglePartMIMEReader singlePartMIMEReaderCallback = new ServerSinglePartMIMEReader(singleParMIMEReader);
