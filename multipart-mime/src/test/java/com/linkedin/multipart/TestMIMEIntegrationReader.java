@@ -268,7 +268,8 @@ public class TestMIMEIntegrationReader extends AbstractMIMEIntegrationStreamTest
       //boundary).
       byteArrayOutputStream.write(epilogue.getBytes());
       requestPayload = ByteString.copy(byteArrayOutputStream.toByteArray());
-    } else
+    }
+    else
     {
       //Our test desired no epilogue.
       //Remove the CRLF introduced by javax mail at the end. We won't want a fake epilogue.
@@ -325,7 +326,8 @@ public class TestMIMEIntegrationReader extends AbstractMIMEIntegrationStreamTest
       if (currentExpectedPart.getContent() instanceof byte[])
       {
         Assert.assertEquals(currentCallback._finishedData.copyBytes(), currentExpectedPart.getContent());
-      } else
+      }
+      else
       {
         //Default is String
         Assert.assertEquals(new String(currentCallback._finishedData.copyBytes()), currentExpectedPart.getContent());

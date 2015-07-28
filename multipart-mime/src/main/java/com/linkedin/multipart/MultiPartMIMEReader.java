@@ -516,7 +516,8 @@ public final class MultiPartMIMEReader
         final List<Byte> useableBytes = _byteBuffer.subList(0, _byteBuffer.size() - amountToLeaveBehind);
 
         //Make a copy of what we need leaving the old list to be GC'd
-        _byteBuffer = new ArrayList<Byte>(_byteBuffer.subList(_byteBuffer.size() - amountToLeaveBehind, _byteBuffer.size()));
+        _byteBuffer =
+            new ArrayList<Byte>(_byteBuffer.subList(_byteBuffer.size() - amountToLeaveBehind, _byteBuffer.size()));
 
         if (currentState == SingleReaderState.REQUESTED_DATA)
         {
@@ -776,7 +777,8 @@ public final class MultiPartMIMEReader
       final List<Byte> possibleHeaderArea = _byteBuffer.subList(boundarySize, _byteBuffer.size());
 
       //Find the two consecutive CRLFs.
-      final int headerEnding = Collections.indexOfSubList(possibleHeaderArea, MultiPartMIMEUtils.CONSECUTIVE_CRLFS_BYTE_LIST);
+      final int headerEnding =
+          Collections.indexOfSubList(possibleHeaderArea, MultiPartMIMEUtils.CONSECUTIVE_CRLFS_BYTE_LIST);
       if (headerEnding == -1)
       {
         if (_r2Done)
@@ -784,8 +786,8 @@ public final class MultiPartMIMEReader
           //If r2 has already notified us we are done, then this is a problem. This means that we saw a
           //a boundary followed by a potential header area. This header area does not contain
           //two consecutive CRLF_BYTES characters. This is a malformed stream.
-          handleExceptions(new IllegalMultiPartMIMEFormatException("Malformed multipart mime request. Premature "
-              + "termination of headers within a part."));
+          handleExceptions(new IllegalMultiPartMIMEFormatException("Malformed multipart mime request. Premature " +
+              "termination of headers within a part."));
           return;//Unusable state, so return.
         }
         //We need more data since the current buffer doesn't contain the CRLFs.
@@ -837,7 +839,8 @@ public final class MultiPartMIMEReader
         //Note that the end of the buffer we are sliding through is composed of two consecutive CRLFs.
         //Our sliding window algorithm here will NOT evaluate the very last CRLF bytes (which would otherwise
         //erroneously result in an empty header).
-        for (int i = MultiPartMIMEUtils.CRLF_BYTE_LIST.size(); i < headerByteSubList.size() - MultiPartMIMEUtils.CRLF_BYTE_LIST.size(); i++)
+        for (int i = MultiPartMIMEUtils.CRLF_BYTE_LIST.size();
+            i < headerByteSubList.size() - MultiPartMIMEUtils.CRLF_BYTE_LIST.size(); i++)
         {
           final List<Byte> currentWindow = headerByteSubList.subList(i, i + MultiPartMIMEUtils.CRLF_BYTE_LIST.size());
           if (currentWindow.equals(MultiPartMIMEUtils.CRLF_BYTE_LIST))
@@ -1229,8 +1232,7 @@ public final class MultiPartMIMEReader
 
     if (_multiPartReaderState == MultiPartReaderState.ABANDONING)
     {
-      throw new StreamBusyException(
-          "Reader is busy performing a complete abandonment. Unable to register the callback.");
+      throw new StreamBusyException("Reader is busy performing a complete abandonment. Unable to register the callback.");
     }
 
     //At this point we know that _reader is in CREATED or READING_PARTS
@@ -1429,7 +1431,8 @@ public final class MultiPartMIMEReader
 
       if (_singleReaderState == SingleReaderState.REQUESTED_DATA)
       {
-        throw new StreamBusyException("This SinglePartMIMEReader is currently busy fulfilling a call to requestPartData().");
+        throw new StreamBusyException(
+            "This SinglePartMIMEReader is currently busy fulfilling a call to requestPartData().");
       }
 
       if (_singleReaderState == SingleReaderState.REQUESTED_ABORT)

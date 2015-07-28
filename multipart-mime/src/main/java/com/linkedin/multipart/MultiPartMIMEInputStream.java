@@ -19,6 +19,7 @@ package com.linkedin.multipart;
 
 import com.linkedin.data.ByteString;
 import com.linkedin.r2.message.streaming.WriteHandle;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Collections;
@@ -350,7 +351,8 @@ public final class MultiPartMIMEInputStream implements MultiPartMIMEDataSource
      * @param executorService the thread pool to run jobs to read.
      * @param headers the headers representing this part.
      */
-    public Builder(final InputStream inputStream, final ExecutorService executorService, final Map<String, String> headers)
+    public Builder(final InputStream inputStream, final ExecutorService executorService,
+        final Map<String, String> headers)
     {
       _inputStream = inputStream;
       _executorService = executorService;
@@ -397,8 +399,12 @@ public final class MultiPartMIMEInputStream implements MultiPartMIMEDataSource
      */
     public MultiPartMIMEInputStream build()
     {
-      return new MultiPartMIMEInputStream(_inputStream, _executorService, _headers, _maximumBlockingTime,
-          _writeChunkSize, _abortTimeout);
+      return new MultiPartMIMEInputStream(_inputStream,
+          _executorService,
+          _headers,
+          _maximumBlockingTime,
+          _writeChunkSize,
+          _abortTimeout);
     }
   }
 

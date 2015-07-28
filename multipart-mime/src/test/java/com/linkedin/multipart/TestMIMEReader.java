@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+
 import javax.mail.BodyPart;
 import javax.mail.Header;
 import javax.mail.internet.MimeBodyPart;
@@ -70,7 +71,6 @@ public class TestMIMEReader extends AbstractMIMEUnitTest
     final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     multiPartMimeBody.writeTo(byteArrayOutputStream);
     final ByteString requestPayload = ByteString.copy(byteArrayOutputStream.toByteArray());
-    //final VariableByteStringWriter variableByteStringWriter = new VariableByteStringWriter(requestPayload, chunkSize);
     executeRequestAndAssert(trimTrailingCRLF(requestPayload), chunkSize, multiPartMimeBody);
   }
 
@@ -233,7 +233,8 @@ public class TestMIMEReader extends AbstractMIMEUnitTest
       //boundary).
       byteArrayOutputStream.write(epilogue.getBytes());
       requestPayload = ByteString.copy(byteArrayOutputStream.toByteArray());
-    } else
+    }
+    else
     {
       //Our test desired no epilogue.
       //Remove the CRLF introduced by javax mail at the end. We won't want a fake epilogue.

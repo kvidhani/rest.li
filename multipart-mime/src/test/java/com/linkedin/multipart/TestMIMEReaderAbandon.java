@@ -177,7 +177,8 @@ public class TestMIMEReaderAbandon extends AbstractMIMEUnitTest
       if (currentExpectedPart.getContent() instanceof byte[])
       {
         Assert.assertEquals(currentCallback._finishedData.copyBytes(), currentExpectedPart.getContent());
-      } else
+      }
+      else
       {
         //Default is String
         Assert.assertEquals(new String(currentCallback._finishedData.copyBytes()), currentExpectedPart.getContent());
@@ -283,7 +284,8 @@ public class TestMIMEReaderAbandon extends AbstractMIMEUnitTest
       if (currentExpectedPart.getContent() instanceof byte[])
       {
         Assert.assertEquals(currentCallback._finishedData.copyBytes(), currentExpectedPart.getContent());
-      } else
+      }
+      else
       {
         //Default is String
         Assert.assertEquals(new String(currentCallback._finishedData.copyBytes()), currentExpectedPart.getContent());

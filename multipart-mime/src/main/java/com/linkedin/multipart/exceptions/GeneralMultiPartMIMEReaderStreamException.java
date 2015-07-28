@@ -18,9 +18,9 @@ package com.linkedin.multipart.exceptions;
 
 
 /**
- * @author Karim Vidhani
- *
  * Represents a general exception when reading from the {@link com.linkedin.multipart.MultiPartMIMEReader}.
+ *
+ * @author Karim Vidhani
  */
 public class GeneralMultiPartMIMEReaderStreamException extends RuntimeException
 {

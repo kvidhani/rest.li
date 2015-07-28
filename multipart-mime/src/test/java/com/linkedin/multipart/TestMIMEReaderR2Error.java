@@ -183,14 +183,13 @@ public class TestMIMEReaderR2Error extends AbstractMIMEUnitTest
     {
       //Only partially read the 2nd part.
       SinglePartMIMEReaderCallbackImpl singlePartMIMEReaderCallback = null;
-      if (_singlePartMIMEReaderCallbacks.size() < 1) {
-         singlePartMIMEReaderCallback =
-                 new SinglePartMIMEReaderCallbackImpl(singlePartMIMEReader, _latch, false);
+      if (_singlePartMIMEReaderCallbacks.size() < 1)
+      {
+        singlePartMIMEReaderCallback = new SinglePartMIMEReaderCallbackImpl(singlePartMIMEReader, _latch, false);
       }
       else
       {
-        singlePartMIMEReaderCallback =
-                new SinglePartMIMEReaderCallbackImpl(singlePartMIMEReader, _latch, true);
+        singlePartMIMEReaderCallback = new SinglePartMIMEReaderCallbackImpl(singlePartMIMEReader, _latch, true);
       }
 
       singlePartMIMEReader.registerReaderCallback(singlePartMIMEReaderCallback);

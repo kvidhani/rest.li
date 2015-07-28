@@ -60,6 +60,7 @@ public class TestMIMEInputStream extends AbstractMIMEUnitTest
   private static class StrictByteArrayInputStream extends ByteArrayInputStream
   {
     private boolean _isClosed = false;
+
     private StrictByteArrayInputStream(final byte[] bytes)
     {
       super(bytes);
@@ -175,53 +176,25 @@ public class TestMIMEInputStream extends AbstractMIMEUnitTest
         {largeInputData, new StrictByteArrayInputStream(largeInputData), 3, 3},
 
         //Also verify that extra writes handles available do no harm:
-        {smallInputData, new StrictByteArrayInputStream(
-            smallInputData), 3, 1}, {largeInputData, new StrictByteArrayInputStream(largeInputData), 5, 3},};
+        {smallInputData, new StrictByteArrayInputStream(smallInputData), 3, 1},
+        {largeInputData, new StrictByteArrayInputStream(largeInputData), 5, 3},};
   }
 
   @Test(dataProvider = "singleOnWritePossibleDataSources")
   public void testSingleOnWritePossibleDataSources(final byte[] inputData, final StrictByteArrayInputStream inputStream,
       final int writesRemainingPerOnWritePossibles, final int expectedTotalWrites)
   {
-
     //Setup:
     final WriteHandle writeHandle = Mockito.mock(WriteHandle.class);
     final MultiPartMIMEInputStream multiPartMIMEInputStream =
         new MultiPartMIMEInputStream.Builder(inputStream, _scheduledExecutorService,
             Collections.<String, String>emptyMap()).withWriteChunkSize(TEST_CHUNK_SIZE).build();
 
-    //We want to simulate a decreasing return from writeHandle.remaining().
-    //I.e 3, 2, 1, 0....
-    final Integer[] remainingWriteHandleCount;
-    if (writesRemainingPerOnWritePossibles > 1)
-    {
-      //This represents writeHandle.remaining() -> n, n -1, n - 2, .... 1, 0
-      remainingWriteHandleCount = new Integer[writesRemainingPerOnWritePossibles];
-      int writeHandleCountTemp = writesRemainingPerOnWritePossibles;
-      for (int i = 0; i < writesRemainingPerOnWritePossibles; i++)
-      {
-        remainingWriteHandleCount[i] = --writeHandleCountTemp;
-      }
-    } else
-    {
-      //This represents writeHandle.remaining() -> 1, 0
-      remainingWriteHandleCount = new Integer[]{0};
-    }
-
+    //Simulate a write handle that offers decreasing writeHandle.remaining()
+    final Integer[] remainingWriteHandleCount = simulateDecreasingWriteHandleCount(writesRemainingPerOnWritePossibles);
     when(writeHandle.remaining()).thenReturn(writesRemainingPerOnWritePossibles, remainingWriteHandleCount);
 
-    //When data is written to the write handle, we append to the buffer
-    final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-    doAnswer(new Answer()
-    {
-      @Override
-      public Object answer(InvocationOnMock invocation) throws Throwable
-      {
-        final ByteString argument = (ByteString) invocation.getArguments()[0];
-        appendByteStringToBuffer(byteArrayOutputStream, argument);
-        return null;
-      }
-    }).when(writeHandle).write(isA(ByteString.class));
+    final ByteArrayOutputStream byteArrayOutputStream = setupMockWriteHandleToOutputStream(writeHandle);
 
     //Setup for done()
     final CountDownLatch doneLatch = new CountDownLatch(1);
@@ -260,14 +233,13 @@ public class TestMIMEInputStream extends AbstractMIMEUnitTest
     //Assert
     Assert.assertEquals(byteArrayOutputStream.toByteArray(), inputData,
         "All data from the input stream should have successfully been transferred");
-    Assert.assertEquals(inputStream._isClosed, true);
+    Assert.assertEquals(inputStream.isClosed(), true);
 
     //Mock verifies:
     verify(writeHandle, times(expectedTotalWrites)).write(isA(ByteString.class));
     verify(writeHandle, times(expectedTotalWrites)).remaining();
     verify(writeHandle, never()).error(isA(Throwable.class));
     verify(writeHandle, times(1)).done();
-
     verifyNoMoreInteractions(writeHandle);
   }
 
@@ -329,7 +301,8 @@ public class TestMIMEInputStream extends AbstractMIMEUnitTest
       {
         remainingWriteHandleCount[i] = --writeHandleCountTemp;
       }
-    } else
+    }
+    else
     {
       //This represents writeHandle.remaining() -> 1, 0
       remainingWriteHandleCount = new Integer[]{};
@@ -352,7 +325,6 @@ public class TestMIMEInputStream extends AbstractMIMEUnitTest
         @Override
         public Integer answer(InvocationOnMock invocation) throws Throwable
         {
-
           //There is no better way to do this with mockito. R2 observes that 0 has been returned and THEN
           //invokes onWritePossible(). We need to make sure that the value of 0 is returned
           //and then onWritePossible() is invoked afterwards.
@@ -369,18 +341,7 @@ public class TestMIMEInputStream extends AbstractMIMEUnitTest
       });
     }
 
-    //When data is written to the write handle, we append to the buffer
-    final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-    doAnswer(new Answer()
-    {
-      @Override
-      public Object answer(InvocationOnMock invocation) throws Throwable
-      {
-        final ByteString argument = (ByteString) invocation.getArguments()[0];
-        appendByteStringToBuffer(byteArrayOutputStream, argument);
-        return null;
-      }
-    }).when(writeHandle).write(isA(ByteString.class));
+    final ByteArrayOutputStream byteArrayOutputStream = setupMockWriteHandleToOutputStream(writeHandle);
 
     //Setup for done()
     final CountDownLatch doneLatch = new CountDownLatch(1);
@@ -419,7 +380,7 @@ public class TestMIMEInputStream extends AbstractMIMEUnitTest
     //Assert
     Assert.assertEquals(byteArrayOutputStream.toByteArray(), inputData,
         "All data from the input stream should have successfully been transferred");
-    Assert.assertEquals(inputStream._isClosed, true);
+    Assert.assertEquals(inputStream.isClosed(), true);
 
     //Mock verifies:
     //The amount of times we write and the amount of times we call remaining() is the same.
@@ -464,7 +425,6 @@ public class TestMIMEInputStream extends AbstractMIMEUnitTest
   public void testTimeoutDataSources(final SlowByteArrayInputStream slowByteArrayInputStream,
       final int expectedTotalWrites, final int expectedWriteHandleRemainingCalls, final byte[] expectedDataWritten)
   {
-
     //Setup:
     final WriteHandle writeHandle = Mockito.mock(WriteHandle.class);
     final MultiPartMIMEInputStream multiPartMIMEInputStream =
@@ -475,18 +435,7 @@ public class TestMIMEInputStream extends AbstractMIMEUnitTest
     //Doesn't matter what we return here as long as its constant and above 0.
     when(writeHandle.remaining()).thenReturn(500);
 
-    //When data is written to the write handle, we append to the buffer
-    final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-    doAnswer(new Answer()
-    {
-      @Override
-      public Object answer(InvocationOnMock invocation) throws Throwable
-      {
-        final ByteString argument = (ByteString) invocation.getArguments()[0];
-        appendByteStringToBuffer(byteArrayOutputStream, argument);
-        return null;
-      }
-    }).when(writeHandle).write(isA(ByteString.class));
+    final ByteArrayOutputStream byteArrayOutputStream = setupMockWriteHandleToOutputStream(writeHandle);
 
     //Setup for error()
     final CountDownLatch errorLatch = new CountDownLatch(1);
@@ -582,18 +531,7 @@ public class TestMIMEInputStream extends AbstractMIMEUnitTest
     //Doesn't matter what we return here as long as its constant and above 0.
     when(writeHandle.remaining()).thenReturn(500);
 
-    //When data is written to the write handle, we append to the buffer
-    final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-    doAnswer(new Answer()
-    {
-      @Override
-      public Object answer(InvocationOnMock invocation) throws Throwable
-      {
-        final ByteString argument = (ByteString) invocation.getArguments()[0];
-        appendByteStringToBuffer(byteArrayOutputStream, argument);
-        return null;
-      }
-    }).when(writeHandle).write(isA(ByteString.class));
+    final ByteArrayOutputStream byteArrayOutputStream = setupMockWriteHandleToOutputStream(writeHandle);
 
     //Setup for error()
     final CountDownLatch errorLatch = new CountDownLatch(1);
@@ -701,38 +639,11 @@ public class TestMIMEInputStream extends AbstractMIMEUnitTest
         new MultiPartMIMEInputStream.Builder(inputStream, _scheduledExecutorService,
             Collections.<String, String>emptyMap()).withWriteChunkSize(TEST_CHUNK_SIZE).build();
 
-    //We want to simulate a decreasing return from writeHandle.remaining().
-    //I.e 3, 2, 1, 0....
-    final Integer[] remainingWriteHandleCount;
-    if (writesRemainingPerOnWritePossibles > 1)
-    {
-      //This represents writeHandle.remaining() -> n, n -1, n - 2, .... 1, 0
-      remainingWriteHandleCount = new Integer[writesRemainingPerOnWritePossibles];
-      int writeHandleCountTemp = writesRemainingPerOnWritePossibles;
-      for (int i = 0; i < writesRemainingPerOnWritePossibles; i++)
-      {
-        remainingWriteHandleCount[i] = --writeHandleCountTemp;
-      }
-    } else
-    {
-      //This represents writeHandle.remaining() -> 1, 0
-      remainingWriteHandleCount = new Integer[]{0};
-    }
-
+    //Simulate a write handle that offers decreasing writeHandle.remaining()
+    final Integer[] remainingWriteHandleCount = simulateDecreasingWriteHandleCount(writesRemainingPerOnWritePossibles);
     when(writeHandle.remaining()).thenReturn(writesRemainingPerOnWritePossibles, remainingWriteHandleCount);
 
-    //When data is written to the write handle, we append to the buffer
-    final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-    doAnswer(new Answer()
-    {
-      @Override
-      public Object answer(InvocationOnMock invocation) throws Throwable
-      {
-        final ByteString argument = (ByteString) invocation.getArguments()[0];
-        appendByteStringToBuffer(byteArrayOutputStream, argument);
-        return null;
-      }
-    }).when(writeHandle).write(isA(ByteString.class));
+    final ByteArrayOutputStream byteArrayOutputStream = setupMockWriteHandleToOutputStream(writeHandle);
 
     //Setup for done()
     final CountDownLatch doneLatch = new CountDownLatch(1);
@@ -771,7 +682,7 @@ public class TestMIMEInputStream extends AbstractMIMEUnitTest
     //Assert
     Assert.assertEquals(byteArrayOutputStream.toByteArray(), inputData,
         "All data from the input stream should have successfully been transferred");
-    Assert.assertEquals(inputStream._isClosed, true);
+    Assert.assertEquals(inputStream.isClosed(), true);
 
     //Mock verifies:
     verify(writeHandle, times(expectedTotalWrites)).write(isA(ByteString.class));
@@ -786,9 +697,8 @@ public class TestMIMEInputStream extends AbstractMIMEUnitTest
   //
   //These tests will verify that aborts work properly and close the input stream regardless of the
   //current state.
-  //
 
-  //Abort before any writes requested.
+  //This test will simulate an abort before any writes requested.
   @Test
   public void testAbortBeforeWrite() throws Exception
   {
@@ -851,7 +761,6 @@ public class TestMIMEInputStream extends AbstractMIMEUnitTest
   @Test
   public void abortWhenNoOutstandingReadTask() throws Exception
   {
-
     final StringBuilder builder = new StringBuilder();
     for (int i = 0; i < (TEST_CHUNK_SIZE * 10) + 2; i++)
     {
@@ -873,18 +782,7 @@ public class TestMIMEInputStream extends AbstractMIMEUnitTest
     //Then the abort task will run.
     when(writeHandle.remaining()).thenReturn(5, new Integer[]{4, 3, 2, 1, 0});
 
-    //When data is written to the write handle, we append to the buffer
-    final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-    doAnswer(new Answer()
-    {
-      @Override
-      public Object answer(InvocationOnMock invocation) throws Throwable
-      {
-        final ByteString argument = (ByteString) invocation.getArguments()[0];
-        appendByteStringToBuffer(byteArrayOutputStream, argument);
-        return null;
-      }
-    }).when(writeHandle).write(isA(ByteString.class));
+    final ByteArrayOutputStream byteArrayOutputStream = setupMockWriteHandleToOutputStream(writeHandle);
 
     //Setup for the close on the input stream.
     //The close must happen for the test to finish.
@@ -937,7 +835,49 @@ public class TestMIMEInputStream extends AbstractMIMEUnitTest
     verifyNoMoreInteractions(writeHandle);
   }
 
-  private void appendByteStringToBuffer(final ByteArrayOutputStream outputStream, final ByteString byteString)
+  //We want to simulate a decreasing return from writeHandle.remaining().
+  //I.e 3, 2, 1, 0....
+  private static Integer[] simulateDecreasingWriteHandleCount(final int writesRemainingPerOnWritePossibles)
+  {
+    final Integer[] remainingWriteHandleCount;
+    if (writesRemainingPerOnWritePossibles > 1)
+    {
+      //This represents writeHandle.remaining() -> n, n -1, n - 2, .... 1, 0
+      remainingWriteHandleCount = new Integer[writesRemainingPerOnWritePossibles];
+      int writeHandleCountTemp = writesRemainingPerOnWritePossibles;
+      for (int i = 0; i < writesRemainingPerOnWritePossibles; i++)
+      {
+        remainingWriteHandleCount[i] = --writeHandleCountTemp;
+      }
+    }
+    else
+    {
+      //This represents writeHandle.remaining() -> 1, 0
+      remainingWriteHandleCount = new Integer[]{0};
+    }
+
+    return remainingWriteHandleCount;
+  }
+
+  //Adjust the write handle so that when its written to it writes to the ByteArrayOutputStream so we can aggregate the bytes.
+  private static ByteArrayOutputStream setupMockWriteHandleToOutputStream(final WriteHandle writeHandle)
+  {
+    //When data is written to the write handle, we append to the buffer
+    final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    doAnswer(new Answer()
+    {
+      @Override
+      public Object answer(InvocationOnMock invocation) throws Throwable
+      {
+        final ByteString argument = (ByteString) invocation.getArguments()[0];
+        appendByteStringToBuffer(byteArrayOutputStream, argument);
+        return null;
+      }
+    }).when(writeHandle).write(isA(ByteString.class));
+    return byteArrayOutputStream;
+  }
+
+  private static void appendByteStringToBuffer(final ByteArrayOutputStream outputStream, final ByteString byteString)
   {
     try
     {

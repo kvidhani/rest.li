@@ -84,9 +84,7 @@ public class TestMIMEReaderExceptions extends AbstractMIMEUnitTest
     {
       streamRequest = mock(StreamRequest.class);
       when(streamRequest.getHeader(MultiPartMIMEUtils.CONTENT_TYPE_HEADER)).thenReturn(null);
-
       MultiPartMIMEReader.createAndAcquireStream(streamRequest);
-      ;
       Assert.fail();
     }
     catch (IllegalMultiPartMIMEFormatException illegalMimeFormatException)
@@ -183,7 +181,8 @@ public class TestMIMEReaderExceptions extends AbstractMIMEUnitTest
       if (currentExpectedPart.getContent() instanceof byte[])
       {
         Assert.assertEquals(currentCallback._finishedData.copyBytes(), currentExpectedPart.getContent());
-      } else
+      }
+      else
       {
         //Default is String
         Assert.assertEquals(new String(currentCallback._finishedData.copyBytes()), currentExpectedPart.getContent());
@@ -193,7 +192,8 @@ public class TestMIMEReaderExceptions extends AbstractMIMEUnitTest
     SinglePartMIMEExceptionReaderCallbackImpl singlePartMIMEExceptionReaderCallback =
         singlePartMIMEReaderCallbacks.get(singlePartMIMEReaderCallbacks.size() - 1);
     Assert.assertNull(singlePartMIMEExceptionReaderCallback._finishedData);
-    Assert.assertTrue(singlePartMIMEExceptionReaderCallback._streamError instanceof IllegalMultiPartMIMEFormatException);
+    Assert
+        .assertTrue(singlePartMIMEExceptionReaderCallback._streamError instanceof IllegalMultiPartMIMEFormatException);
 
     try
     {
@@ -269,7 +269,8 @@ public class TestMIMEReaderExceptions extends AbstractMIMEUnitTest
       if (currentExpectedPart.getContent() instanceof byte[])
       {
         Assert.assertEquals(currentCallback._finishedData.copyBytes(), currentExpectedPart.getContent());
-      } else
+      }
+      else
       {
         //Default is String
         Assert.assertEquals(new String(currentCallback._finishedData.copyBytes()), currentExpectedPart.getContent());

@@ -180,7 +180,8 @@ final class MultiPartMIMEUtils
       //there are multiple boundary parameters.
       if (parameterMap.containsKey(parameterKey))
       {
-        throw new IllegalMultiPartMIMEFormatException("Invalid parameter format. Multiple decelerations of the same parameter!");
+        throw new IllegalMultiPartMIMEFormatException(
+            "Invalid parameter format. Multiple decelerations of the same parameter!");
       }
       parameterMap.put(parameterKey, parameterValue);
     }

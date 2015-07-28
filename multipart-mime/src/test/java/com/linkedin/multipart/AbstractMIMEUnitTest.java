@@ -87,7 +87,7 @@ public abstract class AbstractMIMEUnitTest
     //We have to use the AtomicReference holder technique to modify the current remaining buffer since the inner class
     //in doAnswer() can only access final variables.
     final AtomicReference<MultiPartMIMEReader.R2MultiPartMIMEReader> r2Reader =
-            new AtomicReference<MultiPartMIMEReader.R2MultiPartMIMEReader>();
+        new AtomicReference<MultiPartMIMEReader.R2MultiPartMIMEReader>();
 
     //This takes the place of VariableByteStringWriter if we were to use R2 directly.
     final VariableByteStringViewer variableByteStringViewer = new VariableByteStringViewer(payload, chunkSize);
@@ -118,7 +118,8 @@ public abstract class AbstractMIMEUnitTest
               if (clientData.equals(ByteString.empty()))
               {
                 reader.onDone();
-              } else
+              }
+              else
               {
                 reader.onDataAvailable(clientData);
               }
@@ -147,8 +148,8 @@ public abstract class AbstractMIMEUnitTest
     }).when(entityStream).setReader(isA(MultiPartMIMEReader.R2MultiPartMIMEReader.class));
 
     when(streamRequest.getEntityStream()).thenReturn(entityStream);
-    final String contentTypeHeader = contentType + ";somecustomparameter=somecustomvalue"
-            + ";anothercustomparameter=anothercustomvalue";
+    final String contentTypeHeader =
+        contentType + ";somecustomparameter=somecustomvalue" + ";anothercustomparameter=anothercustomvalue";
     when(streamRequest.getHeader(MultiPartMIMEUtils.CONTENT_TYPE_HEADER)).thenReturn(contentTypeHeader);
   }
 }

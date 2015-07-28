@@ -217,7 +217,8 @@ public class TestMIMEIntegrationReaderAbandon extends AbstractMIMEIntegrationStr
       if (currentExpectedPart.getContent() instanceof byte[])
       {
         Assert.assertEquals(currentCallback._finishedData.copyBytes(), currentExpectedPart.getContent());
-      } else
+      }
+      else
       {
         //Default is String
         Assert.assertEquals(new String(currentCallback._finishedData.copyBytes()), currentExpectedPart.getContent());
@@ -324,7 +325,8 @@ public class TestMIMEIntegrationReaderAbandon extends AbstractMIMEIntegrationStr
       if (currentExpectedPart.getContent() instanceof byte[])
       {
         Assert.assertEquals(currentCallback._finishedData.copyBytes(), currentExpectedPart.getContent());
-      } else
+      }
+      else
       {
         //Default is String
         Assert.assertEquals(new String(currentCallback._finishedData.copyBytes()), currentExpectedPart.getContent());
@@ -499,7 +501,8 @@ public class TestMIMEIntegrationReaderAbandon extends AbstractMIMEIntegrationStr
         if (SinglePartMIMEAbandonReaderCallbackImpl.partCounter % 2 == 1)
         {
           singlePartMIMEReader.abandonPart();
-        } else
+        }
+        else
         {
           singlePartMIMEReader.requestPartData();
         }

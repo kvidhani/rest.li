@@ -261,7 +261,8 @@ public class TestMIMEChainingSinglePart extends AbstractMIMEUnitTest
         final String contentTypeHeader = "multipart/mixed; boundary=" + writer.getBoundary();
         when(streamResponse.getHeader(MultiPartMIMEUtils.CONTENT_TYPE_HEADER)).thenReturn(contentTypeHeader);
         _callback.onSuccess(streamResponse);
-      } else
+      }
+      else
       {
         ServerSinglePartMIMEReader singlePartMIMEReaderCallback = new ServerSinglePartMIMEReader(singleParMIMEReader);
         singleParMIMEReader.registerReaderCallback(singlePartMIMEReaderCallback);

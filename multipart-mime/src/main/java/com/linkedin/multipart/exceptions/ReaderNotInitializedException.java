@@ -18,10 +18,10 @@ package com.linkedin.multipart.exceptions;
 
 
 /**
- * @author Karim Vidhani
- *
  * Represents an error when trying to use APIs on {@link com.linkedin.multipart.MultiPartMIMEReader}
  * without prior callback registration.
+ *
+ * @author Karim Vidhani
  */
 public class ReaderNotInitializedException extends GeneralMultiPartMIMEReaderStreamException
 {
