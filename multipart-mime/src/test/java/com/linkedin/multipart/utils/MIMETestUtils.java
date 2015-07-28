@@ -102,8 +102,8 @@ public final class MIMETestUtils
     //Assert the trailing CRLF does
     final byte[] javaxMailPayloadBytes = javaxMailPayload.copyBytes();
     //Verify, in case the version of javax mail is changed, that the last two bytes are still CRLF (13 and 10).
-    org.testng.Assert.assertEquals(javaxMailPayloadBytes[javaxMailPayloadBytes.length - 2], 13);
-    org.testng.Assert.assertEquals(javaxMailPayloadBytes[javaxMailPayloadBytes.length - 1], 10);
+    Assert.assertEquals(javaxMailPayloadBytes[javaxMailPayloadBytes.length - 2], 13);
+    Assert.assertEquals(javaxMailPayloadBytes[javaxMailPayloadBytes.length - 1], 10);
     return javaxMailPayload.copySlice(0, javaxMailPayload.length() - 2);
   }
 
