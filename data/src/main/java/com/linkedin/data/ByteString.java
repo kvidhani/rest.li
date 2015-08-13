@@ -226,6 +226,10 @@ public final class ByteString
     return _length;
   }
 
+  public byte byteAtIndex(final int index) {
+    return _bytes[index];
+  }
+
   /**
    * Checks whether this {@link ByteString} is empty or not.
    * @return true for an empty {@link ByteString}, false otherwise

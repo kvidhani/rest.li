@@ -94,7 +94,7 @@ public class TestMIMEInputStream extends AbstractMIMEUnitTest
     }
   }
 
-  //Simulates an input stream that slowly starts to respond slowly. We also need the strict behavior
+  //Simulates an input stream that responds slower and slower. We also need the strict behavior
   //here as well.
   private static class SlowByteArrayInputStream extends StrictByteArrayInputStream
   {
