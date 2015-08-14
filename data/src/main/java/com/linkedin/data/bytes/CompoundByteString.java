@@ -453,7 +453,7 @@ public final class CompoundByteString extends ByteString
     ArgumentUtil.checkBounds(_length, offset, length);
     final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     for (int i = offset; i < length + offset; i++) {
-      byteArrayOutputStream.write();
+      byteArrayOutputStream.write(byteAtIndex(i));
     }
     int from = _offset + offset;
     int to = from + length;
