@@ -273,4 +273,5 @@ public abstract class ByteString
   public abstract byte byteAtIndex(int index);
 
   public abstract int indexOfBytes(final byte[] targetBytes);
+
 }

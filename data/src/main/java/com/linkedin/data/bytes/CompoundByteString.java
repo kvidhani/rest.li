@@ -20,19 +20,21 @@ import java.util.List;
  * Created by kvidhani on 8/13/15.
  */
 //todo mention in super class the copies that occur
+
+  //todo figure out if you want this guy to work on instances whose end boundary is
+  //less then the size of last byte string
+  //todo improve byte at index
 public final class CompoundByteString extends ByteString
 {
-  protected final List<ByteString> _byteStringList;
-  protected final int _byteOffsetBeginning; //Offset from first byte string
-  protected final int _byteOffsetEnd; //offset in last byte string
-  protected final int _length;
+  private final List<ByteString> _byteStringList;
+  private final int _byteOffsetBeginning; //Offset from first byte string
+  private final int _byteOffsetEnd; //offset in last byte string
+  private final int _length;
 
   private CompoundByteString(final int byteOffsetBeginning, final int byteOffsetEnd,
       final List<ByteString> byteStringList) {
-    if (byteOffsetBeginning < 0 || byteOffsetEnd < 0) {
-      throw new IllegalArgumentException("Invalid range specified");
-    }
-    _byteStringList = byteStringList;
+
+    _byteStringList = new ArrayList<ByteString>(byteStringList);
     _byteOffsetBeginning = byteOffsetBeginning;
     _byteOffsetEnd = byteOffsetEnd;
 
@@ -52,32 +54,37 @@ public final class CompoundByteString extends ByteString
     }
   }
 
-  public static ByteString create(final int byteOffsetBeginning, final int byteOffsetEnd,
-      final List<ByteString> byteStringList)
+  public static ByteString create(final int byteOffsetBeginning,
+                           final List<ByteString> byteStringList)
   {
-    return new CompoundByteString(byteOffsetBeginning, byteOffsetEnd, byteStringList);
+    ArgumentUtil.notNull(byteStringList, "Null ByteString list not allowed");
+    if (byteOffsetBeginning < 0) {
+      throw new IllegalArgumentException("Invalid beginning offset specified");
+    }
+
+    return new CompoundByteString(byteOffsetBeginning, byteStringList.get(byteStringList.size()-1).length(), byteStringList);
   }
 
-  //todo must do this
-  public void add(final ByteString byteString) {
+  //Add and return a new CompoundByteString
+  public CompoundByteString addAndCreateNew(final ByteString byteString) {
     if (byteString == null) {
       throw new IllegalArgumentException("Null ByteString provided");
     }
 
-    //_byteStringList.add(byteString);
-    //_byteOffsetEnd = byteString.length();
+    return new CompoundByteString(_byteOffsetBeginning, byteString.length(), _byteStringList);
   }
 
-  //todo must do this
-  public void trimFromBeginning(final int newStartIndex) {
+  public CompoundByteString trimAndCreateNew(final int newStartIndex) {
 
     if (newStartIndex < 0) {
       throw new IllegalArgumentException("Invalid new start index specified");
     }
 
     //We should always have this invariant true for this class
+    //todo do we want this?
     assert(_byteOffsetEnd == _byteStringList.get(_byteStringList.size() -1).length());
     int currentCount = 0;
+    final List<ByteString> newList = new ArrayList<ByteString>(_byteStringList);
     for (int i = 0; i < _byteStringList.size(); i++) {
       //Take into account the offset in the first and final ByteString
       int byteStringStart = i == 0 ? _byteOffsetBeginning : 0;
@@ -86,10 +93,9 @@ public final class CompoundByteString extends ByteString
         if (currentCount == newStartIndex) {
           //We have found the index in our ByteString buffer where we want to trim up until.
           for (int k = 0; k < i; k++) {
-            _byteStringList.remove(k);
+            newList.remove(k);
           }
-          //_byteOffsetBeginning = j;
-          return;
+          return new CompoundByteString(j, _byteOffsetEnd, newList);
         }
       }
     }
@@ -100,70 +106,6 @@ public final class CompoundByteString extends ByteString
   }
 
 
-  //todo this could be slice
-  /*
-  public CompoundByteString subBuffer(final int startIndex, final int endIndex, final BufferType bufferType) {
-    if (endIndex < startIndex || startIndex < 0 || endIndex < 0) {
-      throw new IllegalArgumentException("Invalid range specified");
-    }
-
-    int newByteOffsetBeginning = -1;
-    int newByteOffsetEnd = -1;
-    final List<ByteString> newByteStringList = new ArrayList<ByteString>();
-
-    if (endIndex == startIndex) {
-      //Essentially a view in an empty list
-      newByteOffsetBeginning = 0;
-      newByteOffsetEnd = 0;
-    } else {
-      newByteStringList.addAll(_byteStringList);
-      int currentCount = 0;
-      for (int i = 0; i < _byteStringList.size(); i++) {
-        final ByteString currentByteString = _byteStringList.get(i);
-        //Take into account the offset in the first and final ByteString
-        int byteStringStart = i == 0 ? _byteOffsetBeginning : 0;
-        int byteStringLength = i == _byteStringList.size() - 1 ? _byteOffsetEnd : currentByteString.length();
-        for (int j = byteStringStart; j < byteStringLength; j++) {
-          currentCount++;
-          if (currentCount == startIndex) {
-            for (int k = 0; k < i; k++) {
-              newByteStringList.remove(k);
-            }
-            newByteOffsetBeginning = j;
-          }
-          if (currentCount == endIndex) {
-            for (int k = i; k < _byteStringList.size(); k++) {
-              newByteStringList.remove(k);
-            }
-            newByteOffsetEnd = j;
-          }
-        }
-      }
-
-      //We use these techniques of calculating the limit instead of using size() to save an extra
-      //iteration through all of our data.
-      if (newByteOffsetBeginning == -1) {
-        throw new IllegalArgumentException("Provided start index larger then size of ByteString buffer");
-      }
-
-      if (newByteOffsetEnd == -1) {
-        throw new IllegalArgumentException("Provided end index larger then size of ByteString buffer");
-      }
-    }
-
-    if (bufferType == BufferType.IMMUTABLE) {
-      return new ImmutableByteStringBuffer(newByteOffsetBeginning, newByteOffsetEnd, _byteStringList);
-    } else {
-      return new PartData(newByteOffsetBeginning, newByteOffsetEnd, _byteStringList);
-    }
-  }
-
-  enum BufferType {
-    IMMUTABLE,
-    PART_DATA
-  }
-
-*/
 
 
 
@@ -193,7 +135,8 @@ public final class CompoundByteString extends ByteString
   @Override
   public int indexOfBytes(final byte[] targetBytes)
   {
-    if (targetBytes == null) {
+    if (targetBytes == null)
+    {
       throw new IllegalArgumentException("Target byte array is null");
     }
 
@@ -267,7 +210,7 @@ public final class CompoundByteString extends ByteString
   {
     try
     {
-      final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+      final NoCopyByteArrayOutputStream byteArrayOutputStream = new NoCopyByteArrayOutputStream();
       for (int i = 0; i < _byteStringList.size(); i++)
       {
         final ByteString currentByteString = _byteStringList.get(i);
@@ -277,7 +220,7 @@ public final class CompoundByteString extends ByteString
         byteArrayOutputStream
             .write(currentByteString.slice(byteStringStart, byteStringLength - byteStringStart).copyBytes());
       }
-      return byteArrayOutputStream.toByteArray();
+      return byteArrayOutputStream.getBytes();
     } catch (IOException ioException) {
       throw new IllegalStateException("Serious error in constructing a copy of the bytes.");
     }
@@ -433,7 +376,6 @@ public final class CompoundByteString extends ByteString
         }
       }
       return new CompoundByteString(newByteOffsetBeginning, newByteOffsetEnd, _byteStringList);
-
   }
 
   /**
@@ -455,11 +397,7 @@ public final class CompoundByteString extends ByteString
     for (int i = offset; i < length + offset; i++) {
       byteArrayOutputStream.write(byteAtIndex(i));
     }
-    int from = _offset + offset;
-    int to = from + length;
-    byte[] content = Arrays.copyOfRange(_bytes, from, to);
-    return new ByteStringImpl(content);
-    return new ByteStringImpl(copyBytes(), offset, length);
+    return new ByteStringImpl(byteArrayOutputStream.toByteArray());
   }
 
   @Override
