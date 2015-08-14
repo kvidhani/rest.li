@@ -1,3 +1,9 @@
+package com.linkedin.data.bytes;
+
+
+/**
+ * Created by kvidhani on 8/13/15.
+ */
 /*
    Copyright (c) 2012 LinkedIn Corp.
 
@@ -15,16 +21,19 @@
 */
 
 /* $Id$ */
-package com.linkedin.data;
 
-
-import com.linkedin.data.bytes.ByteStringImpl;
+import com.linkedin.data.ByteString;
+import com.linkedin.data.Data;
 import com.linkedin.util.ArgumentUtil;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
+import java.util.Arrays;
+
 
 /**
  * An immutable sequence of bytes.
@@ -33,8 +42,14 @@ import java.nio.charset.Charset;
  * @author Karim Vidhani
  * @version $Revision$
  */
-public abstract class ByteString
+public final class ByteStringImpl extends ByteString
 {
+  static final ByteString EMPTY = new ByteStringImpl(new byte[0]);
+
+  private final byte[] _bytes;
+  private final int _offset;
+  private final int _length;
+
   /**
    * Returns an empty {@link ByteString}.
    *
@@ -42,7 +57,7 @@ public abstract class ByteString
    */
   public static ByteString empty()
   {
-    return ByteStringImpl.empty();
+    return EMPTY;
   }
 
   /**
@@ -55,7 +70,8 @@ public abstract class ByteString
    */
   public static ByteString copy(byte[] bytes)
   {
-    return ByteStringImpl.copy(bytes);
+    ArgumentUtil.notNull(bytes, "bytes");
+    return bytes.length == 0 ? empty() : new ByteStringImpl(Arrays.copyOf(bytes, bytes.length));
   }
 
   /**
@@ -72,20 +88,30 @@ public abstract class ByteString
    */
   public static ByteString copy(byte[] bytes, int offset, int length)
   {
-    return ByteStringImpl.copy(bytes, offset, length);
+    ArgumentUtil.notNull(bytes, "bytes");
+    ArgumentUtil.checkBounds(bytes.length, offset, length);
+    return length == 0 ? empty() : new ByteStringImpl(Arrays.copyOfRange(bytes, offset, offset + length));
   }
 
   /**
-   * Returns a new {@link ByteString} that wraps a copy of the bytes in the supplied {@link ByteBuffer}.
+   * Returns a new {@link ByteString} that wraps a copy of the bytes in the supplied {@link java.nio.ByteBuffer}.
    * Changes to the supplied bytes will not be reflected in the returned {@link ByteString}.
    *
-   * @param byteBuffer the {@link ByteBuffer} to copy bytes from.
-   * @return a {@link ByteString} that wraps a copy of the bytes in the supplied {@link ByteBuffer}.
+   * @param byteBuffer the {@link java.nio.ByteBuffer} to copy bytes from.
+   * @return a {@link ByteString} that wraps a copy of the bytes in the supplied {@link java.nio.ByteBuffer}.
    * @throws NullPointerException if {@code byteBuffer} is {@code null}.
    */
   public static ByteString copy(ByteBuffer byteBuffer)
   {
-    return ByteStringImpl.copy(byteBuffer);
+    ArgumentUtil.notNull(byteBuffer, "byteBuffer");
+    int size = byteBuffer.remaining();
+    if (size == 0)
+    {
+      return empty();
+    }
+    byte[] bytes = new byte[size];
+    byteBuffer.get(bytes);
+    return new ByteStringImpl(bytes);
   }
 
   /**
@@ -126,26 +152,58 @@ public abstract class ByteString
    */
   public static ByteString copyAvroString(String string, boolean validate)
   {
-    return ByteStringImpl.copyAvroString(string, validate);
+    ArgumentUtil.notNull(string, "string");
+    if (string.length() == 0)
+    {
+      return empty();
+    }
+    byte[] bytes = Data.stringToBytes(string, validate);
+    if (bytes == null)
+    {
+      return null;
+    }
+    else
+    {
+      return new ByteStringImpl(bytes);
+    }
   }
 
   /**
-   * Returns a new {@link ByteString} with bytes read from an {@link InputStream}.
+   * Returns a new {@link ByteString} with bytes read from an {@link java.io.InputStream}.
    *
    * If size is zero, then this method will always return the {@link ByteString#empty()},
-   * and no bytes will be read from the {@link InputStream}.
+   * and no bytes will be read from the {@link java.io.InputStream}.
    * If size is less than zero, then {@link NegativeArraySizeException} will be thrown
    * when this method attempt to create an array of negative size.
    *
    * @param inputStream that will provide the bytes.
    * @param size provides the number of bytes to read.
    * @return a ByteString that contains the read bytes.
-   * @throws IOException from InputStream if requested number of bytes
+   * @throws java.io.IOException from InputStream if requested number of bytes
    *                     cannot be read.
    */
   public static ByteString read(InputStream inputStream, int size) throws IOException
   {
-    return ByteStringImpl.read(inputStream, size);
+    if (size == 0)
+    {
+      return empty();
+    }
+
+    final byte[] buf = new byte[size];
+
+    int bytesRead, bufIdx = 0;
+    while (bufIdx < size &&
+        (bytesRead = inputStream.read(buf, bufIdx, size - bufIdx)) != -1)
+    {
+      bufIdx += bytesRead;
+    }
+
+    if (bufIdx != size)
+    {
+      throw new IOException("Insufficient data in InputStream, requested size " + size + ", read " + bufIdx);
+    }
+
+    return new ByteStringImpl(buf);
   }
 
   /**
@@ -156,7 +214,34 @@ public abstract class ByteString
    */
   public static ByteString read(InputStream inputStream) throws IOException
   {
-    return ByteStringImpl.read(inputStream);
+    NoCopyByteArrayOutputStream bos = new NoCopyByteArrayOutputStream();
+    byte[] buf = new byte[4096];
+    int bytesRead;
+    while((bytesRead = inputStream.read(buf, 0, buf.length)) != -1)
+    {
+      bos.write(buf, 0, bytesRead);
+    }
+
+    return new ByteStringImpl(bos.getBytes(), 0, bos.getBytesCount());
+  }
+
+  ByteStringImpl(byte[] bytes)
+  {
+    ArgumentUtil.notNull(bytes, "bytes");
+    _bytes = bytes;
+    _offset = 0;
+    _length = bytes.length;
+  }
+
+  /**
+   * This is internally used to create slice or copySlice of ByteString.
+   */
+  ByteStringImpl(byte[] bytes, int offset, int length)
+  {
+    ArgumentUtil.notNull(bytes, "bytes");
+    _bytes = bytes;
+    _offset = offset;
+    _length = length;
   }
 
   /**
@@ -164,13 +249,23 @@ public abstract class ByteString
    *
    * @return the number of bytes in this {@link ByteString}
    */
-  public abstract int length();
+  public int length()
+  {
+    return _length;
+  }
+
+  public byte byteAtIndex(int index) {
+    return _bytes[index];
+  }
 
   /**
    * Checks whether this {@link ByteString} is empty or not.
    * @return true for an empty {@link ByteString}, false otherwise
    */
-  public abstract boolean isEmpty();
+  public boolean isEmpty()
+  {
+    return _length == 0;
+  }
 
   /**
    * Returns a copy of the bytes in this {@link ByteString}. Changes to the returned byte[] will not be
@@ -183,7 +278,10 @@ public abstract class ByteString
    *
    * @return a copy of the bytes in this {@link ByteString}
    */
-  public abstract byte[] copyBytes();
+  public byte[] copyBytes()
+  {
+    return Arrays.copyOfRange(_bytes, _offset, _offset + _length);
+  }
 
   /**
    * Copy the bytes in this {@link ByteString} to the provided byte[] starting at the specified offset.
@@ -196,13 +294,22 @@ public abstract class ByteString
    * @param dest is the destination to copy the bytes in this {@link ByteString} to.
    * @param offset is the starting offset in the destination to receive the copy.
    */
-  public abstract void copyBytes(byte[] dest, int offset);
+  public void copyBytes(byte[] dest, int offset)
+  {
+    System.arraycopy(_bytes, _offset, dest, offset, _length);
+  }
+
   /**
-   * Returns a read only {@link ByteBuffer} view of this {@link ByteString}. This method makes no copy.
+   * Returns a read only {@link ByteBuffer} view of this {@link ByteString}. This method guaranteed to make no copy
+   * if the actual implementation is a {@link com.linkedin.data.bytes.ByteStringImpl}
    *
    * @return read only {@link ByteBuffer} view of this {@link ByteString}.
    */
-  public abstract ByteBuffer asByteBuffer();
+  public ByteBuffer asByteBuffer()
+  {
+    return ByteBuffer.wrap(_bytes, _offset, _length).asReadOnlyBuffer();
+  }
+
   /**
    * Return a String representation of the bytes in this {@link ByteString}, decoded using the supplied
    * charset.
@@ -210,7 +317,10 @@ public abstract class ByteString
    * @param charsetName the name of the charset to use to decode the bytes
    * @return the String representation of this {@link ByteString}
    */
-  public abstract String asString(String charsetName);
+  public String asString(String charsetName)
+  {
+    return asString(Charset.forName(charsetName));
+  }
 
   /**
    * Return a String representation of the bytes in this {@link ByteString}, decoded using the supplied
@@ -219,20 +329,30 @@ public abstract class ByteString
    * @param charset the charset to use to decode the bytes
    * @return the String representation of this {@link ByteString}
    */
-  public abstract String asString(Charset charset);
+  public String asString(Charset charset)
+  {
+    return new String(_bytes, _offset, _length, charset);
+  }
+
   /**
    * Return an Avro representation of the bytes in this {@link ByteString}.
    *
    * @return the String representation of this {@link ByteString}
    */
-  public abstract String asAvroString();
+  public String asAvroString()
+  {
+    return Data.bytesToString(_bytes, _offset, _length);
+  }
 
   /**
    * Return an {@link InputStream} view of the bytes in this {@link ByteString}.
    *
    * @return an {@link InputStream} view of the bytes in this {@link ByteString}
    */
-  public abstract InputStream asInputStream();
+  public InputStream asInputStream()
+  {
+    return new ByteArrayInputStream(_bytes, _offset, _length);
+  }
 
   /**
    * Writes this {@link ByteString} to a stream without copying the underlying byte[].
@@ -241,7 +361,10 @@ public abstract class ByteString
    *
    * @throws IOException if an error occurs while writing to the stream
    */
-  public abstract void write(OutputStream out) throws IOException;
+  public void write(OutputStream out) throws IOException
+  {
+    out.write(_bytes, _offset, _length);
+  }
 
   /**
    * Returns a slice of ByteString.
@@ -255,7 +378,11 @@ public abstract class ByteString
    * @throws IndexOutOfBoundsException if offset or length is negative, or offset + length is larger than the length
    * of this ByteString
    */
-  public abstract ByteString slice(int offset, int length);
+  public ByteString slice(int offset, int length)
+  {
+    ArgumentUtil.checkBounds(_length, offset, length);
+    return new ByteStringImpl(_bytes, _offset + offset, length);
+  }
 
   /**
    * Returns a slice of ByteString backed by a new byte array.
@@ -268,9 +395,114 @@ public abstract class ByteString
    * @throws IndexOutOfBoundsException if offset or length is negative, or offset + length is larger than the length
    * of this ByteString
    */
-  public abstract ByteString copySlice(int offset, int length);
+  public ByteString copySlice(int offset, int length)
+  {
+    ArgumentUtil.checkBounds(_length, offset, length);
+    int from = _offset + offset;
+    int to = from + length;
+    byte[] content = Arrays.copyOfRange(_bytes, from, to);
+    return new ByteStringImpl(content);
+  }
 
-  public abstract byte byteAtIndex(int index);
+  /**
+   * Package private access to the backing bytes.
+   *
+   * @return the byte[] that backs this ByteString
+   */
+  byte[] getBackingBytes()
+  {
+    return _bytes;
+  }
 
-  public abstract int indexOfBytes(final byte[] targetBytes);
+  @Override
+  public boolean equals(Object o)
+  {
+    if (this == o)
+    {
+      return true;
+    }
+
+    if (o == null || getClass() != o.getClass())
+    {
+      return false;
+    }
+
+    ByteStringImpl that = (ByteStringImpl) o;
+
+    if (_length == that._length)
+    {
+      for (int i = _offset, j = that._offset; i < _offset + _length; i++, j++)
+      {
+        if (_bytes[i] != that._bytes[j])
+        {
+          return false;
+        }
+      }
+      return true;
+    }
+
+    return false;
+  }
+
+  @Override
+  public int hashCode()
+  {
+    int result = 1;
+    for (int i = _offset; i < _offset + _length; i++)
+    {
+      result = result * 31 + _bytes[i];
+    }
+    return result;
+  }
+
+  /**
+   * Return a summary of the contents of this {@link ByteString}.  This summary is of reasonable size,
+   * regardless of the length of this {@link ByteString}.
+   *
+   * @return a summary representation of this {@link ByteString}
+   */
+  @Override
+  public String toString()
+  {
+    final int NUM_BYTES = 4;
+    StringBuilder sb = new StringBuilder();
+    sb.append("ByteString(length=");
+    sb.append(length());
+    if (_length > 0)
+    {
+      sb.append(",bytes=");
+      for (int i = _offset; i < _offset + Math.min(_length, NUM_BYTES); i++)
+      {
+        sb.append(String.format("%02x", (int) _bytes[i] & 0xff));
+      }
+      if (_length > NUM_BYTES * 2)
+      {
+        sb.append("...");
+      }
+      for (int i = _offset + Math.max(NUM_BYTES, _length - NUM_BYTES); i < _offset + _length; i++)
+      {
+        sb.append(String.format("%02x", (int)_bytes[i] & 0xff));
+      }
+    }
+    sb.append(")");
+    return sb.toString();
+  }
+
+  /**
+   * This class is intended for internal use only. The output stream should not be passed around after
+   * the construction; otherwise the internal representation of the ByteString would change, voiding the
+   * immutability guarantee.
+   */
+  private static class NoCopyByteArrayOutputStream extends ByteArrayOutputStream
+  {
+    byte[] getBytes()
+    {
+      return super.buf;
+    }
+
+    int getBytesCount()
+    {
+      return super.count;
+    }
+  }
 }
