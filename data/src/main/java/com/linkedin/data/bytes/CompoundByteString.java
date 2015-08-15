@@ -5,14 +5,12 @@ import com.linkedin.data.ByteString;
 import com.linkedin.data.Data;
 import com.linkedin.util.ArgumentUtil;
 import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 
@@ -21,26 +19,29 @@ import java.util.List;
  */
 //todo mention in super class the copies that occur
 
-  //todo figure out if you want this guy to work on instances whose end boundary is
-  //less then the size of last byte string
-  //todo improve byte at index
-public final class CompoundByteString extends ByteString
+//todo figure out if you want this guy to work on instances whose end boundary is
+//less then the size of last byte string
+//todo improve byte at index
+
+public class CompoundByteString extends ByteString
 {
-  private final List<ByteString> _byteStringList;
-  private final int _byteOffsetBeginning; //Offset from first byte string
-  private final int _byteOffsetEnd; //offset in last byte string
-  private final int _length;
+  protected final List<ByteString> _byteStringList;
+  protected final int _byteOffsetBeginning; //Offset from first byte string
+  protected final int _byteOffsetEnd; //Offset in last byte string
+  protected final int _length;
 
-  private CompoundByteString(final int byteOffsetBeginning, final int byteOffsetEnd,
-      final List<ByteString> byteStringList) {
-
+  protected CompoundByteString(final int byteOffsetBeginning, final int byteOffsetEnd,
+      final List<ByteString> byteStringList)
+  {
     _byteStringList = new ArrayList<ByteString>(byteStringList);
     _byteOffsetBeginning = byteOffsetBeginning;
     _byteOffsetEnd = byteOffsetEnd;
 
-    if (_byteStringList.size() == 0) {
+    if (_byteStringList.size() == 0)
+    {
       _length = 0;
-    } else
+    }
+    else
     {
       int totalCount = 0;
       for (int i = 0; i < _byteStringList.size(); i++)
@@ -54,72 +55,49 @@ public final class CompoundByteString extends ByteString
     }
   }
 
-  public static ByteString create(final int byteOffsetBeginning,
-                           final List<ByteString> byteStringList)
+  protected CompoundByteString(final int byteOffsetBeginning, final List<ByteString> byteStringList)
+  {
+    _byteStringList = new ArrayList<ByteString>(byteStringList);
+    _byteOffsetBeginning = byteOffsetBeginning;
+
+    if (byteStringList.size() == 0)
+    {
+      _byteOffsetEnd = 0;
+    }
+    else
+    {
+      _byteOffsetEnd = byteStringList.get(byteStringList.size() - 1).length();
+    }
+
+    if (_byteStringList.size() == 0)
+    {
+      _length = 0;
+    }
+    else
+    {
+      int totalCount = 0;
+      for (int i = 0; i < _byteStringList.size(); i++)
+      {
+        totalCount += _byteStringList.get(i).length();
+      }
+
+      totalCount -= _byteOffsetBeginning;
+      totalCount -= _byteStringList.get(_byteStringList.size() - 1).length() - _byteOffsetEnd;
+      _length = totalCount;
+    }
+  }
+
+  public static ByteString create(final int byteOffsetBeginning, final int byteOffsetEnd,
+      final List<ByteString> byteStringList)
   {
     ArgumentUtil.notNull(byteStringList, "Null ByteString list not allowed");
-    if (byteOffsetBeginning < 0) {
-      throw new IllegalArgumentException("Invalid beginning offset specified");
+    if (byteOffsetBeginning < 0 || byteOffsetEnd < 0)
+    {
+      throw new IllegalArgumentException("Invalid offsets specified");
     }
 
-    return new CompoundByteString(byteOffsetBeginning, byteStringList.get(byteStringList.size()-1).length(), byteStringList);
+    return new CompoundByteString(byteOffsetBeginning, byteOffsetEnd, byteStringList);
   }
-
-  //Add and return a new CompoundByteString
-  public CompoundByteString addAndCreateNew(final ByteString byteString) {
-    if (byteString == null) {
-      throw new IllegalArgumentException("Null ByteString provided");
-    }
-
-    return new CompoundByteString(_byteOffsetBeginning, byteString.length(), _byteStringList);
-  }
-
-  public CompoundByteString trimAndCreateNew(final int newStartIndex) {
-
-    if (newStartIndex < 0) {
-      throw new IllegalArgumentException("Invalid new start index specified");
-    }
-
-    //We should always have this invariant true for this class
-    //todo do we want this?
-    assert(_byteOffsetEnd == _byteStringList.get(_byteStringList.size() -1).length());
-    int currentCount = 0;
-    final List<ByteString> newList = new ArrayList<ByteString>(_byteStringList);
-    for (int i = 0; i < _byteStringList.size(); i++) {
-      //Take into account the offset in the first and final ByteString
-      int byteStringStart = i == 0 ? _byteOffsetBeginning : 0;
-      for (int j = byteStringStart; j < _byteStringList.get(i).length(); j++) {
-        currentCount++;
-        if (currentCount == newStartIndex) {
-          //We have found the index in our ByteString buffer where we want to trim up until.
-          for (int k = 0; k < i; k++) {
-            newList.remove(k);
-          }
-          return new CompoundByteString(j, _byteOffsetEnd, newList);
-        }
-      }
-    }
-
-    //We use this technique of calculating the limit instead of using size() to save an extra
-    //iteration through all of our data.
-    throw new IllegalArgumentException("Provided new start index larger then size of ByteString buffer");
-  }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
   /**
    * Returns the number of bytes in this {@link com.linkedin.data.ByteString}.
@@ -129,7 +107,7 @@ public final class CompoundByteString extends ByteString
   @Override
   public int length()
   {
-   return _length;
+    return _length;
   }
 
   @Override
@@ -146,9 +124,12 @@ public final class CompoundByteString extends ByteString
     }
 
     outer:
-    for (int i = 0; i< length() - targetBytes.length + 1; i++) {
-      for (int k = 0; k < targetBytes.length; k++) {
-        if (byteAtIndex(i+k) != targetBytes[k]) {
+    for (int i = 0; i < length() - targetBytes.length + 1; i++)
+    {
+      for (int k = 0; k < targetBytes.length; k++)
+      {
+        if (byteAtIndex(i + k) != targetBytes[k])
+        {
           continue outer;
         }
       }
@@ -157,10 +138,11 @@ public final class CompoundByteString extends ByteString
     return -1;
   }
 
+  //todo mention that ideal performance is when we have one ByteString
   @Override
   public byte byteAtIndex(final int index)
   {
-    if(index<0)
+    if (index < 0)
     {
       throw new IllegalArgumentException("Provided index cannot be negative");
     }
@@ -168,12 +150,14 @@ public final class CompoundByteString extends ByteString
     int currentCount = 0;
     //This will run fast since the only thing we will need do is iterate through the ByteString counts which should
     //realistically be very few.
-    for (int i = 0; i < _byteStringList.size(); i++) {
+    for (int i = 0; i < _byteStringList.size(); i++)
+    {
       final ByteString currentByteString = _byteStringList.get(i);
       //Take into account the offset in the first and final ByteString
       int byteStringStart = i == 0 ? _byteOffsetBeginning : 0;
       int byteStringLength = i == _byteStringList.size() - 1 ? _byteOffsetEnd : currentByteString.length();
-      if(currentCount + byteStringLength > index) {
+      if (currentCount + byteStringLength > index)
+      {
         //We are at the right ByteString, so now we get the right byte
         return currentByteString.byteAtIndex(index - currentCount);
       }
@@ -182,7 +166,6 @@ public final class CompoundByteString extends ByteString
 
     throw new IllegalArgumentException("Provided index is out of upper range");
   }
-
 
   /**
    * Checks whether this {@link com.linkedin.data.ByteString} is empty or not.
@@ -208,6 +191,7 @@ public final class CompoundByteString extends ByteString
   @Override
   public byte[] copyBytes()
   {
+    //Todo - this does two copies if our array is purely ByteStringImpl.
     try
     {
       final NoCopyByteArrayOutputStream byteArrayOutputStream = new NoCopyByteArrayOutputStream();
@@ -221,7 +205,9 @@ public final class CompoundByteString extends ByteString
             .write(currentByteString.slice(byteStringStart, byteStringLength - byteStringStart).copyBytes());
       }
       return byteArrayOutputStream.getBytes();
-    } catch (IOException ioException) {
+    }
+    catch (IOException ioException)
+    {
       throw new IllegalStateException("Serious error in constructing a copy of the bytes.");
     }
   }
@@ -239,6 +225,7 @@ public final class CompoundByteString extends ByteString
   @Override
   public void copyBytes(byte[] dest, int offset)
   {
+    //Todo - This does three copies if our array is purely ByteStringImpl.
     System.arraycopy(copyBytes(), 0, dest, offset, _length);
   }
 
@@ -250,6 +237,13 @@ public final class CompoundByteString extends ByteString
   @Override
   public ByteBuffer asByteBuffer()
   {
+    //Todo - This does two copies if our array is purely ByteStringImpl.
+    //Also R2 uses this which means we can save a copy when chaining too.
+
+    if(_byteStringList.size() == 1) {
+      //Optimize to perform no copy in the case of 1
+      return _byteStringList.get(0).slice(_byteOffsetBeginning, _byteOffsetEnd - _byteOffsetBeginning).asByteBuffer();
+    }
     return ByteBuffer.wrap(copyBytes(), 0, _length).asReadOnlyBuffer();
   }
 
@@ -311,12 +305,14 @@ public final class CompoundByteString extends ByteString
   @Override
   public void write(OutputStream out) throws IOException
   {
-    for (int i = 0; i < _byteStringList.size(); i++) {
+    for (int i = 0; i < _byteStringList.size(); i++)
+    {
       final ByteString currentByteString = _byteStringList.get(i);
       //Take into account the offset in the first and final ByteString
       int byteStringStart = i == 0 ? _byteOffsetBeginning : 0;
       int byteStringLength = i == _byteStringList.size() - 1 ? _byteOffsetEnd : currentByteString.length();
-      for (int j = byteStringStart; j < byteStringLength; j++) {
+      for (int j = byteStringStart; j < byteStringLength; j++)
+      {
         out.write(currentByteString.byteAtIndex(j));
       }
     }
@@ -344,38 +340,38 @@ public final class CompoundByteString extends ByteString
     int newByteOffsetEnd = 0;
     final List<ByteString> newByteStringList = new ArrayList<ByteString>();
 
-      newByteStringList.addAll(_byteStringList);
-      int currentCount = 0;
+    newByteStringList.addAll(_byteStringList);
+    int currentCount = 0;
     outerloop:
-      for (int i = 0; i < _byteStringList.size(); i++)
+    for (int i = 0; i < _byteStringList.size(); i++)
+    {
+      final ByteString currentByteString = _byteStringList.get(i);
+      //Take into account the offset in the first and final ByteString
+      int byteStringStart = i == 0 ? _byteOffsetBeginning : 0;
+      int byteStringLength = i == _byteStringList.size() - 1 ? _byteOffsetEnd : currentByteString.length();
+      for (int j = byteStringStart; j < byteStringLength; j++)
       {
-        final ByteString currentByteString = _byteStringList.get(i);
-        //Take into account the offset in the first and final ByteString
-        int byteStringStart = i == 0 ? _byteOffsetBeginning : 0;
-        int byteStringLength = i == _byteStringList.size() - 1 ? _byteOffsetEnd : currentByteString.length();
-        for (int j = byteStringStart; j < byteStringLength; j++)
+        currentCount++;
+        if (currentCount == offset)
         {
-          currentCount++;
-          if (currentCount == offset)
+          for (int k = 0; k < i; k++)
           {
-            for (int k = 0; k < i; k++)
-            {
-              newByteStringList.remove(k);
-            }
-            newByteOffsetBeginning = j;
+            newByteStringList.remove(k);
           }
-          if (currentCount == endIndex)
+          newByteOffsetBeginning = j;
+        }
+        if (currentCount == endIndex)
+        {
+          for (int k = i; k < _byteStringList.size(); k++)
           {
-            for (int k = i; k < _byteStringList.size(); k++)
-            {
-              newByteStringList.remove(k);
-            }
-            newByteOffsetEnd = j;
-            break outerloop; //This jumps to the end so we can return
+            newByteStringList.remove(k);
           }
+          newByteOffsetEnd = j;
+          break outerloop; //This jumps to the end so we can return
         }
       }
-      return new CompoundByteString(newByteOffsetBeginning, newByteOffsetEnd, _byteStringList);
+    }
+    return new CompoundByteString(newByteOffsetBeginning, newByteOffsetEnd, _byteStringList);
   }
 
   /**
@@ -393,11 +389,14 @@ public final class CompoundByteString extends ByteString
   public ByteString copySlice(int offset, int length)
   {
     ArgumentUtil.checkBounds(_length, offset, length);
-    final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-    for (int i = offset; i < length + offset; i++) {
+    final NoCopyByteArrayOutputStream byteArrayOutputStream = new NoCopyByteArrayOutputStream();
+    for (int i = offset; i < length + offset; i++)
+    {
       byteArrayOutputStream.write(byteAtIndex(i));
     }
-    return new ByteStringImpl(byteArrayOutputStream.toByteArray());
+
+    //Todo - two copies
+    return ByteStringImpl.copy(byteArrayOutputStream.toByteArray());
   }
 
   @Override
@@ -449,7 +448,8 @@ public final class CompoundByteString extends ByteString
   public String toString()
   {
     final StringBuilder stringBuilder = new StringBuilder();
-    for (int i = 0; i < _byteStringList.size(); i++) {
+    for (int i = 0; i < _byteStringList.size(); i++)
+    {
       final ByteString currentByteString = _byteStringList.get(i);
       //Take into account the offset in the first and final ByteString
       int byteStringStart = i == 0 ? _byteOffsetBeginning : 0;
@@ -459,5 +459,4 @@ public final class CompoundByteString extends ByteString
     }
     return stringBuilder.toString();
   }
-
 }

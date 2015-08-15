@@ -26,7 +26,6 @@ import com.linkedin.data.ByteString;
 import com.linkedin.data.Data;
 import com.linkedin.util.ArgumentUtil;
 import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -42,6 +41,7 @@ import java.util.Arrays;
  * @author Karim Vidhani
  * @version $Revision$
  */
+//todo use @Override annotation
 public final class ByteStringImpl extends ByteString
 {
   static final ByteString EMPTY = new ByteStringImpl(new byte[0]);
@@ -225,7 +225,7 @@ public final class ByteStringImpl extends ByteString
     return new ByteStringImpl(bos.getBytes(), 0, bos.getBytesCount());
   }
 
-  ByteStringImpl(byte[] bytes)
+  private ByteStringImpl(byte[] bytes)
   {
     ArgumentUtil.notNull(bytes, "bytes");
     _bytes = bytes;
@@ -236,7 +236,7 @@ public final class ByteStringImpl extends ByteString
   /**
    * This is internally used to create slice or copySlice of ByteString.
    */
-  ByteStringImpl(byte[] bytes, int offset, int length)
+  private ByteStringImpl(byte[] bytes, int offset, int length)
   {
     ArgumentUtil.notNull(bytes, "bytes");
     _bytes = bytes;

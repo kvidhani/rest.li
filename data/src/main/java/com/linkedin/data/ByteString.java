@@ -19,12 +19,15 @@ package com.linkedin.data;
 
 
 import com.linkedin.data.bytes.ByteStringImpl;
+import com.linkedin.data.bytes.CompoundByteString;
 import com.linkedin.util.ArgumentUtil;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
+import java.util.List;
+
 
 /**
  * An immutable sequence of bytes.
@@ -56,6 +59,11 @@ public abstract class ByteString
   public static ByteString copy(byte[] bytes)
   {
     return ByteStringImpl.copy(bytes);
+  }
+
+  public static ByteString create(List<ByteString> byteStringList) {
+    //Create compound byte string
+    //enforces flattening
   }
 
   /**
@@ -197,12 +205,15 @@ public abstract class ByteString
    * @param offset is the starting offset in the destination to receive the copy.
    */
   public abstract void copyBytes(byte[] dest, int offset);
+
   /**
    * Returns a read only {@link ByteBuffer} view of this {@link ByteString}. This method makes no copy.
    *
    * @return read only {@link ByteBuffer} view of this {@link ByteString}.
    */
   public abstract ByteBuffer asByteBuffer();
+
+  public abstract CompoundByteBuffer asCompoundByteBuffer();
   /**
    * Return a String representation of the bytes in this {@link ByteString}, decoded using the supplied
    * charset.
