@@ -26,6 +26,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
+import java.util.ArrayList;
 import java.util.List;
 
 
@@ -61,9 +62,38 @@ public abstract class ByteString
     return ByteStringImpl.copy(bytes);
   }
 
-  public static ByteString create(List<ByteString> byteStringList) {
-    //Create compound byte string
-    //enforces flattening
+  public static ByteString createCompoundByteString(ByteString byteStringA, ByteString byteStringB) {
+    ArgumentUtil.notNull(byteStringA, "Provided ByteString cannot be null");
+    ArgumentUtil.notNull(byteStringB, "Provided ByteString cannot be null");
+    final List<ByteString> byteStringList = new ArrayList<ByteString>();
+    byteStringList.add(byteStringA);
+    byteStringList.add(byteStringB);
+    return createCompoundByteString(byteStringList);
+  }
+
+  public static ByteString createCompoundByteString(List<ByteString> byteStringList) {
+    ArgumentUtil.notNull(byteStringList, "ByteString list cannot be null");
+    if (byteStringList.isEmpty()) {
+      return CompoundByteString.EMPTY;
+    }
+    return CompoundByteString.create(byteStringList);
+  }
+
+  //We must do depth first here to maintain ordering.
+  private static List<ByteString> flattenByteStringList(List<ByteString> byteStringList) {
+    final List<ByteString> flattenedList = new ArrayList<ByteString>();
+    for (final ByteString byteString : byteStringList) {
+      if (byteString instanceof CompoundByteString) {
+        final CompoundByteString compoundByteString = (CompoundByteString) byteString;
+        flattenedList.addAll(flattenByteStringList(compoundByteString.getByteStringList()));
+      } else if(byteString instanceof ByteStringImpl) {
+        flattenedList.add(byteString);
+      } else {
+        throw new IllegalArgumentException("A CompoundByteString can only be created by using "
+            + "ByteStringImpl(s) or CompoundByteString(s).");
+      }
+    }
+    return flattenedList;
   }
 
   /**
@@ -207,13 +237,13 @@ public abstract class ByteString
   public abstract void copyBytes(byte[] dest, int offset);
 
   /**
+   *
    * Returns a read only {@link ByteBuffer} view of this {@link ByteString}. This method makes no copy.
    *
    * @return read only {@link ByteBuffer} view of this {@link ByteString}.
    */
   public abstract ByteBuffer asByteBuffer();
 
-  public abstract CompoundByteBuffer asCompoundByteBuffer();
   /**
    * Return a String representation of the bytes in this {@link ByteString}, decoded using the supplied
    * charset.

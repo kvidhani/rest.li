@@ -225,7 +225,7 @@ public final class ByteStringImpl extends ByteString
     return new ByteStringImpl(bos.getBytes(), 0, bos.getBytesCount());
   }
 
-  private ByteStringImpl(byte[] bytes)
+  ByteStringImpl(byte[] bytes)
   {
     ArgumentUtil.notNull(bytes, "bytes");
     _bytes = bytes;
@@ -236,7 +236,7 @@ public final class ByteStringImpl extends ByteString
   /**
    * This is internally used to create slice or copySlice of ByteString.
    */
-  private ByteStringImpl(byte[] bytes, int offset, int length)
+  ByteStringImpl(byte[] bytes, int offset, int length)
   {
     ArgumentUtil.notNull(bytes, "bytes");
     _bytes = bytes;
@@ -402,6 +402,11 @@ public final class ByteStringImpl extends ByteString
     int to = from + length;
     byte[] content = Arrays.copyOfRange(_bytes, from, to);
     return new ByteStringImpl(content);
+  }
+
+  //Package private!
+  byte[] getBackingBytes() {
+    return _bytes;
   }
 
   @Override
