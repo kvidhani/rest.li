@@ -28,10 +28,8 @@ import com.linkedin.restli.common.CollectionRequest;
 import com.linkedin.restli.common.KeyValueRecord;
 import com.linkedin.restli.common.KeyValueRecordFactory;
 import com.linkedin.restli.common.ResourceSpec;
-
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.Map;
 
 
@@ -45,6 +43,7 @@ public class BatchUpdateRequestBuilder<K, V extends RecordTemplate> extends
 {
   private final KeyValueRecordFactory<K, V> _keyValueRecordFactory;
   private final Map<K, V> _updateInputMap;
+  private RestLiStreamingAttachments _streamingAttachments;
 
   @SuppressWarnings({"unchecked", "rawtypes"})
   public BatchUpdateRequestBuilder(String baseUriTemplate,
@@ -77,6 +76,12 @@ public class BatchUpdateRequestBuilder<K, V extends RecordTemplate> extends
       V value = entry.getValue();
       _updateInputMap.put(key, value);
     }
+    return this;
+  }
+
+  public BatchUpdateRequestBuilder<K, V> streamingAttachments(RestLiStreamingAttachments streamingAttachments)
+  {
+    _streamingAttachments = streamingAttachments;
     return this;
   }
 
@@ -151,7 +156,8 @@ public class BatchUpdateRequestBuilder<K, V extends RecordTemplate> extends
                                         getBaseUriTemplate(),
                                         buildReadOnlyPathKeys(),
                                         getRequestOptions(),
-                                        Collections.unmodifiableMap(readOnlyUpdateInputMap));
+                                        Collections.unmodifiableMap(readOnlyUpdateInputMap),
+                                        _streamingAttachments);
   }
 
   private CollectionRequest<KeyValueRecord<K, V>> buildReadOnlyBatchUpdateInput(Map<K, V> readOnlyInputEntities)

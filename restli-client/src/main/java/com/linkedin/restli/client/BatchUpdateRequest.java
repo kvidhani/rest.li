@@ -53,7 +53,8 @@ public class BatchUpdateRequest<K, V extends RecordTemplate>
                      String baseUriTemplate,
                      Map<String, Object> pathKeys,
                      RestliRequestOptions requestOptions,
-                     Map<K, V> updateInputMap)
+                     Map<K, V> updateInputMap,
+                     RestLiStreamingAttachments streamingAttachments)
   {
     super(ResourceMethod.BATCH_UPDATE,
           entities,
@@ -65,7 +66,8 @@ public class BatchUpdateRequest<K, V extends RecordTemplate>
           queryParams,
           baseUriTemplate,
           pathKeys,
-          requestOptions);
+          requestOptions,
+          streamingAttachments);
     _updateInputMap = Collections.unmodifiableMap(updateInputMap);
   }
 

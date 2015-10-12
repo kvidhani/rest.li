@@ -18,6 +18,7 @@ package com.linkedin.restli.internal.client;
 
 
 import com.linkedin.restli.client.Response;
+import com.linkedin.restli.client.RestLiAttachmentReader;
 import com.linkedin.restli.client.RestLiResponseException;
 import com.linkedin.restli.client.response.CreateResponse;
 import com.linkedin.restli.common.IdResponse;
@@ -48,6 +49,7 @@ public class ResponseImpl<T> implements Response<T>
   private final Map<String, String> _headers;
   private T _entity;
   private RestLiResponseException _error;
+  private RestLiAttachmentReader _attachmentReader;
 
   ResponseImpl(Response<T> origin, RestLiResponseException error)
   {
@@ -196,5 +198,17 @@ public class ResponseImpl<T> implements Response<T>
   public boolean hasError()
   {
     return _error != null;
+  }
+
+  @Override
+  public boolean hasAttachments()
+  {
+    return _attachmentReader != null;
+  }
+
+  @Override
+  public RestLiAttachmentReader getAttachmentReader()
+  {
+    return _attachmentReader;
   }
 }

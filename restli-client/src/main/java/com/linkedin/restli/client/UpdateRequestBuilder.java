@@ -49,6 +49,13 @@ public class UpdateRequestBuilder<K, V extends RecordTemplate> extends
   }
 
   @Override
+  public UpdateRequestBuilder<K, V> streamingAttachments(RestLiStreamingAttachments streamingAttachments)
+  {
+    super.streamingAttachments(streamingAttachments);
+    return this;
+  }
+
+  @Override
   public UpdateRequestBuilder<K, V> setParam(String key, Object value)
   {
     super.setParam(key, value);
@@ -114,6 +121,7 @@ public class UpdateRequestBuilder<K, V extends RecordTemplate> extends
                                 getBaseUriTemplate(),
                                 buildReadOnlyPathKeys(),
                                 getRequestOptions(),
-                                buildReadOnlyId());
+                                buildReadOnlyId(),
+                                getStreamingAttachments());
   }
 }

@@ -23,6 +23,7 @@ package com.linkedin.restli.client.base;
 
 import com.linkedin.data.template.RecordTemplate;
 import com.linkedin.restli.client.BatchUpdateRequestBuilder;
+import com.linkedin.restli.client.RestLiStreamingAttachments;
 import com.linkedin.restli.client.RestliRequestOptions;
 import com.linkedin.restli.common.ResourceSpec;
 
@@ -59,6 +60,13 @@ public class BatchUpdateRequestBuilderBase<
   public RB inputs(Map<K, V> entities)
   {
     return (RB) super.inputs(entities);
+  }
+
+  @SuppressWarnings({"unchecked"})
+  @Override
+  public RB streamingAttachments(RestLiStreamingAttachments streamingAttachments)
+  {
+    return (RB) super.streamingAttachments(streamingAttachments);
   }
 
   @SuppressWarnings({"unchecked"})

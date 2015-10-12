@@ -42,7 +42,8 @@ public class BatchCreateIdRequest<K,T extends RecordTemplate> extends Request<Ba
                        Map<String, Object> queryParams,
                        String baseUriTemplate,
                        Map<String, Object> pathKeys,
-                       RestliRequestOptions requestOptions)
+                       RestliRequestOptions requestOptions,
+                       RestLiStreamingAttachments streamingAttachments)
   {
     super(ResourceMethod.BATCH_CREATE,
           input,
@@ -53,6 +54,7 @@ public class BatchCreateIdRequest<K,T extends RecordTemplate> extends Request<Ba
           null,
           baseUriTemplate,
           pathKeys,
-          requestOptions);
+          requestOptions,
+          streamingAttachments);
   }
 }

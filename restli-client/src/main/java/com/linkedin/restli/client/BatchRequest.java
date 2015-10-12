@@ -47,9 +47,11 @@ public class BatchRequest<T> extends Request<T>
                       Map<String, Object> queryParams,
                       String baseUriTemplate,
                       Map<String, Object> pathKeys,
-                      RestliRequestOptions requestOptions)
+                      RestliRequestOptions requestOptions,
+                      RestLiStreamingAttachments streamingAttachments)
   {
-    super(method, input, headers, decoder, resourceSpec, queryParams, null, baseUriTemplate, pathKeys, requestOptions);
+    super(method, input, headers, decoder, resourceSpec, queryParams, null,
+          baseUriTemplate, pathKeys, requestOptions, streamingAttachments);
   }
 
   /**

@@ -45,7 +45,8 @@ public class PartialUpdateRequest<T>
                        String baseUriTemplate,
                        Map<String, Object> pathKeys,
                        RestliRequestOptions requestOptions,
-                       Object id)
+                       Object id,
+                       RestLiStreamingAttachments streamingAttachments)
   {
     super(ResourceMethod.PARTIAL_UPDATE,
           input,
@@ -56,7 +57,8 @@ public class PartialUpdateRequest<T>
           null,
           baseUriTemplate,
           pathKeys,
-          requestOptions);
+          requestOptions,
+          streamingAttachments);
     _id = id;
     validateKeyPresence(_id);
   }

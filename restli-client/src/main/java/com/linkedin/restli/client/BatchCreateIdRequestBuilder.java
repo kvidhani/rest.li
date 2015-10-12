@@ -38,6 +38,7 @@ public class BatchCreateIdRequestBuilder<K, V extends RecordTemplate> extends Re
 {
   private final List<V> _entities = new ArrayList<V>();
   private final Class<V> _valueClass;
+  private RestLiStreamingAttachments _streamingAttachments;
 
   protected BatchCreateIdRequestBuilder(String baseURITemplate,
                                         Class<V> valueClass,
@@ -57,6 +58,12 @@ public class BatchCreateIdRequestBuilder<K, V extends RecordTemplate> extends Re
   public BatchCreateIdRequestBuilder<K, V> inputs(List<V> entities)
   {
     _entities.addAll(entities);
+    return this;
+  }
+
+  public BatchCreateIdRequestBuilder<K, V> streamingAttachments(final RestLiStreamingAttachments streamingAttachments)
+  {
+    _streamingAttachments = streamingAttachments;
     return this;
   }
 
@@ -131,7 +138,8 @@ public class BatchCreateIdRequestBuilder<K, V extends RecordTemplate> extends Re
                                           buildReadOnlyQueryParameters(),
                                           getBaseUriTemplate(),
                                           buildReadOnlyPathKeys(),
-                                          getRequestOptions());
+                                          getRequestOptions(),
+                                          _streamingAttachments);
   }
 
   private CollectionRequest<V> buildReadOnlyInput()

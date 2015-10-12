@@ -43,7 +43,8 @@ public class CreateRequest<T extends RecordTemplate>
                 Map<String, Object> queryParams,
                 String baseUriTemplate,
                 Map<String, Object> pathKeys,
-                RestliRequestOptions requestOptions)
+                RestliRequestOptions requestOptions,
+                RestLiStreamingAttachments streamingAttachments)
   {
     super(ResourceMethod.CREATE,
           input,
@@ -54,7 +55,8 @@ public class CreateRequest<T extends RecordTemplate>
           null,
           baseUriTemplate,
           pathKeys,
-          requestOptions);
+          requestOptions,
+          streamingAttachments);
 
   }
 }

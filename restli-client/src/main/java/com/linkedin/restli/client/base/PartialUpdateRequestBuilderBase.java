@@ -22,6 +22,7 @@ package com.linkedin.restli.client.base;
 
 import com.linkedin.data.template.RecordTemplate;
 import com.linkedin.restli.client.PartialUpdateRequestBuilder;
+import com.linkedin.restli.client.RestLiStreamingAttachments;
 import com.linkedin.restli.client.RestliRequestOptions;
 import com.linkedin.restli.common.PatchRequest;
 import com.linkedin.restli.common.ResourceSpec;
@@ -100,5 +101,12 @@ public abstract class PartialUpdateRequestBuilderBase<
   public RB input(PatchRequest<V> entity)
   {
     return (RB) super.input(entity);
+  }
+
+  @SuppressWarnings({"unchecked"})
+  @Override
+  public RB streamingAttachments(RestLiStreamingAttachments streamingAttachments)
+  {
+    return (RB) super.streamingAttachments(streamingAttachments);
   }
 }

@@ -51,6 +51,7 @@ public class ActionRequestBuilder<K, V> extends AbstractRequestBuilder<K, V, Act
   private K                              _id;
   private String                         _name;
   private final Map<FieldDef<?>, Object> _actionParams = new HashMap<FieldDef<?>, Object>();
+  private RestLiStreamingAttachments     _streamingAttachments;
 
   public ActionRequestBuilder(String baseUriTemplate, Class<V> elementClass, ResourceSpec resourceSpec, RestliRequestOptions requestOptions)
   {
@@ -73,6 +74,12 @@ public class ActionRequestBuilder<K, V> extends AbstractRequestBuilder<K, V, Act
   public ActionRequestBuilder<K, V> id(K id)
   {
     _id = id;
+    return this;
+  }
+
+  public ActionRequestBuilder<K, V> streamingAttachments(final RestLiStreamingAttachments streamingAttachments)
+  {
+    _streamingAttachments = streamingAttachments;
     return this;
   }
 
@@ -202,8 +209,8 @@ public class ActionRequestBuilder<K, V> extends AbstractRequestBuilder<K, V, Act
                                 getBaseUriTemplate(),
                                 buildReadOnlyPathKeys(),
                                 getRequestOptions(),
-                                buildReadOnlyId());
-
+                                buildReadOnlyId(),
+                               _streamingAttachments);
   }
 
   private Map<FieldDef<?>, Object> buildReadOnlyActionParameters()

@@ -47,7 +47,8 @@ public class ActionRequest<T> extends Request<T>
                 String baseUriTemplate,
                 Map<String, Object> pathKeys,
                 RestliRequestOptions requestOptions,
-                Object id)
+                Object id,
+                RestLiStreamingAttachments streamingAttachments)
   {
     super(ResourceMethod.ACTION,
           input,
@@ -58,7 +59,8 @@ public class ActionRequest<T> extends Request<T>
           name,
           baseUriTemplate,
           pathKeys,
-          requestOptions);
+          requestOptions,
+          streamingAttachments);
     _id = id;
   }
 

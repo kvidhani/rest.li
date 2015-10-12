@@ -27,13 +27,13 @@ import java.util.List;
  *
  * @author kparikh
  */
-public class RestliRequestOptions
+public final class RestliRequestOptions
 {
   private final ProtocolVersionOption _protocolVersionOption;
   private final CompressionOption _requestCompressionOverride;
   private final RestClient.ContentType _contentType;
   private final List<RestClient.AcceptType> _acceptTypes;
-
+  private final boolean _acceptResponseAttachments;
 
   public static final RestliRequestOptions DEFAULT_OPTIONS
       = new RestliRequestOptions(ProtocolVersionOption.USE_LATEST_IF_AVAILABLE, null);
@@ -50,7 +50,7 @@ public class RestliRequestOptions
    */
   RestliRequestOptions(ProtocolVersionOption protocolVersionOption, CompressionOption requestCompressionOverride)
   {
-    this(protocolVersionOption, requestCompressionOverride, null, null);
+    this(protocolVersionOption, requestCompressionOverride, null, null, false);
   }
 
   /**
@@ -61,17 +61,23 @@ public class RestliRequestOptions
    * @param requestCompressionOverride request compression override
    * @param contentType request content type
    * @param acceptTypes list of accept types for response
+   * @param acceptResponseAttachments This should only be set if clients want to handle streaming attachments
+   *                                  in responses from servers. Otherwise this should not be set. Note that setting
+   *                                  this allows servers to send back potentially large blobs of data which clients
+   *                                  are responsible for consuming.
    */
   RestliRequestOptions(ProtocolVersionOption protocolVersionOption,
                        CompressionOption requestCompressionOverride,
                        RestClient.ContentType contentType,
-                       List<RestClient.AcceptType> acceptTypes)
+                       List<RestClient.AcceptType> acceptTypes,
+                       boolean acceptResponseAttachments)
   {
     _protocolVersionOption =
         (protocolVersionOption == null) ? ProtocolVersionOption.USE_LATEST_IF_AVAILABLE : protocolVersionOption;
     _requestCompressionOverride = requestCompressionOverride;
     _contentType = contentType;
     _acceptTypes = acceptTypes;
+    _acceptResponseAttachments = acceptResponseAttachments;
   }
 
   public ProtocolVersionOption getProtocolVersionOption()
@@ -94,6 +100,11 @@ public class RestliRequestOptions
     return _contentType;
   }
 
+  public boolean getAcceptResponseAttachments()
+  {
+    return _acceptResponseAttachments;
+  }
+
   @Override
   public int hashCode()
   {
@@ -101,55 +112,57 @@ public class RestliRequestOptions
     result = 31 * result + (_requestCompressionOverride != null ? _requestCompressionOverride.hashCode() : 0);
     result = 31 * result + (_contentType != null ? _contentType.hashCode() : 0);
     result = 31 * result + (_acceptTypes != null ? _acceptTypes.hashCode() : 0);
+    result = 31 * result + (_acceptResponseAttachments ? 1 : 0);
     return result;
   }
 
   @Override
-  public boolean equals(Object obj)
+  public boolean equals(Object o)
   {
-    if (obj == this)
+    if (this == o)
     {
       return true;
     }
-    if (obj == null)
+    if (o == null || getClass() != o.getClass())
     {
       return false;
     }
-    if (!(obj instanceof RestliRequestOptions))
+
+    RestliRequestOptions that = (RestliRequestOptions) o;
+
+    if (_acceptResponseAttachments != that._acceptResponseAttachments)
     {
       return false;
     }
-    RestliRequestOptions other = (RestliRequestOptions)obj;
-    if (_protocolVersionOption != other._protocolVersionOption)
+    if (_acceptTypes != null ? !_acceptTypes.equals(that._acceptTypes) : that._acceptTypes != null)
     {
       return false;
     }
-    if (_requestCompressionOverride != other._requestCompressionOverride)
+    if (_contentType != that._contentType)
     {
       return false;
     }
-    if (_contentType != other._contentType)
+    if (_protocolVersionOption != that._protocolVersionOption)
     {
       return false;
     }
-    if (_acceptTypes != null ? !_acceptTypes.equals(other._acceptTypes) : other._acceptTypes != null)
+    if (_requestCompressionOverride != that._requestCompressionOverride)
     {
       return false;
     }
+
     return true;
   }
 
   @Override
   public String toString()
   {
-    return "{_protocolVersionOption: "
-        + _protocolVersionOption.toString()
-        + ", _requestCompressionOverride: "
-        + (_requestCompressionOverride != null ? _requestCompressionOverride.toString() : "null")
-        + ", _contentType: "
-        + (_contentType != null ? _contentType.toString() : "null")
-        + ", _acceptTypes: "
-        + (_acceptTypes != null ? _acceptTypes.toString() : "null")
-        + "}";
+    return "RestliRequestOptions{" +
+        "_protocolVersionOption=" + _protocolVersionOption +
+        ", _requestCompressionOverride=" + _requestCompressionOverride +
+        ", _contentType=" + _contentType +
+        ", _acceptTypes=" + _acceptTypes +
+        ", _acceptResponseAttachments=" + _acceptResponseAttachments +
+        '}';
   }
 }

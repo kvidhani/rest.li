@@ -50,7 +50,8 @@ public class BatchPartialUpdateRequest<K, V extends RecordTemplate> extends
                             ResourceSpec resourceSpec,
                             String baseUriTemplate,
                             Map<String, Object> pathKeys,
-                            RestliRequestOptions requestOptions)
+                            RestliRequestOptions requestOptions,
+                            RestLiStreamingAttachments streamingAttachments)
   {
     super(ResourceMethod.BATCH_PARTIAL_UPDATE,
           entities,
@@ -62,6 +63,7 @@ public class BatchPartialUpdateRequest<K, V extends RecordTemplate> extends
           queryParams,
           baseUriTemplate,
           pathKeys,
-          requestOptions);
+          requestOptions,
+          streamingAttachments);
   }
 }

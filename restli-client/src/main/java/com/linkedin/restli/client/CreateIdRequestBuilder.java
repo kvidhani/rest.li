@@ -48,6 +48,13 @@ public class CreateIdRequestBuilder<K, V extends RecordTemplate>
   }
 
   @Override
+  protected CreateIdRequestBuilder<K, V> streamingAttachments(RestLiStreamingAttachments streamingAttachments)
+  {
+    super.streamingAttachments(streamingAttachments);
+    return this;
+  }
+
+  @Override
   public CreateIdRequestBuilder<K, V> setParam(String key, Object value)
   {
     super.setParam(key, value);
@@ -117,6 +124,7 @@ public class CreateIdRequestBuilder<K, V extends RecordTemplate>
                                      buildReadOnlyQueryParameters(),
                                      getBaseUriTemplate(),
                                      buildReadOnlyPathKeys(),
-                                     getRequestOptions());
+                                     getRequestOptions(),
+                                     getStreamingAttachments());
   }
 }

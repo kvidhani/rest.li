@@ -47,17 +47,18 @@ public class Request<T>
 {
   private static final Pattern SLASH_PATTERN = Pattern.compile("/");
 
-  private final ResourceMethod         _method;
-  private final RecordTemplate         _inputRecord;
-  private final RestResponseDecoder<T> _decoder;
-  private final Map<String, String>    _headers;
-  private final ResourceSpec           _resourceSpec;
-  private final ResourceProperties     _resourceProperties;
-  private final Map<String, Object>    _queryParams;
-  private final String                 _methodName; // needed to identify finders and actions. null for everything else
-  private final String                 _baseUriTemplate;
-  private final Map<String, Object>    _pathKeys;
-  private final RestliRequestOptions   _requestOptions;
+  private final ResourceMethod              _method;
+  private final RecordTemplate              _inputRecord;
+  private final RestResponseDecoder<T>      _decoder;
+  private final Map<String, String>         _headers;
+  private final ResourceSpec                _resourceSpec;
+  private final ResourceProperties          _resourceProperties;
+  private final Map<String, Object>         _queryParams;
+  private final String                      _methodName; // needed to identify finders and actions. null for everything else
+  private final String                      _baseUriTemplate;
+  private final Map<String, Object>         _pathKeys;
+  private final RestliRequestOptions        _requestOptions;
+  private final RestLiStreamingAttachments  _streamingAttachments;
 
   Request(ResourceMethod method,
           RecordTemplate inputRecord,
@@ -68,7 +69,9 @@ public class Request<T>
           String methodName,
           String baseUriTemplate,
           Map<String, Object> pathKeys,
-          RestliRequestOptions requestOptions)
+          RestliRequestOptions requestOptions,
+          RestLiStreamingAttachments streamingAttachments,
+          boolean responseAttachmentsAllowed)
   {
     _method = method;
     _inputRecord = inputRecord;
@@ -100,6 +103,7 @@ public class Request<T>
     }
 
     _requestOptions = (requestOptions == null) ? RestliRequestOptions.DEFAULT_OPTIONS : requestOptions;
+    _streamingAttachments = streamingAttachments;
   }
 
   /**
@@ -214,6 +218,11 @@ public class Request<T>
   public RestliRequestOptions getRequestOptions()
   {
     return _requestOptions;
+  }
+
+  public RestLiStreamingAttachments getStreamingAttachments()
+  {
+    return _streamingAttachments;
   }
 
   /**

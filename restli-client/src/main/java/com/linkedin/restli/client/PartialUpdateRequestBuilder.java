@@ -60,6 +60,13 @@ public class PartialUpdateRequestBuilder<K, V extends RecordTemplate> extends
   }
 
   @Override
+  protected PartialUpdateRequestBuilder<K, V> streamingAttachments(RestLiStreamingAttachments streamingAttachments)
+  {
+    super.streamingAttachments(streamingAttachments);
+    return this;
+  }
+
+  @Override
   public PartialUpdateRequestBuilder<K, V> setParam(String key, Object value)
   {
     super.setParam(key, value);
@@ -125,6 +132,7 @@ public class PartialUpdateRequestBuilder<K, V extends RecordTemplate> extends
                                        getBaseUriTemplate(),
                                        buildReadOnlyPathKeys(),
                                        getRequestOptions(),
-                                       buildReadOnlyId());
+                                       buildReadOnlyId(),
+                                       getStreamingAttachments());
   }
 }

@@ -35,7 +35,7 @@ import java.util.TreeMap;
  *
  * @author Karim Vidhani
  */
-final class MultiPartMIMEUtils
+public final class MultiPartMIMEUtils
 {
   //R2 uses a case insensitive TreeMap so the casing here for the Content-Type header does not matter
   public static final String CONTENT_TYPE_HEADER = "Content-Type";

@@ -28,16 +28,16 @@ import java.util.List;
  *
  * @author kparikh
  */
-public class RestliRequestOptionsBuilder
+public final class RestliRequestOptionsBuilder
 {
   private ProtocolVersionOption _protocolVersionOption;
   private CompressionOption _requestCompressionOverride;
   private RestClient.ContentType _contentType;
   private List<RestClient.AcceptType> _acceptTypes;
+  private boolean _acceptResponseAttachments = false;
 
   public RestliRequestOptionsBuilder()
   {
-
   }
 
   public RestliRequestOptionsBuilder(RestliRequestOptions restliRequestOptions)
@@ -46,6 +46,7 @@ public class RestliRequestOptionsBuilder
     setRequestCompressionOverride(restliRequestOptions.getRequestCompressionOverride());
     setContentType(restliRequestOptions.getContentType());
     setAcceptTypes(restliRequestOptions.getAcceptTypes());
+    setAcceptResponseAttachments(restliRequestOptions.getAcceptResponseAttachments());
   }
 
   public RestliRequestOptionsBuilder setProtocolVersionOption(ProtocolVersionOption protocolVersionOption)
@@ -72,8 +73,15 @@ public class RestliRequestOptionsBuilder
     return this;
   }
 
+  public RestliRequestOptionsBuilder setAcceptResponseAttachments(boolean acceptResponseAttachments)
+  {
+    _acceptResponseAttachments = acceptResponseAttachments;
+    return this;
+  }
+
   public RestliRequestOptions build()
   {
-    return new RestliRequestOptions(_protocolVersionOption, _requestCompressionOverride, _contentType, _acceptTypes);
+    return new RestliRequestOptions(_protocolVersionOption, _requestCompressionOverride, _contentType, _acceptTypes,
+        _acceptResponseAttachments);
   }
 }

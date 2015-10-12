@@ -86,4 +86,9 @@ public interface Response<T>
    * Otherwise, a {@link RemoteInvocationException} is thrown from {@link ResponseFuture#getResponse()} on error.
    */
   boolean hasError();
+
+  //todo documentation
+  boolean hasAttachments();
+
+  RestLiAttachmentReader getAttachmentReader();
 }

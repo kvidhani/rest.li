@@ -46,7 +46,8 @@ public class UpdateRequest<T extends RecordTemplate>
                 String baseUriTemplate,
                 Map<String, Object> pathKeys,
                 RestliRequestOptions requestOptions,
-                Object id)
+                Object id,
+                RestLiStreamingAttachments streamingAttachments)
   {
     super(ResourceMethod.UPDATE,
           input,
@@ -57,7 +58,8 @@ public class UpdateRequest<T extends RecordTemplate>
           null,
           baseUriTemplate,
           pathKeys,
-          requestOptions);
+          requestOptions,
+          streamingAttachments);
     _id = id;
     validateKeyPresence(_id);
   }

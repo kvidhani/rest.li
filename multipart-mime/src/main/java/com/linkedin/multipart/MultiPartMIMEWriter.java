@@ -18,12 +18,11 @@ package com.linkedin.multipart;
 
 
 import com.linkedin.data.ByteString;
-import com.linkedin.r2.filter.compression.streaming.CompositeWriter;
 import com.linkedin.r2.message.streaming.ByteStringWriter;
+import com.linkedin.r2.message.streaming.CompositeWriter;
 import com.linkedin.r2.message.streaming.EntityStream;
 import com.linkedin.r2.message.streaming.EntityStreams;
 import com.linkedin.r2.message.streaming.Writer;
-
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.Charset;

@@ -40,7 +40,8 @@ public class CreateIdRequest<K, T extends RecordTemplate> extends Request<IdResp
                   Map<String, Object> queryParams,
                   String baseUriTemplate,
                   Map<String, Object> pathKeys,
-                  RestliRequestOptions requestOptions)
+                  RestliRequestOptions requestOptions,
+                  RestLiStreamingAttachments streamingAttachments)
   {
     super(ResourceMethod.CREATE,
           input,
@@ -51,7 +52,8 @@ public class CreateIdRequest<K, T extends RecordTemplate> extends Request<IdResp
           null,
           baseUriTemplate,
           pathKeys,
-          requestOptions);
+          requestOptions,
+          streamingAttachments);
 
   }
 }

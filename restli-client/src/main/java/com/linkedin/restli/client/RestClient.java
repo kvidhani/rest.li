@@ -22,16 +22,28 @@ import com.linkedin.common.callback.CallbackAdapter;
 import com.linkedin.common.callback.Callbacks;
 import com.linkedin.common.callback.FutureCallback;
 import com.linkedin.common.util.None;
+import com.linkedin.data.ByteString;
 import com.linkedin.data.DataMap;
 import com.linkedin.data.codec.JacksonDataCodec;
 import com.linkedin.data.codec.PsonDataCodec;
 import com.linkedin.data.template.RecordTemplate;
-import com.linkedin.r2.filter.R2Constants;
+import com.linkedin.multipart.MultiPartMIMEDataSource;
+import com.linkedin.multipart.MultiPartMIMEStreamRequestBuilder;
+import com.linkedin.multipart.MultiPartMIMEWriter;
 import com.linkedin.r2.filter.CompressionOption;
+import com.linkedin.r2.filter.R2Constants;
 import com.linkedin.r2.message.RequestContext;
+import com.linkedin.r2.message.rest.MessageHeadersBuilder;
 import com.linkedin.r2.message.rest.RestRequest;
 import com.linkedin.r2.message.rest.RestRequestBuilder;
 import com.linkedin.r2.message.rest.RestResponse;
+import com.linkedin.r2.message.rest.StreamRequest;
+import com.linkedin.r2.message.rest.StreamRequestBuilder;
+import com.linkedin.r2.message.rest.StreamResponse;
+import com.linkedin.r2.message.streaming.ByteStringWriter;
+import com.linkedin.r2.message.streaming.EntityStreams;
+import com.linkedin.r2.message.streaming.FullEntityReader;
+import com.linkedin.r2.message.streaming.WriteHandle;
 import com.linkedin.r2.transport.common.Client;
 import com.linkedin.restli.client.multiplexer.MultiplexedCallback;
 import com.linkedin.restli.client.multiplexer.MultiplexedRequest;
@@ -46,8 +58,6 @@ import com.linkedin.restli.common.RestConstants;
 import com.linkedin.restli.internal.client.RequestBodyTransformer;
 import com.linkedin.restli.internal.client.ResponseFutureImpl;
 import com.linkedin.restli.internal.common.AllProtocolVersions;
-
-import javax.mail.internet.ParseException;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -56,6 +66,9 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.TimeUnit;
+import javax.mail.internet.HeaderTokenizer;
+import javax.mail.internet.ParseException;
 
 
 /**
@@ -236,35 +249,97 @@ public class RestClient
                               RequestContext requestContext,
                               Callback<Response<T>> callback)
   {
-    sendRestRequest(request, requestContext, new RestLiCallbackAdapter<T>(request.getResponseDecoder(), callback));
+    //Here we need to decide if we want to use StreamRequest/StreamResponse or RestRequest/RestResponse.
+    //Eventually we will move completely to StreamRequest/StreamResponse for all traffic.
+    //However for the time being we will only use StreamRequest/StreamResponse for traffic that contains attachments.
+    //
+    //Therefore the decision is made as follows:
+    //1. If the content-type OR accept-type is multipart/related then we use StreamRequest/StreamResponse,
+    //otherwise we use RestRequest/RestResponse.
+    //2. The content-type will be decided based on the presence of attachments in the request.
+    //3. The accept-type will be based on the RestLiRequestOptions.
+
+    if (request.getStreamingAttachments() != null || request.getRequestOptions().getAcceptResponseAttachments())
+    {
+      //Set content type and accept type correctly and use StreamRequest/StreamResponse
+      sendStreamRequest();
+    }
+    else
+    {
+      sendRestRequest(request, requestContext, new RestLiCallbackAdapter<T>(request.getResponseDecoder(), callback));
+    }
   }
 
-  /**
-   * Sends a type-bound REST request using a {@link CallbackAdapter}.
-   *
-   * @param request to send
-   * @param requestContext context for the request
-   * @param callback to call on request completion
-   */
-  public <T> void sendRestRequest(final Request<T> request,
-                                  RequestContext requestContext,
-                                  Callback<RestResponse> callback)
+  private <T> void sendStreamRequest(final Request<T> request,
+                                    RequestContext requestContext,
+                                    Callback<StreamResponse> callback)
   {
     RecordTemplate input = request.getInputRecord();
     ProtocolVersion protocolVersion = getProtocolVersionForService(request);
     URI requestUri = RestliUriBuilderUtil.createUriBuilder(request, _uriPrefix, protocolVersion).build();
 
-    sendRequestImpl(requestContext,
-                    requestUri,
-                    request.getMethod(),
-                    input != null ? RequestBodyTransformer.transform(request, protocolVersion) : null,
-                    request.getHeaders(),
-                    request.getMethodName(),
-                    protocolVersion,
-                    request.getRequestOptions().getRequestCompressionOverride(),
-                    request.getRequestOptions().getContentType(),
-                    request.getRequestOptions().getAcceptTypes(),
-                    callback);
+    if (request.getStreamingAttachments() != null)
+    {
+      //If the client decided to stream some attachments then we set the header here. Note that this will supercede
+      //anything set by the RestliRequestOptions.
+      request.getHeaders().put(RestConstants.HEADER_CONTENT_TYPE, RestConstants.HEADER_VALUE_MULTIPART_RELATED);
+    }
+
+    sendStreamRequestImpl(requestContext,
+        requestUri,
+        request.getMethod(),
+        input != null ? RequestBodyTransformer.transform(request, protocolVersion) : null,
+        request.getHeaders(),
+        request.getMethodName(),
+        protocolVersion,
+        request.getRequestOptions().getRequestCompressionOverride(),
+        request.getRequestOptions().getContentType(),
+        request.getRequestOptions().getAcceptTypes(),
+        callback);
+  }
+
+  /**
+   * @deprecated as this API will change to private in a future release. Please use other APIs in this class, such as
+   * {@link RestClient#sendRequest(com.linkedin.restli.client.Request,com.linkedin.r2.message.RequestContext, com.linkedin.common.callback.Callback)}
+   * to send type-bound REST requests.
+   *
+   * Sends a type-bound REST request and answers on the provided callback.
+   *
+   * @param request to send
+   * @param requestContext context for the request
+   * @param callback to call on request completion
+   */
+  @Deprecated
+  public <T> void sendRestRequest(final Request<T> request,
+                                  RequestContext requestContext,
+                                  Callback<RestResponse> callback)
+  {
+    //We need this until we remove the deprecation above since clients could attempt these:
+    if (request.getStreamingAttachments() != null)
+    {
+      throw new UnsupportedOperationException("Cannot stream attachments using RestRequest/RestResponse!");
+    }
+
+    if (request.getRequestOptions() != null && request.getRequestOptions().getAcceptResponseAttachments())
+    {
+      throw new UnsupportedOperationException("Cannot expect streaming attachments using RestRequest/RestResponse!");
+    }
+
+    RecordTemplate input = request.getInputRecord();
+    ProtocolVersion protocolVersion = getProtocolVersionForService(request);
+    URI requestUri = RestliUriBuilderUtil.createUriBuilder(request, _uriPrefix, protocolVersion).build();
+
+    sendRestRequestImpl(requestContext,
+        requestUri,
+        request.getMethod(),
+        input != null ? RequestBodyTransformer.transform(request, protocolVersion) : null,
+        request.getHeaders(),
+        request.getMethodName(),
+        protocolVersion,
+        request.getRequestOptions().getRequestCompressionOverride(),
+        request.getRequestOptions().getContentType(),
+        request.getRequestOptions().getAcceptTypes(),
+        callback);
   }
 
   /**
@@ -382,7 +457,7 @@ public class RestClient
   // 1. Request header
   // 2. RestLiRequestOptions
   // 3. RestClient configuration
-  private void addAcceptHeaders(RestRequestBuilder builder, List<AcceptType> acceptTypes)
+  private void addAcceptHeaders(MessageHeadersBuilder builder, List<AcceptType> acceptTypes)
   {
     if (builder.getHeader(RestConstants.HEADER_ACCEPT) == null)
     {
@@ -427,7 +502,7 @@ public class RestClient
   // 1. Request header
   // 2. RestLiRequestOption
   // 3. RestClient configuration
-  private void addEntityAndContentTypeHeaders(RestRequestBuilder builder, DataMap dataMap, ContentType contentType)
+  private ContentType calculateAndSetContentType(MessageHeadersBuilder builder, DataMap dataMap, ContentType contentType)
     throws IOException
   {
     if (dataMap != null)
@@ -476,19 +551,10 @@ public class RestClient
         }
       }
 
-      switch (type)
-      {
-        case PSON:
-          builder.setEntity(PSON_DATA_CODEC.mapToBytes(dataMap));
-          break;
-        case JSON:
-          builder.setEntity(JACKSON_DATA_CODEC.mapToBytes(dataMap));
-          break;
-        default:
-          throw new IllegalStateException("Unknown ContentType:" + type);
-      }
+      return type;
     }
 
+    return null;
   }
 
   /**
@@ -626,6 +692,7 @@ public class RestClient
     URI requestUri = new MultiplexerUriBuilder(_uriPrefix).build();
     RestRequestBuilder requestBuilder = new RestRequestBuilder(requestUri).setMethod(HttpMethod.POST.toString());
     addAcceptHeaders(requestBuilder, Collections.singletonList(AcceptType.JSON));
+    //todo fail if any multiplexed request has multipart related as a type
     addEntityAndContentTypeHeaders(requestBuilder, multiplexedRequest.getContent().data(), ContentType.JSON);
     return requestBuilder.build();
   }
@@ -646,21 +713,21 @@ public class RestClient
    *                 error response was received from the remote server, the callback will receive
    *                 a {@link com.linkedin.r2.message.rest.RestException} containing the error details.
    */
-  private void sendRequestImpl(RequestContext requestContext,
-                               URI uri,
-                               ResourceMethod method,
-                               DataMap dataMap,
-                               Map<String, String> headers,
-                               String methodName,
-                               ProtocolVersion protocolVersion,
-                               CompressionOption requestCompressionOverride,
-                               ContentType contentType,
-                               List<AcceptType> acceptTypes,
-                               Callback<RestResponse> callback)
+  private void sendRestRequestImpl(RequestContext requestContext,
+                                   URI uri,
+                                   ResourceMethod method,
+                                   DataMap dataMap,
+                                   Map<String, String> headers,
+                                   String methodName,
+                                   ProtocolVersion protocolVersion,
+                                   CompressionOption requestCompressionOverride,
+                                   ContentType contentType,
+                                   List<AcceptType> acceptTypes,
+                                   Callback<RestResponse> callback)
   {
     try
     {
-      RestRequest request = buildRequest(uri, method, dataMap, headers, protocolVersion, contentType, acceptTypes);
+      RestRequest request = buildRestRequest(uri, method, dataMap, headers, protocolVersion, contentType, acceptTypes);
       String operation = OperationNameGenerator.generate(method, methodName);
       requestContext.putLocalAttr(R2Constants.OPERATION, operation);
       requestContext.putLocalAttr(R2Constants.REQUEST_COMPRESSION_OVERRIDE, requestCompressionOverride);
@@ -673,22 +740,172 @@ public class RestClient
     }
   }
 
-  // This throws Exception to remind the caller to deal with arbitrary exceptions including RuntimeException
-  // in a way appropriate for the public method that was originally invoked.
-  private RestRequest buildRequest(URI uri,
-                                   ResourceMethod method,
-                                   DataMap dataMap,
-                                   Map<String, String> headers,
-                                   ProtocolVersion protocolVersion,
-                                   ContentType contentType,
-                                   List<AcceptType> acceptTypes) throws Exception
+  /**
+   * Sends an untyped stream request using a callback.
+   *
+   * @param requestContext context for the request
+   * @param uri for resource
+   * @param method to perform
+   * @param dataMap request body entity
+   * @param protocolVersion the version of the Rest.li protocol used to build this request
+   * @param requestCompressionOverride request compression override options
+   * @param contentType request content type
+   * @param acceptTypes list of response accept types
+   * @param callback to call on request completion. In the event of an error, the callback
+   *                 will receive a {@link com.linkedin.r2.RemoteInvocationException}. If a valid
+   *                 error response was received from the remote server, the callback will receive
+   *                 a {@link com.linkedin.r2.message.rest.RestException} containing the error details.
+   */
+  private void sendStreamRequestImpl(RequestContext requestContext,
+      URI uri,
+      ResourceMethod method,
+      DataMap dataMap,
+      Map<String, String> headers,
+      String methodName,
+      ProtocolVersion protocolVersion,
+      CompressionOption requestCompressionOverride,
+      ContentType contentType,
+      List<AcceptType> acceptTypes,
+      Callback<StreamResponse> callback)
   {
-    RestRequestBuilder requestBuilder = new RestRequestBuilder(uri).setMethod(
-            method.getHttpMethod().toString());
+    try
+    {
+      //RestRequest request = buildRestRequest(uri, method, dataMap, headers, protocolVersion, contentType, acceptTypes);
+      StreamRequest request = buildStreamRequest();
+      String operation = OperationNameGenerator.generate(method, methodName);
+      requestContext.putLocalAttr(R2Constants.OPERATION, operation);
+      requestContext.putLocalAttr(R2Constants.REQUEST_COMPRESSION_OVERRIDE, requestCompressionOverride);
+      _client.streamRequest(request, requestContext, callback);
+      //_client.restRequest(request, requestContext, callback);
+    }
+    catch (Exception e)
+    {
+      // No need to wrap the exception; RestLiCallbackAdapter.onError() will take care of that
+      callback.onError(e);
+    }
+  }
+
+
+
+
+
+
+
+
+
+  private StreamRequest buildStreamRequest(URI uri,
+      ResourceMethod method,
+      DataMap dataMap,
+      Map<String, String> headers,
+      ProtocolVersion protocolVersion,
+      ContentType contentType,
+      List<AcceptType> acceptTypes,
+      RestLiStreamingAttachments streamingAttachments) throws Exception
+  {
+    StreamRequestBuilder requestBuilder = new StreamRequestBuilder(uri).setMethod(method.getHttpMethod().toString());
 
     requestBuilder.setHeaders(headers);
     addAcceptHeaders(requestBuilder, acceptTypes);
-    addEntityAndContentTypeHeaders(requestBuilder, dataMap, contentType);
+    addProtocolVersionHeader(requestBuilder, protocolVersion);
+
+    if (method.getHttpMethod() == HttpMethod.POST)
+    {
+      requestBuilder.setHeader(RestConstants.HEADER_RESTLI_REQUEST_METHOD, method.toString());
+    }
+
+    final ContentType type = calculateAndSetContentType(requestBuilder, dataMap, contentType);
+    if (type != null)
+    {
+      switch (type)
+      {
+        //todo - use unsafeWrap(bytes) to avoid a copy here when R2 teams finishes modifying ByteString
+        case PSON:
+          final ByteStringWriter psonWriter = new ByteStringWriter(ByteString.copy(PSON_DATA_CODEC.mapToBytes(dataMap)));
+          return requestBuilder.build(EntityStreams.newEntityStream(psonWriter));
+        case JSON:
+          final ByteStringWriter jsonWriter = new ByteStringWriter(ByteString.copy(JACKSON_DATA_CODEC.mapToBytes(dataMap)));
+          return requestBuilder.build(EntityStreams.newEntityStream(jsonWriter));
+        case MULTIPART_RELATED:
+          //JSON is first part
+          final ByteStringWriter firstPartJsonWriter = new ByteStringWriter(ByteString.copy(JACKSON_DATA_CODEC.mapToBytes(dataMap)));
+          //Add attachments if not null
+
+          final MultiPartMIMEWriter.Builder multiPartMIMEWriterBuilder =
+              new MultiPartMIMEWriter.Builder("preamble", "epilogue");
+
+          for (final RestLiStreamingDataSource dataSource : streamingAttachments.getStreamingDataSources())
+          {
+            multiPartMIMEWriterBuilder.appendDataSource(new MultiPartMIMEDataSource()
+            {
+              @Override
+              public Map<String, String> dataSourceHeaders()
+              {
+                return Collections.emptyMap()
+              }
+
+              @Override
+              public void onInit(WriteHandle wh)
+              {
+                dataSource.onInit(wh);
+              }
+
+              @Override
+              public void onWritePossible()
+              {
+                dataSource.onWritePossible();
+              }
+
+              @Override
+              public void onAbort(Throwable e)
+              {
+                dataSource.onAbort(e);
+              }
+            });
+          }
+
+          final StreamRequest multiPartMIMEStreamRequest =
+              new MultiPartMIMEStreamRequestBuilder(URI.create("localhost"), "mixed", multiPartMIMEWriterBuilder.build(),
+                  Collections.<String, String>emptyMap()).build();
+
+          break;
+        default:
+          throw new IllegalStateException("Unknown ContentType:" + type);
+      }
+    }
+
+
+    return requestBuilder.build();
+  }
+
+
+  // This throws Exception to remind the caller to deal with arbitrary exceptions including RuntimeException
+  // in a way appropriate for the public method that was originally invoked.
+  private RestRequest buildRestRequest(URI uri,
+                                       ResourceMethod method,
+                                       DataMap dataMap,
+                                       Map<String, String> headers,
+                                       ProtocolVersion protocolVersion,
+                                       ContentType contentType,
+                                       List<AcceptType> acceptTypes) throws Exception
+  {
+    RestRequestBuilder requestBuilder = new RestRequestBuilder(uri).setMethod(method.getHttpMethod().toString());
+
+    requestBuilder.setHeaders(headers);
+    addAcceptHeaders(requestBuilder, acceptTypes);
+
+    final ContentType type = calculateAndSetContentType(requestBuilder, dataMap, contentType);
+    switch (type)
+    {
+      case PSON:
+        requestBuilder.setEntity(PSON_DATA_CODEC.mapToBytes(dataMap));
+        break;
+      case JSON:
+        requestBuilder.setEntity(JACKSON_DATA_CODEC.mapToBytes(dataMap));
+        break;
+      default:
+        throw new IllegalStateException("Unknown ContentType:" + type);
+    }
+
     addProtocolVersionHeader(requestBuilder, protocolVersion);
 
     if (method.getHttpMethod() == HttpMethod.POST)
@@ -699,12 +916,13 @@ public class RestClient
     return requestBuilder.build();
   }
 
+
   /**
    * Adds the protocol version of Rest.li used to build the request to the headers for this request
    * @param builder
    * @param protocolVersion
    */
-  private void addProtocolVersionHeader(RestRequestBuilder builder, ProtocolVersion protocolVersion)
+  private void addProtocolVersionHeader(MessageHeadersBuilder builder, ProtocolVersion protocolVersion)
   {
     builder.setHeader(RestConstants.HEADER_RESTLI_PROTOCOL_VERSION, protocolVersion.toString());
   }
@@ -731,7 +949,7 @@ public class RestClient
   public static enum ContentType
   {
     PSON(RestConstants.HEADER_VALUE_APPLICATION_PSON),
-    JSON(RestConstants.HEADER_VALUE_APPLICATION_JSON);
+    JSON(RestConstants.HEADER_VALUE_APPLICATION_JSON),
 
     private String _headerKey;
 
