@@ -211,4 +211,9 @@ public class ResponseImpl<T> implements Response<T>
   {
     return _attachmentReader;
   }
+
+  public void setAttachmentReader(RestLiAttachmentReader attachmentReader)
+  {
+    _attachmentReader = attachmentReader;
+  }
 }

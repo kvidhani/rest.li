@@ -20,6 +20,12 @@
 
 package com.linkedin.restli.internal.client;
 
+import com.linkedin.common.callback.Callback;
+import com.linkedin.multipart.MultiPartMIMEReader;
+import com.linkedin.multipart.MultiPartMIMEReaderCallback;
+import com.linkedin.r2.message.rest.StreamResponse;
+import com.linkedin.r2.message.streaming.FullEntityReader;
+import com.linkedin.restli.client.RestLiAttachmentReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
@@ -50,11 +56,42 @@ public abstract class RestResponseDecoder<T>
   private static final JacksonDataCodec JACKSON_DATA_CODEC = new JacksonDataCodec();
   private static final PsonDataCodec    PSON_DATA_CODEC    = new PsonDataCodec();
 
+  public Response<T> decodeResponse(StreamResponse streamResponse) throws RestLiDecodingException
+  {
+    //Determine content type first.
+    //If 'multipart/related', then use MultiPartMIMEReader to read first part (which can be json or pson).
+    //Otherwise if the whole body is json/pson then read everything in.
+    if(streamResponse.getHeader(RestConstants.HEADER_CONTENT_TYPE).equalsIgnoreCase(RestConstants.HEADER_VALUE_MULTIPART_RELATED))
+    {
+      final FirstPartReader firstPartReader = new FirstPartReader();
+      final MultiPartMIMEReader multiPartMIMEReader = MultiPartMIMEReader.createAndAcquireStream(streamResponse, firstPartReader);
+    }
+    else
+    {
+      final FullEntityReader fullEntityReader = new FullEntityReader(new Callback<ByteString>()
+      {
+        @Override
+        public void onError(Throwable e)
+        {
+          //todo
+        }
+
+        @Override
+        public void onSuccess(ByteString result)
+        {
+        }
+      });
+    }
+  }
+
   public Response<T> decodeResponse(RestResponse restResponse) throws RestLiDecodingException
   {
-    ResponseImpl<T> response = new ResponseImpl<T>(restResponse.getStatus(), restResponse.getHeaders());
+    return createResponse(restResponse.getHeaders(), restResponse.getStatus(), restResponse.getEntity());
+  }
 
-    ByteString entity = restResponse.builder().getEntity();
+  private Response<T> createResponse(Map<String, String> headers, int status, ByteString entity) throws RestLiDecodingException
+  {
+    ResponseImpl<T> response = new ResponseImpl<T>(status, headers);
 
     try
     {
@@ -67,7 +104,7 @@ public abstract class RestResponseDecoder<T>
       {
         InputStream inputStream = entity.asInputStream();
         if ((RestConstants.HEADER_VALUE_APPLICATION_PSON)
-                .equalsIgnoreCase(restResponse.getHeader(RestConstants.HEADER_CONTENT_TYPE)))
+            .equalsIgnoreCase(headers.get(RestConstants.HEADER_CONTENT_TYPE)))
         {
           dataMap = PSON_DATA_CODEC.readMap(inputStream);
         }
@@ -77,7 +114,7 @@ public abstract class RestResponseDecoder<T>
         }
         inputStream.close();
       }
-      response.setEntity(wrapResponse(dataMap, restResponse.getHeaders(), ProtocolVersionUtil.extractProtocolVersion(response.getHeaders())));
+      response.setEntity(wrapResponse(dataMap, headers, ProtocolVersionUtil.extractProtocolVersion(response.getHeaders())));
       return response;
     }
     catch (IOException e)
@@ -99,6 +136,54 @@ public abstract class RestResponseDecoder<T>
     catch (NoSuchMethodException e)
     {
       throw new IllegalStateException(e);
+    }
+  }
+
+  private class FirstPartReader implements MultiPartMIMEReaderCallback
+  {
+
+    /**
+     * Invoked (at some time in the future) upon a registration with a {@link com.linkedin.multipart.MultiPartMIMEReader}.
+     * Also invoked when previous parts are finished and new parts are available.
+     *
+
+     * @param singleParMIMEReader the SinglePartMIMEReader which can be used to walk through this part.
+     */
+    @Override
+    public void onNewPart(MultiPartMIMEReader.SinglePartMIMEReader singleParMIMEReader)
+    {
+
+    }
+
+    /**
+     * Invoked when this reader is finished and the multipart mime envelope has been completely read.
+     */
+    @Override
+    public void onFinished()
+    {
+
+    }
+
+    /**
+     * Invoked as a result of calling {@link com.linkedin.multipart.MultiPartMIMEReader#abandonAllParts()}. This will be invoked
+     * at some time in the future when all the parts from this multipart mime envelope are abandoned.
+     */
+    @Override
+    public void onAbandoned()
+    {
+
+    }
+
+    /**
+     * Invoked when there was an error reading from the multipart envelope.
+     *
+
+     * @param throwable the Throwable that caused this to happen.
+     */
+    @Override
+    public void onStreamError(Throwable throwable)
+    {
+
     }
   }
 
