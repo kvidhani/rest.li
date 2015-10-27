@@ -16,25 +16,22 @@
 
 package com.linkedin.restli.server;
 
+import com.linkedin.common.callback.Callback;
+import com.linkedin.r2.message.RequestContext;
+import com.linkedin.r2.message.rest.RestRequest;
+import com.linkedin.r2.message.rest.RestResponse;
 import com.linkedin.r2.message.rest.StreamRequest;
 import com.linkedin.r2.message.rest.StreamResponse;
 import com.linkedin.r2.transport.common.StreamRequestHandler;
+import com.linkedin.restli.internal.server.model.ResourceModel;
 import java.util.Map;
-
-import com.linkedin.r2.message.RequestContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.linkedin.common.callback.Callback;
-import com.linkedin.r2.message.rest.RestRequest;
-import com.linkedin.r2.message.rest.RestResponse;
-import com.linkedin.r2.transport.common.RestRequestHandler;
-import com.linkedin.restli.internal.server.model.ResourceModel;
 
 /**
  * @author dellamag
  */
-public abstract class BaseRestServer implements RestRequestHandler, StreamRequestHandler
+public abstract class BaseRestServer implements /*RestRequestHandler,*/ StreamRequestHandler
 {
   private static final Logger log = LoggerFactory.getLogger(BaseRestServer.class);
 
@@ -50,7 +47,7 @@ public abstract class BaseRestServer implements RestRequestHandler, StreamReques
    * @see com.linkedin.r2.transport.common.RestRequestHandler#handleRequest(com.linkedin.r2.message.rest.RestRequest,
    *      com.linkedin.r2.message.RequestContext, com.linkedin.common.callback.Callback)
    */
-  @Override
+  //@Override
   public void handleRequest(final RestRequest request, final RequestContext requestContext,
                             final Callback<RestResponse> callback)
   {

@@ -52,7 +52,7 @@ public class ActionRequestBuilder<K, V> extends AbstractRequestBuilder<K, V, Act
   private K                              _id;
   private String                         _name;
   private final Map<FieldDef<?>, Object> _actionParams = new HashMap<FieldDef<?>, Object>();
-  private RestLiStreamingAttachments _streamingAttachments;
+  private RestLiStreamingAttachments     _streamingAttachments;
 
   public ActionRequestBuilder(String baseUriTemplate, Class<V> elementClass, ResourceSpec resourceSpec, RestliRequestOptions requestOptions)
   {

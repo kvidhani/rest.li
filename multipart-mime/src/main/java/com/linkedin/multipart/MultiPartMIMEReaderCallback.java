@@ -40,7 +40,7 @@ public interface MultiPartMIMEReaderCallback
   public void onFinished();
 
   /**
-   * Invoked as a result of calling {@link com.linkedin.restli.common.attachments.RestLiAttachmentReader#abandonAllParts()}. This will be invoked
+   * Invoked as a result of calling {@link com.linkedin.multipart.MultiPartMIMEReader#abandonAllParts()}. This will be invoked
    * at some time in the future when all the parts from this multipart mime envelope are abandoned.
    */
   public void onAbandoned();

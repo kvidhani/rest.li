@@ -133,10 +133,15 @@ public class RestliServlet extends HttpServlet
         .setTimerScheduler(scheduler)
         .build();
 
+    /*
     DelegatingTransportDispatcher dispatcher = new DelegatingTransportDispatcher(new RestLiServer(
         config,
         resourceFactory,
         engine));
+    */
+
+    DelegatingTransportDispatcher dispatcher = new DelegatingTransportDispatcher(null);
+
 
     boolean useAsync = getUseAsync(servletConfig);
     long asyncTimeOut = getAsyncTimeout(servletConfig);

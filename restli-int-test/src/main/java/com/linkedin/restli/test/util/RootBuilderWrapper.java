@@ -30,6 +30,7 @@ import com.linkedin.restli.common.EmptyRecord;
 import com.linkedin.restli.common.OptionsResponse;
 import com.linkedin.restli.common.PatchRequest;
 import com.linkedin.restli.common.UpdateStatus;
+import com.linkedin.restli.common.attachments.RestLiStreamingAttachments;
 import com.linkedin.restli.internal.tools.RestLiToolsUtils;
 
 import java.lang.reflect.InvocationTargetException;
@@ -191,6 +192,11 @@ public class RootBuilderWrapper<K, V extends RecordTemplate>
     public MethodBuilderWrapper<K, V, R> setHeader(String name, String value)
     {
       return invoke(getMethod("setHeader", String.class, String.class), name, value);
+    }
+
+    public MethodBuilderWrapper<K, V, R> streamingAttachments(RestLiStreamingAttachments streamingAttachments)
+    {
+      return invoke(getMethod("streamingAttachments", RestLiStreamingAttachments.class), streamingAttachments);
     }
 
     public MethodBuilderWrapper<K, V, R> setParam(String name, Object value)

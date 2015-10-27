@@ -32,6 +32,7 @@ import com.linkedin.r2.filter.CompressionOption;
 import com.linkedin.r2.filter.R2Constants;
 import com.linkedin.r2.message.RequestContext;
 import com.linkedin.r2.message.rest.MessageHeadersBuilder;
+import com.linkedin.r2.message.rest.Messages;
 import com.linkedin.r2.message.rest.RestRequest;
 import com.linkedin.r2.message.rest.RestRequestBuilder;
 import com.linkedin.r2.message.rest.RestResponse;
@@ -274,13 +275,6 @@ public class RestClient
     ProtocolVersion protocolVersion = getProtocolVersionForService(request);
     URI requestUri = RestliUriBuilderUtil.createUriBuilder(request, _uriPrefix, protocolVersion).build();
 
-    if (request.getStreamingAttachments() != null)
-    {
-      //If the client decided to stream some attachments then we set the header here. Note that this will supercede
-      //anything set by the RestliRequestOptions.
-      request.getHeaders().put(RestConstants.HEADER_CONTENT_TYPE, RestConstants.HEADER_VALUE_MULTIPART_RELATED);
-    }
-
     sendStreamRequestImpl(requestContext,
         requestUri,
         request.getMethod(),
@@ -467,6 +461,10 @@ public class RestClient
       if (types != null && !types.isEmpty())
       {
         builder.setHeader(RestConstants.HEADER_ACCEPT, createAcceptHeader(types, acceptAttachments));
+      }
+      else if(acceptAttachments)
+      {
+        builder.setHeader(RestConstants.HEADER_ACCEPT, createAcceptHeader(Collections.<AcceptType>emptyList(), acceptAttachments));
       }
     }
   }
@@ -748,7 +746,7 @@ public class RestClient
   {
     try
     {
-      RestRequest request = buildRestRequest(uri, method, dataMap, headers, protocolVersion, contentType, acceptTypes);
+      RestRequest request = buildRestRequest(uri, method, dataMap, headers, protocolVersion, contentType, acceptTypes, false);
       String operation = OperationNameGenerator.generate(method, methodName);
       requestContext.putLocalAttr(R2Constants.OPERATION, operation);
       requestContext.putLocalAttr(R2Constants.REQUEST_COMPRESSION_OVERRIDE, requestCompressionOverride);
@@ -793,7 +791,6 @@ public class RestClient
   {
     try
     {
-      //todo java doc changes everywhere
       final StreamRequest request = buildStreamRequest(uri,
           method,
           dataMap,
@@ -836,35 +833,42 @@ public class RestClient
       requestBuilder.setHeader(RestConstants.HEADER_RESTLI_REQUEST_METHOD, method.toString());
     }
 
-    final ByteStringWriter firstPartWriter;
-    final MultiPartMIMEWriter.Builder multiPartMIMEWriterBuilder = new MultiPartMIMEWriter.Builder();
-
-    final ContentType type = resolveContentType(requestBuilder, dataMap, contentType);
-    requestBuilder.setHeader(RestConstants.HEADER_CONTENT_TYPE, RestConstants.HEADER_VALUE_MULTIPART_RELATED);
-    //This assertion holds true since there will be a non null dataMap (payload) for all requests which are are
-    //eligible to have attachments.
-    assert (type != null);
-    switch (type)
+    //If we have attachments outbound we use multipart related. If we don't, we just stream out our traditional
+    //wire protocol.
+    if (streamingAttachments != null && streamingAttachments.getStreamingDataSources().size() > 0)
     {
-      case PSON:
-        firstPartWriter = new ByteStringWriter(ByteString.copy(PSON_DATA_CODEC.mapToBytes(dataMap)));
-        break;
-      case JSON:
-        firstPartWriter = new ByteStringWriter(ByteString.copy(JACKSON_DATA_CODEC.mapToBytes(dataMap)));
-        break;
-      default:
-        throw new IllegalStateException("Unknown ContentType:" + type);
+      final ByteStringWriter firstPartWriter;
+      final ContentType type = resolveContentType(requestBuilder, dataMap, contentType);
+      //This assertion holds true since there will be a non null dataMap (payload) for all requests which are are
+      //eligible to have attachments.
+      assert (type != null);
+      switch (type)
+      {
+        case PSON:
+          firstPartWriter = new ByteStringWriter(ByteString.copy(PSON_DATA_CODEC.mapToBytes(dataMap)));
+          break;
+        case JSON:
+          firstPartWriter = new ByteStringWriter(ByteString.copy(JACKSON_DATA_CODEC.mapToBytes(dataMap)));
+          break;
+        default:
+          throw new IllegalStateException("Unknown ContentType:" + type);
+      }
+
+      final MultiPartMIMEWriter multiPartMIMEWriter =
+          AttachmentUtilities.createMultiPartMIMEWriter(firstPartWriter, type.getHeaderKey(), streamingAttachments);
+
+      final StreamRequest streamRequest = MultiPartMIMEStreamRequestBuilder.generateMultiPartMIMEStreamRequest(
+          AttachmentUtilities.RESTLI_MULTIPART_SUBTYPE,
+          multiPartMIMEWriter,
+          Collections.<String, String>emptyMap(),
+          requestBuilder);
+      return streamRequest;
     }
-
-    final MultiPartMIMEWriter multiPartMIMEWriter = AttachmentUtilities.createMultiPartMIMEWriter(firstPartWriter,
-      type.getHeaderKey(), streamingAttachments);
-
-    final StreamRequest streamRequest =
-        MultiPartMIMEStreamRequestBuilder.generateMultiPartMIMEStreamRequest(AttachmentUtilities.RESTLI_MULTIPART_SUBTYPE,
-            multiPartMIMEWriter, Collections.<String, String>emptyMap(), requestBuilder);
-    return streamRequest;
+    else
+    {
+      return Messages.toStreamRequest(buildRestRequest(uri, method, dataMap, headers, protocolVersion, contentType, acceptTypes, acceptResponseAttachments));
+    }
   }
-
 
   // This throws Exception to remind the caller to deal with arbitrary exceptions including RuntimeException
   // in a way appropriate for the public method that was originally invoked.
@@ -874,12 +878,13 @@ public class RestClient
                                        Map<String, String> headers,
                                        ProtocolVersion protocolVersion,
                                        ContentType contentType,
-                                       List<AcceptType> acceptTypes) throws Exception
+                                       List<AcceptType> acceptTypes,
+                                       boolean acceptResponseAttachments) throws Exception
   {
     RestRequestBuilder requestBuilder = new RestRequestBuilder(uri).setMethod(method.getHttpMethod().toString());
 
     requestBuilder.setHeaders(headers);
-    addAcceptHeaders(requestBuilder, acceptTypes, false);
+    addAcceptHeaders(requestBuilder, acceptTypes, acceptResponseAttachments);
 
     final ContentType type = resolveContentType(requestBuilder, dataMap, contentType);
     if (type != null)

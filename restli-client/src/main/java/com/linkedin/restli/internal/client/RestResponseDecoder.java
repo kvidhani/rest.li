@@ -20,6 +20,7 @@
 
 package com.linkedin.restli.internal.client;
 
+
 import com.linkedin.common.callback.Callback;
 import com.linkedin.data.ByteString;
 import com.linkedin.data.DataMap;
@@ -33,10 +34,10 @@ import com.linkedin.r2.message.rest.RestResponse;
 import com.linkedin.r2.message.rest.StreamResponse;
 import com.linkedin.r2.message.streaming.FullEntityReader;
 import com.linkedin.restli.client.Response;
-import com.linkedin.restli.common.attachments.RestLiAttachmentReader;
 import com.linkedin.restli.client.RestLiDecodingException;
 import com.linkedin.restli.common.ProtocolVersion;
 import com.linkedin.restli.common.RestConstants;
+import com.linkedin.restli.common.attachments.RestLiAttachmentReader;
 import com.linkedin.restli.internal.common.AllProtocolVersions;
 import com.linkedin.restli.internal.common.ProtocolVersionUtil;
 import java.io.IOException;
@@ -44,6 +45,9 @@ import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Collections;
 import java.util.Map;
+import javax.mail.internet.ContentType;
+import javax.mail.internet.ParseException;
+
 
 /**
  * Converts a raw RestResponse into a type-bound response.  The class is abstract
@@ -60,39 +64,51 @@ public abstract class RestResponseDecoder<T>
   {
     //Determine content type and take appropriate action.
     //If 'multipart/related', then use MultiPartMIMEReader to read first part (which can be json or pson).
-    //Otherwise if the whole body is json/pson then read everything in.
-    if(streamResponse.getHeader(RestConstants.HEADER_CONTENT_TYPE).equalsIgnoreCase(RestConstants.HEADER_VALUE_MULTIPART_RELATED))
+    final String contentTypeString = streamResponse.getHeader(RestConstants.HEADER_CONTENT_TYPE);
+    if(contentTypeString != null)
     {
-      final MultiPartMIMEReader multiPartMIMEReader = MultiPartMIMEReader.createAndAcquireStream(streamResponse);
-      final TopLevelReaderCallback firstPartReader = new TopLevelReaderCallback(responseCallback, streamResponse, multiPartMIMEReader);
-      multiPartMIMEReader.registerReaderCallback(firstPartReader);
-    }
-    else
-    {
-      //This will not have an extra copy due to assembly since FullEntityReader uses a compound ByteString.
-      final FullEntityReader fullEntityReader = new FullEntityReader(new Callback<ByteString>()
+      ContentType contentType = null;
+      try
       {
-        @Override
-        public void onError(Throwable e)
-        {
-          responseCallback.onError(e);
-        }
-
-        @Override
-        public void onSuccess(ByteString result)
-        {
-          try
-          {
-            responseCallback.onSuccess(createResponse(streamResponse.getHeaders(), streamResponse.getStatus(), result));
-          }
-          catch (Exception exception)
-          {
-            onError(exception);
-          }
-        }
-      });
-      streamResponse.getEntityStream().setReader(fullEntityReader);
+        contentType = new ContentType(contentTypeString);
+      }
+      catch (ParseException parseException)
+      {
+        responseCallback.onError(new RestLiDecodingException("Could not decode Content-Type header in response", parseException));
+      }
+      if(contentType.getBaseType().equalsIgnoreCase(RestConstants.HEADER_VALUE_MULTIPART_RELATED))
+      {
+        final MultiPartMIMEReader multiPartMIMEReader = MultiPartMIMEReader.createAndAcquireStream(streamResponse);
+        final TopLevelReaderCallback firstPartReader = new TopLevelReaderCallback(responseCallback, streamResponse, multiPartMIMEReader);
+        multiPartMIMEReader.registerReaderCallback(firstPartReader);
+        return;
+      }
     }
+
+    //Otherwise if the whole body is json/pson then read everything in.
+    //This will not have an extra copy due to assembly since FullEntityReader uses a compound ByteString.
+    final FullEntityReader fullEntityReader = new FullEntityReader(new Callback<ByteString>()
+    {
+      @Override
+      public void onError(Throwable e)
+      {
+        responseCallback.onError(e);
+      }
+
+      @Override
+      public void onSuccess(ByteString result)
+      {
+        try
+        {
+          responseCallback.onSuccess(createResponse(streamResponse.getHeaders(), streamResponse.getStatus(), result));
+        }
+        catch (Exception exception)
+        {
+          onError(exception);
+        }
+      }
+    });
+    streamResponse.getEntityStream().setReader(fullEntityReader);
   }
 
   public Response<T> decodeResponse(RestResponse restResponse) throws RestLiDecodingException
@@ -166,6 +182,11 @@ public abstract class RestResponseDecoder<T>
       _multiPartMIMEReader = multiPartMIMEReader;
     }
 
+    private void setResponse(ResponseImpl<T> response)
+    {
+      _response = response;
+    }
+
     @Override
     public void onNewPart(MultiPartMIMEReader.SinglePartMIMEReader singleParMIMEReader)
     {
@@ -182,9 +203,9 @@ public abstract class RestResponseDecoder<T>
       }
       else
       {
-        //This is the 2nd part, so pass this on to the client
-        //todo what if there is nothing left?
+        //This is the 2nd part, so pass this on to the client.
         _response.setAttachmentReader(new RestLiAttachmentReader(_multiPartMIMEReader));
+        _responseCallback.onSuccess(_response);
       }
     }
 
@@ -226,7 +247,6 @@ public abstract class RestResponseDecoder<T>
     private final MultiPartMIMEReader.SinglePartMIMEReader _singlePartMIMEReader;
     private final StreamResponse _streamResponse;
     private final ByteString.Builder _builder = new ByteString.Builder();
-    private ResponseImpl<T> _response = null;
 
     public FirstPartReaderCallback(final Callback<Response<T>> responseCallback,
                                    final TopLevelReaderCallback topLevelReaderCallback,
@@ -253,7 +273,8 @@ public abstract class RestResponseDecoder<T>
     {
       try
       {
-        _response = createResponse(_streamResponse.getHeaders(), _streamResponse.getStatus(), _builder.build());
+        _topLevelReaderCallback
+            .setResponse(createResponse(_streamResponse.getHeaders(), _streamResponse.getStatus(), _builder.build()));
         //Note that we can't answer the callback of the client yet since we don't know if there are more parts.
       } catch (Exception exception)
       {

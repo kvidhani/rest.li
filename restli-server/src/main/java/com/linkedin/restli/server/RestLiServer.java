@@ -149,7 +149,7 @@ public class RestLiServer extends BaseRestServer
       _debugHandlers.put(debugHandler.getHandlerId(), debugHandler);
     }
 
-    _multiplexedRequestHandler = new MultiplexedRequestHandlerImpl(this, engine);
+    _multiplexedRequestHandler = new MultiplexedRequestHandlerImpl(null, engine);
     // verify that if there are resources using the engine, then the engine is not null
     if (engine == null)
     {
@@ -603,7 +603,7 @@ public class RestLiServer extends BaseRestServer
   private class TopLevelReaderCallback implements MultiPartMIMEReaderCallback
   {
     private final RestRequestBuilder _restRequestBuilder;
-    private final ByteString _requestPayload = null;
+    private volatile ByteString _requestPayload = null;
     private final RequestContext _requestContext;
     private final Callback<StreamResponse> _streamResponseCallback;
     private final MultiPartMIMEReader _multiPartMIMEReader;
@@ -615,6 +615,11 @@ public class RestLiServer extends BaseRestServer
       _requestContext = requestContext;
       _streamResponseCallback = streamResponseCallback;
       _multiPartMIMEReader = multiPartMIMEReader;
+    }
+
+    private void setRequestPayload(final ByteString requestPayload)
+    {
+      _requestPayload = requestPayload;
     }
 
     @Override
@@ -646,8 +651,8 @@ public class RestLiServer extends BaseRestServer
         }
 
         final String baseType = contentType.getBaseType();
-        if (!baseType.equalsIgnoreCase(RestConstants.HEADER_VALUE_APPLICATION_JSON) ||
-            !baseType.equalsIgnoreCase(RestConstants.HEADER_VALUE_APPLICATION_PSON))
+        if (!(baseType.equalsIgnoreCase(RestConstants.HEADER_VALUE_APPLICATION_JSON) ||
+            baseType.equalsIgnoreCase(RestConstants.HEADER_VALUE_APPLICATION_PSON)))
         {
           _streamResponseCallback.onError(new RestLiServiceException(HttpStatus.S_415_UNSUPPORTED_MEDIA_TYPE,
           "Unknown Content-Type for first part of multipart/related payload: " + contentType.toString()));
@@ -713,7 +718,6 @@ public class RestLiServer extends BaseRestServer
     private final TopLevelReaderCallback _topLevelReaderCallback;
     private final MultiPartMIMEReader.SinglePartMIMEReader _singlePartMIMEReader;
     private final ByteString.Builder _builder = new ByteString.Builder();
-    private ByteString _requestPayload;
 
     public FirstPartReaderCallback(
         final TopLevelReaderCallback topLevelReaderCallback,
@@ -722,7 +726,6 @@ public class RestLiServer extends BaseRestServer
     {
       _topLevelReaderCallback = topLevelReaderCallback;
       _singlePartMIMEReader = singlePartMIMEReader;
-      _requestPayload = requestPayload;
     }
 
     @Override
@@ -735,7 +738,7 @@ public class RestLiServer extends BaseRestServer
     @Override
     public void onFinished()
     {
-      _requestPayload = _builder.build();
+      _topLevelReaderCallback.setRequestPayload(_builder.build());
     }
 
     @Override

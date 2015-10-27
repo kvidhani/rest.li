@@ -431,7 +431,7 @@ public class ResourceContextImpl implements ServerResourceContext
   @Override
   public void setResponseAttachments(RestLiStreamingAttachments responseAttachments) throws IllegalStateException
   {
-    if (_responseAttachmentsAllowed)
+    if (!_responseAttachmentsAllowed)
     {
       throw new IllegalStateException("Response attachments can only be set if the client request indicates permissibility");
     }
