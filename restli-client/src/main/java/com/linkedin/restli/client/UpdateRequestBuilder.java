@@ -20,6 +20,7 @@ package com.linkedin.restli.client;
 import com.linkedin.data.template.RecordTemplate;
 import com.linkedin.restli.common.ResourceSpec;
 
+import com.linkedin.restli.common.attachments.RestLiStreamingAttachments;
 import java.util.Map;
 
 

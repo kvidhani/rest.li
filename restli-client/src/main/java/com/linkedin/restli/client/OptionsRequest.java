@@ -46,6 +46,7 @@ public class OptionsRequest extends Request<OptionsResponse>
           null,
           baseUriTemplate,
           pathKeys,
-          requestOptions);
+          requestOptions,
+          null);
   }
 }

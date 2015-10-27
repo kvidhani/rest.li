@@ -22,7 +22,7 @@ package com.linkedin.restli.client.base;
 
 import com.linkedin.data.template.FieldDef;
 import com.linkedin.restli.client.ActionRequestBuilder;
-import com.linkedin.restli.client.RestLiStreamingAttachments;
+import com.linkedin.restli.common.attachments.RestLiStreamingAttachments;
 import com.linkedin.restli.client.RestliRequestOptions;
 import com.linkedin.restli.common.ResourceSpec;
 

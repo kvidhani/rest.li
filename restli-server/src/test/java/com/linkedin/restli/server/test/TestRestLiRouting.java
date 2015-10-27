@@ -75,7 +75,7 @@ public class TestRestLiRouting
     // #1 simple GET
     RestRequest request = createRequest(uri, "GET", version);
 
-    RoutingResult result = _router.process(request, new RequestContext());
+    RoutingResult result = _router.process(request, new RequestContext(), null);
     assertNotNull(result);
 
     ResourceMethodDescriptor resourceMethodDescriptor = result.getResourceMethod();
@@ -112,7 +112,7 @@ public class TestRestLiRouting
 
     RestRequest request = createRequest(uri, "GET", version);
 
-    RoutingResult result = _router.process(request, new RequestContext());
+    RoutingResult result = _router.process(request, new RequestContext(), null);
     assertNotNull(result);
 
     ResourceMethodDescriptor resourceMethodDescriptor = result.getResourceMethod();
@@ -139,7 +139,7 @@ public class TestRestLiRouting
 
     RestRequest request = createRequest(uri, "PUT", version);
 
-    RoutingResult result = _router.process(request, new RequestContext());
+    RoutingResult result = _router.process(request, new RequestContext(), null);
     assertNotNull(result);
 
     ResourceMethodDescriptor resourceMethodDescriptor = result.getResourceMethod();
@@ -166,7 +166,7 @@ public class TestRestLiRouting
 
     RestRequest request = createRequest(uri, "DELETE", version);
 
-    RoutingResult result = _router.process(request, new RequestContext());
+    RoutingResult result = _router.process(request, new RequestContext(), null);
     assertNotNull(result);
 
     ResourceMethodDescriptor resourceMethodDescriptor = result.getResourceMethod();
@@ -203,7 +203,7 @@ public class TestRestLiRouting
 
     RestRequest request = createRequest(uri, "GET", version);
 
-    RoutingResult result = _router.process(request, new RequestContext());
+    RoutingResult result = _router.process(request, new RequestContext(), null);
     assertNotNull(result);
 
     ResourceMethodDescriptor resourceMethodDescriptor = result.getResourceMethod();
@@ -258,7 +258,7 @@ public class TestRestLiRouting
 
     RestRequest request = createRequest(uri, "GET", version);
 
-    RoutingResult result = _router.process(request, new RequestContext());
+    RoutingResult result = _router.process(request, new RequestContext(), null);
     assertNotNull(result);
 
     ResourceMethodDescriptor resourceMethodDescriptor = result.getResourceMethod();
@@ -284,7 +284,7 @@ public class TestRestLiRouting
 
     RestRequest request = createRequest(uri, "PUT", version);
 
-    RoutingResult result = _router.process(request, new RequestContext());
+    RoutingResult result = _router.process(request, new RequestContext(), null);
     assertNotNull(result);
 
     ResourceMethodDescriptor resourceMethodDescriptor = result.getResourceMethod();
@@ -310,7 +310,7 @@ public class TestRestLiRouting
 
     RestRequest request = createRequest(uri, "POST", version);
 
-    RoutingResult result = _router.process(request, new RequestContext());
+    RoutingResult result = _router.process(request, new RequestContext(), null);
     assertNotNull(result);
 
     ResourceMethodDescriptor resourceMethodDescriptor = result.getResourceMethod();
@@ -336,7 +336,7 @@ public class TestRestLiRouting
 
     RestRequest request = createRequest(uri, "DELETE", version);
 
-    RoutingResult result = _router.process(request, new RequestContext());
+    RoutingResult result = _router.process(request, new RequestContext(), null);
     assertNotNull(result);
 
     ResourceMethodDescriptor resourceMethodDescriptor = result.getResourceMethod();
@@ -2189,7 +2189,7 @@ public class TestRestLiRouting
     _router = new RestLiRouter(pathRootResourceMap);
 
     RestRequest request = createRequest(uri, "POST", version);
-    RoutingResult result = _router.process(request, new RequestContext());
+    RoutingResult result = _router.process(request, new RequestContext(), null);
     assertNotNull(result);
     assertEquals(result.getResourceMethod().getActionName(), "register");
     assertEquals(result.getResourceMethod().getType(), ResourceMethod.ACTION);
@@ -2214,7 +2214,7 @@ public class TestRestLiRouting
     _router = new RestLiRouter(pathRootResourceMap);
 
     RestRequest request = createRequest(uri, "POST", version);
-    RoutingResult result = _router.process(request, new RequestContext());
+    RoutingResult result = _router.process(request, new RequestContext(), null);
     assertNotNull(result);
     assertEquals(result.getResourceMethod().getActionName(), "replyToAll");
     assertEquals(result.getResourceMethod().getType(), ResourceMethod.ACTION);
@@ -2240,7 +2240,7 @@ public class TestRestLiRouting
     _router = new RestLiRouter(pathRootResourceMap);
 
     RestRequest request = createRequest(uri, "POST", version);
-    RoutingResult result = _router.process(request, new RequestContext());
+    RoutingResult result = _router.process(request, new RequestContext(), null);
     assertNotNull(result);
     assertEquals(result.getResourceMethod().getActionName(), "new_status_from_location");
     assertEquals(result.getResourceMethod().getType(), ResourceMethod.ACTION);
@@ -2448,7 +2448,7 @@ public class TestRestLiRouting
       builder.setHeader("X-RestLi-Method", restliMethod);
     }
     RestRequest request = builder.build();
-    RoutingResult result = _router.process(request, new RequestContext());
+    RoutingResult result = _router.process(request, new RequestContext(), null);
 
     assertEquals(result.getResourceMethod().getType(), method);
     assertEquals(result.getResourceMethod().getResourceModel().getResourceClass(), resourceClass);
@@ -2507,7 +2507,7 @@ public class TestRestLiRouting
       throws URISyntaxException
   {
     RestRequest request = createRequest(uri, httpMethod, version);
-    RoutingResult result = _router.process(request, new RequestContext());
+    RoutingResult result = _router.process(request, new RequestContext(), null);
     Set<?> batchKeys = result.getContext().getPathKeys().getBatchIds();
     assertEquals(batchKeys, batchCompoundKeys);
   }
@@ -2526,7 +2526,7 @@ public class TestRestLiRouting
     RestRequest request = builder.build();
     try
     {
-      RoutingResult r = _router.process(request, new RequestContext());
+      RoutingResult r = _router.process(request, new RequestContext(), null);
       fail("Expected RoutingException, got: " + r.toString());
     }
     catch (RoutingException e)
@@ -2572,7 +2572,7 @@ public class TestRestLiRouting
     // #1 simple GET
     request = createRequest(uri, "GET", version);
 
-    result = _router.process(request, new RequestContext());
+    result = _router.process(request, new RequestContext(), null);
     assertNotNull(result);
     PathKeys keys = result.getContext().getPathKeys();
     assertEquals(keys.getAsString("testId"), "foo");

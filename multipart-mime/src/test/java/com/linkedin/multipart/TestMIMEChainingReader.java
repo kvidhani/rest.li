@@ -122,7 +122,7 @@ public class TestMIMEChainingReader extends AbstractMIMEUnitTest
     ClientSinglePartMIMEReaderReceiver(final MultiPartMIMEReader.SinglePartMIMEReader singlePartMIMEReader)
     {
       _singlePartMIMEReader = singlePartMIMEReader;
-      _headers = singlePartMIMEReader.getHeaders();
+      _headers = singlePartMIMEReader.dataSourceHeaders();
     }
 
     @Override

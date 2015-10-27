@@ -25,7 +25,6 @@ import com.linkedin.data.DataMap;
 import com.linkedin.restli.common.ProtocolVersion;
 import com.linkedin.restli.server.ResourceContext;
 import com.linkedin.restli.server.RestLiServiceException;
-
 import java.net.URI;
 import java.util.Map;
 

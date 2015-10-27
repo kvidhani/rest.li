@@ -23,6 +23,7 @@ import com.linkedin.r2.message.streaming.CompositeWriter;
 import com.linkedin.r2.message.streaming.EntityStream;
 import com.linkedin.r2.message.streaming.EntityStreams;
 import com.linkedin.r2.message.streaming.Writer;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.Charset;
@@ -63,10 +64,11 @@ public final class MultiPartMIMEWriter
         (MultiPartMIMEUtils.CRLF_STRING + "--" + _rawBoundary + "--").getBytes(Charset.forName("US-ASCII"));
 
     /**
-     * Create a MultiPartMIMEWriter using the specified preamble and epilogue.
+     * Create a MultiPartMIMEWriter Builder using the specified preamble and epilogue.
      *
      * @param preamble to be placed before the multipart mime envelope according to the RFC.
-     * @param epilogue to be placed after the multipart mime enveloped according to the RFC
+     * @param epilogue to be placed after the multipart mime enveloped according to the RFC.
+     * @return the builder to continue building.
      */
     public Builder(final String preamble, final String epilogue)
     {
@@ -93,6 +95,7 @@ public final class MultiPartMIMEWriter
      * Append a {@link com.linkedin.multipart.MultiPartMIMEDataSource} to be placed in the multipart mime envelope.
      *
      * @param dataSource the data source to be added.
+     * @return the builder to continue building.
      */
     public Builder appendDataSource(final MultiPartMIMEDataSource dataSource)
     {
@@ -122,6 +125,7 @@ public final class MultiPartMIMEWriter
      * will be placed one by one into this new envelope with boundaries replaced.
      *
      * @param multiPartMIMEReader
+     * @return the builder to continue building.
      */
     public Builder appendMultiPartDataSource(final MultiPartMIMEReader multiPartMIMEReader)
     {
@@ -135,6 +139,7 @@ public final class MultiPartMIMEWriter
      * Append multiple {@link com.linkedin.multipart.MultiPartMIMEDataSource}s into the multipart mime envelope.
      *
      * @param dataSources the data sources to be added.
+     * @return the builder to continue building.
      */
     public Builder appendDataSources(final List<MultiPartMIMEDataSource> dataSources)
     {
@@ -149,6 +154,7 @@ public final class MultiPartMIMEWriter
      * Append multiple {@link com.linkedin.multipart.MultiPartMIMEReader}s into the multipart mime envelope.
      *
      * @param multiPartMIMEReaders
+     * @return the builder to continue building.
      */
     public Builder appendMultiPartDataSources(final List<MultiPartMIMEReader> multiPartMIMEReaders)
     {
@@ -160,7 +166,8 @@ public final class MultiPartMIMEWriter
     }
 
     /**
-     * Construct and return the newly formed MultiPartMIMEWriter.
+     * Construct and return the newly formed {@link com.linkedin.multipart.MultiPartMIMEWriter}.
+     * @return the fully constructed {@link com.linkedin.multipart.MultiPartMIMEWriter}.
      */
     public MultiPartMIMEWriter build()
     {

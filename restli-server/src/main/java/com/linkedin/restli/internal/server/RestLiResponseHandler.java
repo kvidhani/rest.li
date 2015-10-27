@@ -190,8 +190,8 @@ public class RestLiResponseHandler
    *           if cannot build response
    */
   public RestLiResponseEnvelope buildRestLiResponseData(final RestRequest request,
-                                                            final RoutingResult routingResult,
-                                                            final Object responseObject) throws IOException
+                                                        final RoutingResult routingResult,
+                                                        final Object responseObject) throws IOException
   {
     ServerResourceContext context = (ServerResourceContext) routingResult.getContext();
     final ProtocolVersion protocolVersion = context.getRestliProtocolVersion();

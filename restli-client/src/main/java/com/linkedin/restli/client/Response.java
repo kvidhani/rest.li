@@ -24,6 +24,7 @@ package com.linkedin.restli.client;
 import com.linkedin.r2.RemoteInvocationException;
 import com.linkedin.r2.message.RequestContext;
 
+import com.linkedin.restli.common.attachments.RestLiAttachmentReader;
 import java.net.URI;
 import java.util.Map;
 

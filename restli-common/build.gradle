@@ -4,6 +4,7 @@ dependencies {
   compile project(':li-jersey-uri')
   compile project(':pegasus-common')
   compile project(':r2-core')
+  compile project(':multipart-mime')
   compile externalDependency.jacksonCore
   testCompile project(path: ':data', configuration: 'testArtifacts')
   testCompile project(path: ':generator-test', configuration: 'testArtifacts')

@@ -28,6 +28,7 @@ import com.linkedin.restli.common.KeyValueRecord;
 import com.linkedin.restli.common.KeyValueRecordFactory;
 import com.linkedin.restli.common.PatchRequest;
 import com.linkedin.restli.common.ResourceSpec;
+import com.linkedin.restli.common.attachments.RestLiStreamingAttachments;
 import com.linkedin.restli.common.TypeSpec;
 
 import java.util.HashMap;
@@ -43,7 +44,7 @@ public class BatchPartialUpdateRequestBuilder<K, V extends RecordTemplate> exten
 {
   private final KeyValueRecordFactory<K, PatchRequest<V>> _keyValueRecordFactory;
   private final Map<K, PatchRequest<V>> _partialUpdateInputMap;
-  private RestLiStreamingAttachments    _streamingAttachments;
+  private RestLiStreamingAttachments _streamingAttachments;
 
   @SuppressWarnings({"unchecked", "rawtypes"})
   public BatchPartialUpdateRequestBuilder(String baseUriTemplate,

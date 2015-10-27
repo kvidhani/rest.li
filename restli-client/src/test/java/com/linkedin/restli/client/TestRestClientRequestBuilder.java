@@ -655,6 +655,7 @@ public class TestRestClientRequestBuilder
     EasyMock.expect(mockRequest.getResponseDecoder()).andReturn(mockResponseDecoder).once();
     EasyMock.expect(mockRequest.getHeaders()).andReturn(Collections.<String, String>emptyMap()).once();
     EasyMock.expect(mockRequest.getRequestOptions()).andReturn(requestOptions).anyTimes();
+    EasyMock.expect(mockRequest.getStreamingAttachments()).andReturn(null).anyTimes();
   }
 
   @SuppressWarnings({"rawtypes", "deprecation"})
@@ -701,7 +702,7 @@ public class TestRestClientRequestBuilder
     RestliRequestOptions requestOptions = RestliRequestOptions.DEFAULT_OPTIONS;
     if (!acceptContentTypePerClient)
     {
-      requestOptions = new RestliRequestOptions(ProtocolVersionOption.USE_LATEST_IF_AVAILABLE, null, contentType, acceptTypes);
+      requestOptions = new RestliRequestOptions(ProtocolVersionOption.USE_LATEST_IF_AVAILABLE, null, contentType, acceptTypes, false);
     }
     setCommonExpectations(mockRequest, method, mockResponseDecoder, requestOptions);
 

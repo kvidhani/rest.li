@@ -198,7 +198,7 @@ public class TestMIMEInputStream extends AbstractMIMEUnitTest
 
     //Setup for done()
     final CountDownLatch doneLatch = new CountDownLatch(1);
-    doAnswer(new Answer()
+    doAnswer(new Answer<Object>()
     {
       @Override
       public Object answer(InvocationOnMock invocation) throws Throwable
@@ -345,7 +345,7 @@ public class TestMIMEInputStream extends AbstractMIMEUnitTest
 
     //Setup for done()
     final CountDownLatch doneLatch = new CountDownLatch(1);
-    doAnswer(new Answer()
+    doAnswer(new Answer<Object>()
     {
       @Override
       public Object answer(InvocationOnMock invocation) throws Throwable
@@ -439,7 +439,7 @@ public class TestMIMEInputStream extends AbstractMIMEUnitTest
 
     //Setup for error()
     final CountDownLatch errorLatch = new CountDownLatch(1);
-    doAnswer(new Answer()
+    doAnswer(new Answer<Object>()
     {
       @Override
       public Object answer(InvocationOnMock invocation) throws Throwable
@@ -535,7 +535,7 @@ public class TestMIMEInputStream extends AbstractMIMEUnitTest
 
     //Setup for error()
     final CountDownLatch errorLatch = new CountDownLatch(1);
-    doAnswer(new Answer()
+    doAnswer(new Answer<Object>()
     {
       @Override
       public Object answer(InvocationOnMock invocation) throws Throwable
@@ -647,7 +647,7 @@ public class TestMIMEInputStream extends AbstractMIMEUnitTest
 
     //Setup for done()
     final CountDownLatch doneLatch = new CountDownLatch(1);
-    doAnswer(new Answer()
+    doAnswer(new Answer<Object>()
     {
       @Override
       public Object answer(InvocationOnMock invocation) throws Throwable
@@ -715,7 +715,7 @@ public class TestMIMEInputStream extends AbstractMIMEUnitTest
     //Setup for the close on the input stream.
     //The close must happen for the test to finish.
     final CountDownLatch closeInputStreamLatch = new CountDownLatch(1);
-    doAnswer(new Answer()
+    doAnswer(new Answer<Object>()
     {
       @Override
       public Object answer(InvocationOnMock invocation) throws Throwable
@@ -787,7 +787,7 @@ public class TestMIMEInputStream extends AbstractMIMEUnitTest
     //Setup for the close on the input stream.
     //The close must happen for the test to finish.
     final CountDownLatch closeInputStreamLatch = new CountDownLatch(1);
-    doAnswer(new Answer()
+    doAnswer(new Answer<Object>()
     {
       @Override
       public Object answer(InvocationOnMock invocation) throws Throwable
@@ -864,7 +864,7 @@ public class TestMIMEInputStream extends AbstractMIMEUnitTest
   {
     //When data is written to the write handle, we append to the buffer
     final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-    doAnswer(new Answer()
+    doAnswer(new Answer<Object>()
     {
       @Override
       public Object answer(InvocationOnMock invocation) throws Throwable

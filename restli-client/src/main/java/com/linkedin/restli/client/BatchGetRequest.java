@@ -55,7 +55,8 @@ public class BatchGetRequest<T extends RecordTemplate> extends BatchRequest<Batc
           queryParams,
           baseUriTemplate,
           pathKeys,
-          requestOptions);
+          requestOptions,
+          null);
   }
 
   @Override

@@ -124,11 +124,12 @@ public class TestMIMEReaderAbandon extends AbstractMIMEUnitTest
 
       //Construct expected headers and verify they match 
       final Map<String, String> expectedHeaders = new HashMap<String, String>();
-      final Enumeration allHeaders = currentExpectedPart.getAllHeaders();
+      @SuppressWarnings("unchecked")
+      final Enumeration<Header> allHeaders = currentExpectedPart.getAllHeaders();
 
       while (allHeaders.hasMoreElements())
       {
-        final Header header = (Header) allHeaders.nextElement();
+        final Header header = allHeaders.nextElement();
         expectedHeaders.put(header.getName(), header.getValue());
       }
 
@@ -163,11 +164,12 @@ public class TestMIMEReaderAbandon extends AbstractMIMEUnitTest
 
       //Construct expected headers and verify they match 
       final Map<String, String> expectedHeaders = new HashMap<String, String>();
-      final Enumeration allHeaders = currentExpectedPart.getAllHeaders();
+      @SuppressWarnings("unchecked")
+      final Enumeration<Header> allHeaders = currentExpectedPart.getAllHeaders();
 
       while (allHeaders.hasMoreElements())
       {
-        final Header header = (Header) allHeaders.nextElement();
+        final Header header = allHeaders.nextElement();
         expectedHeaders.put(header.getName(), header.getValue());
       }
 
@@ -195,11 +197,12 @@ public class TestMIMEReaderAbandon extends AbstractMIMEUnitTest
 
       //Construct expected headers and verify they match 
       final Map<String, String> expectedHeaders = new HashMap<String, String>();
-      final Enumeration allHeaders = currentExpectedPart.getAllHeaders();
+      @SuppressWarnings("unchecked")
+      final Enumeration<Header> allHeaders = currentExpectedPart.getAllHeaders();
 
       while (allHeaders.hasMoreElements())
       {
-        final Header header = (Header) allHeaders.nextElement();
+        final Header header = allHeaders.nextElement();
         expectedHeaders.put(header.getName(), header.getValue());
       }
 
@@ -232,11 +235,12 @@ public class TestMIMEReaderAbandon extends AbstractMIMEUnitTest
 
       //Construct expected headers and verify they match 
       final Map<String, String> expectedHeaders = new HashMap<String, String>();
-      final Enumeration allHeaders = currentExpectedPart.getAllHeaders();
+      @SuppressWarnings("unchecked")
+      final Enumeration<Header> allHeaders = currentExpectedPart.getAllHeaders();
 
       while (allHeaders.hasMoreElements())
       {
-        final Header header = (Header) allHeaders.nextElement();
+        final Header header = allHeaders.nextElement();
         expectedHeaders.put(header.getName(), header.getValue());
       }
 
@@ -270,11 +274,12 @@ public class TestMIMEReaderAbandon extends AbstractMIMEUnitTest
 
       //Construct expected headers and verify they match 
       final Map<String, String> expectedHeaders = new HashMap<String, String>();
-      final Enumeration allHeaders = currentExpectedPart.getAllHeaders();
+      @SuppressWarnings("unchecked")
+      final Enumeration<Header> allHeaders = currentExpectedPart.getAllHeaders();
 
       while (allHeaders.hasMoreElements())
       {
-        final Header header = (Header) allHeaders.nextElement();
+        final Header header = allHeaders.nextElement();
         expectedHeaders.put(header.getName(), header.getValue());
       }
 
@@ -302,11 +307,12 @@ public class TestMIMEReaderAbandon extends AbstractMIMEUnitTest
 
       //Construct expected headers and verify they match 
       final Map<String, String> expectedHeaders = new HashMap<String, String>();
-      final Enumeration allHeaders = currentExpectedPart.getAllHeaders();
+      @SuppressWarnings("unchecked")
+      final Enumeration<Header> allHeaders = currentExpectedPart.getAllHeaders();
 
       while (allHeaders.hasMoreElements())
       {
-        final Header header = (Header) allHeaders.nextElement();
+        final Header header = allHeaders.nextElement();
         expectedHeaders.put(header.getName(), header.getValue());
       }
 
@@ -381,7 +387,7 @@ public class TestMIMEReaderAbandon extends AbstractMIMEUnitTest
     SinglePartMIMEAbandonReaderCallbackImpl(final MultiPartMIMEReader.SinglePartMIMEReader singlePartMIMEReader)
     {
       _singlePartMIMEReader = singlePartMIMEReader;
-      _headers = singlePartMIMEReader.getHeaders();
+      _headers = singlePartMIMEReader.dataSourceHeaders();
     }
 
     @Override

@@ -22,9 +22,9 @@ import com.linkedin.multipart.exceptions.IllegalMultiPartMIMEFormatException;
 import com.linkedin.multipart.exceptions.PartBindException;
 import com.linkedin.multipart.exceptions.PartFinishedException;
 import com.linkedin.multipart.exceptions.PartNotInitializedException;
+import com.linkedin.multipart.exceptions.ReaderFinishedException;
 import com.linkedin.multipart.exceptions.ReaderNotInitializedException;
 import com.linkedin.multipart.exceptions.StreamBusyException;
-import com.linkedin.multipart.exceptions.ReaderFinishedException;
 import com.linkedin.r2.message.rest.StreamRequest;
 import com.linkedin.r2.message.rest.StreamResponse;
 import com.linkedin.r2.message.streaming.EntityStream;
@@ -35,10 +35,10 @@ import com.linkedin.r2.util.LinkedDeque;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
+import java.util.TreeMap;
 import java.util.concurrent.Callable;
 
 import org.apache.commons.lang.ArrayUtils;
@@ -98,7 +98,7 @@ public final class MultiPartMIMEReader
 
     //These two fields are needed to support our iterative invocation of callbacks so that we don't end up with a recursive loop
     //which would lead to a stack overflow.
-    private final Queue<Callable> _callbackQueue = new LinkedDeque<Callable>();
+    private final Queue<Callable<Void>> _callbackQueue = new LinkedDeque<Callable<Void>>();
     private volatile boolean _callbackInProgress = false;
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -269,10 +269,9 @@ public final class MultiPartMIMEReader
           {
             handleExceptions(clientCallbackException);
           }
-          finally
-          {
-            return true; //Regardless of whether the invocation to onFinished() threw or not we need to return here
-          }
+
+          return true; //Regardless of whether the invocation to onFinished() threw or not we need to return here
+
         }
         //Otherwise r2 has not notified us that we are done. So we keep getting more bytes and dropping them.
         _rh.request(1);
@@ -302,10 +301,9 @@ public final class MultiPartMIMEReader
           {
             handleExceptions(clientCallbackException);
           }
-          finally
-          {
-            return true; //Regardless of whether the invocation to onFinished() threw or not we need to return here
-          }
+
+          return true; //Regardless of whether the invocation to onFinished() threw or not we need to return here
+
         }
         //Otherwise we keep on chugging forward and dropping bytes.
         _rh.request(1);
@@ -345,10 +343,9 @@ public final class MultiPartMIMEReader
           {
             handleExceptions(clientCallbackException);
           }
-          finally
-          {
-            return true; //Regardless of whether the invocation to onFinished() threw or not we need to return here
-          }
+
+          return true; //Regardless of whether the invocation to onFinished() threw or not we need to return here
+
         }
 
         //Otherwise proceed
@@ -671,10 +668,9 @@ public final class MultiPartMIMEReader
           {
             handleExceptions(clientCallbackException);
           }
-          finally
-          {
-            return; //Regardless of whether or not the onFinished() threw, we're done so we must return here.
-          }
+
+          return; //Regardless of whether or not the onFinished() threw, we're done so we must return here.
+
         }
         //Keep on reading bytes and dropping them.
         _rh.request(1);
@@ -813,7 +809,7 @@ public final class MultiPartMIMEReader
       }
       else
       {
-        headers = new HashMap<String, String>();
+        headers = new TreeMap<String, String>(String.CASE_INSENSITIVE_ORDER);
 
         //We have headers, lets read them in - we search using a sliding window.
 
@@ -1116,9 +1112,10 @@ public final class MultiPartMIMEReader
   }
 
   /**
-   * Indicates if all parts have been finished from this MultiPartMIMEReader.
+   * Indicates if all parts have been finished and completely read from this MultiPartMIMEReader. If the last part is
+   * in the process of being read, this will also return true.
    *
-   * @return true if the reader is finished.
+   * @return true if the reader is completely finished.
    */
   public boolean haveAllPartsFinished()
   {
@@ -1137,14 +1134,14 @@ public final class MultiPartMIMEReader
    *
    * This can ONLY be called if there is no part being actively read, meaning that
    * the current {@link com.linkedin.multipart.MultiPartMIMEReader.SinglePartMIMEReader} has not been initialized
-   * with a {@link com.linkedin.multipart.SinglePartMIMEReaderCallback}. If this is violated we throw a
-   * {@link com.linkedin.multipart.exceptions.StreamBusyException}.
+   * with a {@link com.linkedin.multipart.SinglePartMIMEReaderCallback}. If this is violated a
+   * {@link com.linkedin.multipart.exceptions.StreamBusyException} will be thrown.
    *
-   * Once the stream is finished being abandoned, we call {@link MultiPartMIMEReaderCallback#onAbandoned()}.
+   * Once the stream is finished being abandoned, a call will be made to {@link MultiPartMIMEReaderCallback#onAbandoned()}.
    *
    * If the stream is finished, subsequent calls will throw {@link com.linkedin.multipart.exceptions.ReaderFinishedException}.
    *
-   * Since this is async and we do not allow request queueing, repetitive calls will result in
+   * Since this is async and request queueing is not allowed, repetitive calls will result in
    * {@link com.linkedin.multipart.exceptions.StreamBusyException}.
    */
   public void abandonAllParts()
@@ -1197,14 +1194,11 @@ public final class MultiPartMIMEReader
 
   /**
    * Register to read using this MultiPartMIMEReader. This can ONLY be called if there is no part being actively
-   * read meaning that the current {@link com.linkedin.multipart.MultiPartMIMEReader.SinglePartMIMEReader}
+   * read; meaning that the current {@link com.linkedin.multipart.MultiPartMIMEReader.SinglePartMIMEReader}
    * has not had a callback registered with it. Violation of this will throw a {@link com.linkedin.multipart.exceptions.StreamBusyException}.
    *
    * This can even be set if no parts in the stream have actually been consumed, i.e after the very first invocation of
    * {@link MultiPartMIMEReaderCallback#onNewPart(com.linkedin.multipart.MultiPartMIMEReader.SinglePartMIMEReader)}.
-   *
-   * This API is used by the {@link com.linkedin.multipart.MultiPartMIMEWriter} to chain and use as a data source. Most
-   * developers will not have a need to use this API directly.
    *
    * @param clientCallback the {@link com.linkedin.multipart.MultiPartMIMEReaderCallback} which will be invoked upon
    *                       to read this multipart mime body.
@@ -1348,18 +1342,7 @@ public final class MultiPartMIMEReader
     }
 
     /**
-     * Returns the headers for this part. For parts that have no headers, this will return
-     * {@link java.util.Collections#emptyMap()}
-     *
-     * @return
-     */
-    public Map<String, String> getHeaders()
-    {
-      return _headers;
-    }
-
-    /**
-     * Read bytes from this part and notify the registered callback on
+     * Reads bytes from this part and notifies the registered callback on
      * {@link SinglePartMIMEReaderCallback#onPartDataAvailable(com.linkedin.data.ByteString)}.
      *
      * Usage of this API requires registration using a {@link com.linkedin.multipart.SinglePartMIMEReaderCallback}.
@@ -1368,7 +1351,7 @@ public final class MultiPartMIMEReader
      * If this part is fully consumed, meaning {@link SinglePartMIMEReaderCallback#onFinished()} has been called,
      * then any subsequent calls to requestPartData() will throw {@link com.linkedin.multipart.exceptions.PartFinishedException}.
      *
-     * Since this is async and we do not allow request queueing, repetitive calls will result in
+     * Since this is async and request queueing is not allowed, repetitive calls will result in
      * {@link com.linkedin.multipart.exceptions.StreamBusyException}.
      *
      * If the r2 reader is done, either through an error or a proper finish. Calls to requestPartData() will throw
@@ -1393,7 +1376,7 @@ public final class MultiPartMIMEReader
     }
 
     /**
-     * Abandons all bytes from this part and then notify the registered callback (if present) on
+     * Abandons all bytes from this part and then notifies the registered callback (if present) on
      * {@link SinglePartMIMEReaderCallback#onAbandoned()}.
      *
      * Usage of this API does NOT require registration using a {@link com.linkedin.multipart.SinglePartMIMEReaderCallback}.
@@ -1403,10 +1386,10 @@ public final class MultiPartMIMEReader
      * If this part is fully consumed, meaning {@link SinglePartMIMEReaderCallback#onFinished()} has been called,
      * then any subsequent calls to abandonPart() will throw {@link com.linkedin.multipart.exceptions.PartFinishedException}.
      *
-     * Since this is async and we do not allow request queueing, repetitive calls will result in
+     * Since this is async and request queueing is not allowed, repetitive calls will result in
      * {@link com.linkedin.multipart.exceptions.StreamBusyException}.
      *
-     * If the r2 reader is done, either through an error or a proper finish. Calls to requestPartData() will throw
+     * * If the r2 reader is done, either through an error or a proper finish. Calls to abandonPart() will throw
      * {@link com.linkedin.multipart.exceptions.PartFinishedException}.
      */
     public void abandonPart()
@@ -1447,8 +1430,21 @@ public final class MultiPartMIMEReader
       _singleReaderState = singleReaderState;
     }
 
+    /**
+     * Returns the headers for this part. For parts that have no headers, this will return
+     * {@link java.util.Collections#emptyMap()}
+     *
+     * @return
+     */
+    @Override
+    public Map<String, String> dataSourceHeaders()
+    {
+      return _headers;
+    }
+
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    // Chaining interface implementation.
+    // Chaining interface implementation. These should not be used directly by external consumers.
+
     private volatile WriteHandle _writeHandle;
 
     @Override
@@ -1482,12 +1478,6 @@ public final class MultiPartMIMEReader
       //In this case the application developer can gracefully recover after being called onStreamError() on the
       //MultiPartMIMEReaderCallback.
       MultiPartMIMEReader.this._clientCallback.onStreamError(e);
-    }
-
-    @Override
-    public Map<String, String> dataSourceHeaders()
-    {
-      return _headers;
     }
   }
 

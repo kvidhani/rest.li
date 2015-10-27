@@ -27,6 +27,7 @@ import com.linkedin.parseq.promise.PromiseListener;
 import com.linkedin.parseq.promise.Promises;
 import com.linkedin.r2.message.rest.RestRequest;
 import com.linkedin.restli.common.HttpStatus;
+import com.linkedin.restli.common.attachments.RestLiStreamingAttachments;
 import com.linkedin.restli.internal.server.filter.FilterRequestContextInternal;
 import com.linkedin.restli.internal.server.methods.MethodAdapterRegistry;
 import com.linkedin.restli.internal.server.methods.arguments.RestLiArgumentBuilder;
@@ -37,12 +38,12 @@ import com.linkedin.restli.internal.server.util.RestUtils;
 import com.linkedin.restli.server.RequestExecutionCallback;
 import com.linkedin.restli.server.RequestExecutionReport;
 import com.linkedin.restli.server.RequestExecutionReportBuilder;
+import com.linkedin.restli.server.ResourceContext;
 import com.linkedin.restli.server.RestLiRequestData;
 import com.linkedin.restli.server.RestLiServiceException;
 import com.linkedin.restli.server.filter.RequestFilter;
 import com.linkedin.restli.server.resources.BaseResource;
 import com.linkedin.restli.server.resources.ResourceFactory;
-
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -173,9 +174,18 @@ public class RestLiMethodInvoker
         _resourceFactory.create(resourceMethodDescriptor.getResourceModel()
                                                         .getResourceClass());
 
+
+    //Acquire a handle on the ResourceContext when setting it in order to obtain any response attachments that need to
+    //be streamed back.
+    final ResourceContext resourceContext;
     if (BaseResource.class.isAssignableFrom(resource.getClass()))
     {
-      ((BaseResource) resource).setContext(invocableMethod.getContext());
+      resourceContext = invocableMethod.getContext();
+      ((BaseResource) resource).setContext(resourceContext);
+    }
+    else
+    {
+      resourceContext = null;
     }
 
     RestLiArgumentBuilder adapter =
@@ -210,7 +220,7 @@ public class RestLiMethodInvoker
     // Now invoke the resource implementation.
     try
     {
-      doInvoke(resourceMethodDescriptor, callback, requestExecutionReportBuilder, resource, args);
+      doInvoke(resourceMethodDescriptor, callback, requestExecutionReportBuilder, resource, resourceContext, args);
     }
     catch (IllegalAccessException e)
     {
@@ -223,9 +233,10 @@ public class RestLiMethodInvoker
                         final RequestExecutionCallback<Object> callback,
                         final RequestExecutionReportBuilder requestExecutionReportBuilder,
                         final Object resource,
+                        final ResourceContext resourceContext,
                         final Object... arguments) throws IllegalAccessException
   {
-    Method method = descriptor.getMethod();
+    final Method method = descriptor.getMethod();
 
     try
     {
@@ -247,7 +258,7 @@ public class RestLiMethodInvoker
           @Override
           public void onSuccess(Object result)
           {
-            callback.onSuccess(result, executionReport);
+            callback.onSuccess(result, executionReport, resourceContext == null ? null : resourceContext.getResponseAttachments());
           }
         };
 
@@ -257,7 +268,8 @@ public class RestLiMethodInvoker
 
       case SYNC:
         Object applicationResult = method.invoke(resource, arguments);
-        callback.onSuccess(applicationResult, getRequestExecutionReport(requestExecutionReportBuilder));
+        callback.onSuccess(applicationResult, getRequestExecutionReport(requestExecutionReportBuilder),
+            resourceContext == null ? null : resourceContext.getResponseAttachments());
         break;
 
       case PROMISE:
@@ -276,7 +288,8 @@ public class RestLiMethodInvoker
             new RestLiParSeqTask(arguments, contextIndex, method, resource);
 
         // propagate the result to the callback
-        restliTask.addListener(new CallbackPromiseAdapter<Object>(callback, restliTask, requestExecutionReportBuilder));
+        restliTask.addListener(new CallbackPromiseAdapter<Object>(callback, restliTask, requestExecutionReportBuilder,
+            resourceContext == null ? null : resourceContext.getResponseAttachments()));
         _engine.run(restliTask);
         break;
 
@@ -297,7 +310,8 @@ public class RestLiMethodInvoker
         }
         else
         {
-          task.addListener(new CallbackPromiseAdapter<Object>(callback, task, requestExecutionReportBuilder));
+          task.addListener(new CallbackPromiseAdapter<Object>(callback, task, requestExecutionReportBuilder,
+              resourceContext == null ? null : resourceContext.getResponseAttachments()));
           _engine.run(task);
         }
         break;
@@ -424,15 +438,18 @@ public class RestLiMethodInvoker
   {
     private final RequestExecutionCallback<T> _callback;
     private final RequestExecutionReportBuilder _executionReportBuilder;
+    private final RestLiStreamingAttachments _responseAttachments;
     private final Task<T> _associatedTask;
 
     public CallbackPromiseAdapter(final RequestExecutionCallback<T> callback,
                                   final Task<T> associatedTask,
-                                  final RequestExecutionReportBuilder executionReportBuilder)
+                                  final RequestExecutionReportBuilder executionReportBuilder,
+                                  final RestLiStreamingAttachments responseAttachments)
     {
       _callback = callback;
       _associatedTask = associatedTask;
       _executionReportBuilder = executionReportBuilder;
+      _responseAttachments = responseAttachments;
     }
 
     @Override
@@ -453,7 +470,7 @@ public class RestLiMethodInvoker
       }
       else
       {
-        _callback.onSuccess(promise.get(), executionReport);
+        _callback.onSuccess(promise.get(), executionReport, _responseAttachments);
       }
     }
   }

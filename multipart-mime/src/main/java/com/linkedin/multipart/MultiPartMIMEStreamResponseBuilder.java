@@ -20,7 +20,7 @@ package com.linkedin.multipart;
 import com.linkedin.r2.message.rest.StreamResponse;
 import com.linkedin.r2.message.rest.StreamResponseBuilder;
 
-import java.util.List;
+import java.util.Collections;
 import java.util.Map;
 
 
@@ -29,140 +29,64 @@ import java.util.Map;
  *
  * @author Karim Vidhani
  */
-public class MultiPartMIMEStreamResponseBuilder
+public final class MultiPartMIMEStreamResponseBuilder
 {
-  private final String _mimeType;
-  private final Map<String, String> _contentTypeParameters;
-  private final MultiPartMIMEWriter _writer;
-  private final String _boundary;
-  private final StreamResponseBuilder _streamResponseBuilder;
+  /**
+   * Create a {@link com.linkedin.r2.message.rest.StreamResponse} using the specified parameters. This API should be used
+   * if the user does not have a need to define a {@link com.linkedin.r2.message.rest.StreamResponseBuilder} in advance.
+   *
+   * @param mimeSubType the mime subtype of the multipart to be used. For example, 'mixed' would result in a Content-Type of
+   *                    'multipart/mixed'. It is generally good practice to use subtypes described in RFC 1341, although
+   *                    this API does not enforce this.
+   * @param writer the {@link com.linkedin.multipart.MultiPartMIMEWriter} to use for the payload of the response.
+   * @return the newly created {@link com.linkedin.r2.message.rest.StreamResponse}.
+   */
+  public static StreamResponse generateMultiPartMIMEStreamResponse(final String mimeSubType, final MultiPartMIMEWriter writer)
+  {
+    return generateMultiPartMIMEStreamResponse(mimeSubType, writer, Collections.<String, String>emptyMap(), new StreamResponseBuilder());
+  }
 
-  public MultiPartMIMEStreamResponseBuilder(final String mimeType, final MultiPartMIMEWriter writer,
+  /**
+   * Create a {@link com.linkedin.r2.message.rest.StreamResponse} using the specified parameters. This API should be used
+   * if the user does not have a need to define a {@link com.linkedin.r2.message.rest.StreamResponseBuilder} in advance.
+   *
+   * @param mimeSubType the mime subtype of the multipart to be used. For example, 'mixed' would result in a Content-Type of
+   *                    'multipart/mixed'. It is generally good practice to use subtypes described in RFC 1341, although
+   *                    this API does not enforce this.
+   * @param writer the {@link com.linkedin.multipart.MultiPartMIMEWriter} to use for the payload of the response.
+   * @param contentTypeParameters any additional parameters needed when constructing the Content-Type header.
+   * @return the newly created {@link com.linkedin.r2.message.rest.StreamResponse}.
+   */
+  public static StreamResponse generateMultiPartMIMEStreamResponse(final String mimeSubType, final MultiPartMIMEWriter writer,
       final Map<String, String> contentTypeParameters)
   {
-    _mimeType = mimeType.trim();
-    _writer = writer;
-    _boundary = writer.getBoundary();
-    _contentTypeParameters = contentTypeParameters;
-    _streamResponseBuilder = new StreamResponseBuilder();
+    return generateMultiPartMIMEStreamResponse(mimeSubType, writer, contentTypeParameters, new StreamResponseBuilder());
   }
 
-  public StreamResponse build()
+  /**
+   * Create a {@link com.linkedin.r2.message.rest.StreamResponse} using the specified parameters. This API should be used
+   * if the user has a need to define a {@link com.linkedin.r2.message.rest.StreamResponseBuilder} in advance. For example
+   * if the user wants to add specific headers or modify the StreamResponse before it is built, then this API should be used.
+   *
+   * @param mimeSubType the mime subtype of the multipart to be used. For example, 'mixed' would result in a Content-Type of
+   *                    'multipart/mixed'. It is generally good practice to use subtypes described in RFC 1341, although
+   *                    this API does not enforce this.
+   * @param writer the {@link com.linkedin.multipart.MultiPartMIMEWriter} to use for the payload of the response.
+   * @param contentTypeParameters any additional parameters needed when constructing the Content-Type header.
+   * @param streamResponseBuilder the {@link com.linkedin.r2.message.rest.StreamResponseBuilder} to begin with in order to
+   *                             construct the final {@link com.linkedin.r2.message.rest.StreamResponse}.
+   * @return the newly created {@link com.linkedin.r2.message.rest.StreamResponse}.
+   */
+  public static StreamResponse generateMultiPartMIMEStreamResponse(final String mimeSubType, final MultiPartMIMEWriter writer,
+      final Map<String, String> contentTypeParameters, final StreamResponseBuilder streamResponseBuilder)
   {
     final String contentTypeHeader =
-        MultiPartMIMEUtils.buildMIMEContentTypeHeader(_mimeType, _boundary, _contentTypeParameters);
-    _streamResponseBuilder.addHeaderValue(MultiPartMIMEUtils.CONTENT_TYPE_HEADER, contentTypeHeader);
-    return _streamResponseBuilder.build(_writer.getEntityStream());
+        MultiPartMIMEUtils.buildMIMEContentTypeHeader(mimeSubType.trim(), writer.getBoundary(), contentTypeParameters);
+    streamResponseBuilder.addHeaderValue(MultiPartMIMEUtils.CONTENT_TYPE_HEADER, contentTypeHeader);
+    return streamResponseBuilder.build(writer.getEntityStream());
   }
 
-  public StreamResponse buildCanonical()
+  private MultiPartMIMEStreamResponseBuilder()
   {
-    final String contentTypeHeader =
-        MultiPartMIMEUtils.buildMIMEContentTypeHeader(_mimeType, _boundary, _contentTypeParameters);
-    _streamResponseBuilder.addHeaderValue(MultiPartMIMEUtils.CONTENT_TYPE_HEADER, contentTypeHeader);
-    return _streamResponseBuilder.buildCanonical(_writer.getEntityStream());
-  }
-
-  public MultiPartMIMEStreamResponseBuilder setStatus(final int status)
-  {
-    _streamResponseBuilder.setStatus(status);
-    return this;
-  }
-
-  public int getStatus()
-  {
-    return _streamResponseBuilder.getStatus();
-  }
-
-  public MultiPartMIMEStreamResponseBuilder setHeaders(final Map<String, String> headers)
-  {
-    _streamResponseBuilder.setHeaders(headers);
-    return this;
-  }
-
-  public MultiPartMIMEStreamResponseBuilder setHeader(final String name, final String value)
-  {
-    _streamResponseBuilder.setHeader(name, value);
-    return this;
-  }
-
-  public MultiPartMIMEStreamResponseBuilder addHeaderValue(final String name, final String value)
-  {
-    _streamResponseBuilder.addHeaderValue(name, value);
-    return this;
-  }
-
-  public MultiPartMIMEStreamResponseBuilder overwriteHeaders(final Map<String, String> headers)
-  {
-    _streamResponseBuilder.overwriteHeaders(headers);
-    return this;
-  }
-
-  public MultiPartMIMEStreamResponseBuilder addCookie(final String cookie)
-  {
-    _streamResponseBuilder.addCookie(cookie);
-    return this;
-  }
-
-  public MultiPartMIMEStreamResponseBuilder setCookies(final List<String> cookies)
-  {
-    _streamResponseBuilder.setCookies(cookies);
-    return this;
-  }
-
-  public MultiPartMIMEStreamResponseBuilder clearHeaders()
-  {
-    _streamResponseBuilder.clearHeaders();
-    return this;
-  }
-
-  public MultiPartMIMEStreamResponseBuilder clearCookies()
-  {
-    _streamResponseBuilder.clearCookies();
-    return this;
-  }
-
-  public Map<String, String> getHeaders()
-  {
-    return _streamResponseBuilder.getHeaders();
-  }
-
-  public List<String> getCookies()
-  {
-    return _streamResponseBuilder.getCookies();
-  }
-
-  public String getHeader(final String name)
-  {
-    return _streamResponseBuilder.getHeader(name);
-  }
-
-  public List<String> getHeaderValues(final String name)
-  {
-    return _streamResponseBuilder.getHeaderValues(name);
-  }
-
-  public MultiPartMIMEStreamResponseBuilder unsafeSetHeader(final String name, final String value)
-  {
-    _streamResponseBuilder.unsafeSetHeader(name, value);
-    return this;
-  }
-
-  public MultiPartMIMEStreamResponseBuilder unsafeAddHeaderValue(final String name, final String value)
-  {
-    _streamResponseBuilder.unsafeAddHeaderValue(name, value);
-    return this;
-  }
-
-  public MultiPartMIMEStreamResponseBuilder unsafeSetHeaders(final Map<String, String> headers)
-  {
-    _streamResponseBuilder.unsafeSetHeaders(headers);
-    return this;
-  }
-
-  public MultiPartMIMEStreamResponseBuilder unsafeOverwriteHeaders(final Map<String, String> headers)
-  {
-    _streamResponseBuilder.unsafeOverwriteHeaders(headers);
-    return this;
   }
 }

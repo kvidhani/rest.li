@@ -21,7 +21,7 @@
 package com.linkedin.restli.client.base;
 
 import com.linkedin.data.template.RecordTemplate;
-import com.linkedin.restli.client.RestLiStreamingAttachments;
+import com.linkedin.restli.common.attachments.RestLiStreamingAttachments;
 import com.linkedin.restli.client.RestliRequestOptions;
 import com.linkedin.restli.client.UpdateRequestBuilder;
 import com.linkedin.restli.common.ResourceSpec;

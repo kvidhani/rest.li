@@ -16,6 +16,9 @@
 
 package com.linkedin.restli.server;
 
+import com.linkedin.r2.message.rest.StreamRequest;
+import com.linkedin.r2.message.rest.StreamResponse;
+import com.linkedin.r2.transport.common.StreamRequestHandler;
 import java.util.Map;
 
 import com.linkedin.r2.message.RequestContext;
@@ -31,7 +34,7 @@ import com.linkedin.restli.internal.server.model.ResourceModel;
 /**
  * @author dellamag
  */
-public abstract class BaseRestServer implements RestRequestHandler
+public abstract class BaseRestServer implements RestRequestHandler, StreamRequestHandler
 {
   private static final Logger log = LoggerFactory.getLogger(BaseRestServer.class);
 
@@ -65,6 +68,28 @@ public abstract class BaseRestServer implements RestRequestHandler
   protected abstract void doHandleRequest(RestRequest request,
                                           RequestContext requestContext,
                                           Callback<RestResponse> callback);
+
+  /**
+   * @see com.linkedin.r2.transport.common.StreamRequestHandler#handleRequest(com.linkedin.r2.message.rest.StreamRequest,
+   *      com.linkedin.r2.message.RequestContext, com.linkedin.common.callback.Callback)
+   */
+  @Override
+  public void handleRequest(StreamRequest request, RequestContext requestContext, Callback<StreamResponse> callback)
+  {
+    try
+    {
+      doHandleStreamRequest(request, requestContext, callback);
+    }
+    catch (Exception e)
+    {
+      log.error("Uncaught exception", e);
+      callback.onError(e);
+    }
+  }
+
+  protected abstract void doHandleStreamRequest(StreamRequest request,
+                                                RequestContext requestContext,
+                                                Callback<StreamResponse> callback);
 
   protected RestLiConfig getConfig()
   {

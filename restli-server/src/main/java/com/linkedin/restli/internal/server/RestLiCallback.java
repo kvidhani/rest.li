@@ -18,11 +18,11 @@
 package com.linkedin.restli.internal.server;
 
 
-import com.linkedin.r2.message.rest.RestException;
 import com.linkedin.r2.message.rest.RestRequest;
 import com.linkedin.r2.message.rest.RestResponse;
 import com.linkedin.restli.common.HttpStatus;
 import com.linkedin.restli.common.RestConstants;
+import com.linkedin.restli.common.attachments.RestLiStreamingAttachments;
 import com.linkedin.restli.internal.common.HeaderUtil;
 import com.linkedin.restli.internal.common.ProtocolVersionUtil;
 import com.linkedin.restli.internal.server.filter.FilterResponseContextInternal;
@@ -43,7 +43,7 @@ import java.util.TreeMap;
 
 public class RestLiCallback<T> implements RequestExecutionCallback<T>
 {
-  private final RoutingResult _method;
+  private final RoutingResult _routingResult;
   private final RestLiResponseHandler _responseHandler;
   private final RequestExecutionCallback<RestResponse> _callback;
   private final RestRequest _request;
@@ -58,7 +58,7 @@ public class RestLiCallback<T> implements RequestExecutionCallback<T>
                         final FilterRequestContext filterRequestContext)
   {
     _request = request;
-    _method = method;
+    _routingResult = method;
     _responseHandler = responseHandler;
     _callback = callback;
     if (responseFilters != null)
@@ -73,23 +73,23 @@ public class RestLiCallback<T> implements RequestExecutionCallback<T>
   }
 
   @Override
-  public void onSuccess(final T result, RequestExecutionReport executionReport)
+  public void onSuccess(final T result, final RequestExecutionReport executionReport, final RestLiStreamingAttachments streamingAttachments)
   {
     try
     {
       // Convert the object returned by the resource to response data.
-      final RestLiResponseEnvelope responseData = _responseHandler.buildRestLiResponseData(_request, _method, result);
+      final RestLiResponseEnvelope responseData = _responseHandler.buildRestLiResponseData(_request, _routingResult, result);
       // Invoke the response filters.
       if (!_responseFilters.isEmpty())
       {
-        invokeFiltersAndProcessResults(executionReport, responseData, null);
+        invokeFiltersAndProcessResults(executionReport, responseData, null, streamingAttachments);
       }
       else
       {
         // Convert response data to partial rest response.
-        final PartialRestResponse response = _responseHandler.buildPartialResponse(_method, responseData);
+        final PartialRestResponse response = _responseHandler.buildPartialResponse(_routingResult, responseData);
         // Invoke the callback.
-        _callback.onSuccess(_responseHandler.buildResponse(_method, response), executionReport);
+        _callback.onSuccess(_responseHandler.buildResponse(_routingResult, response), executionReport, streamingAttachments);
       }
     }
     catch (Exception e)
@@ -108,12 +108,13 @@ public class RestLiCallback<T> implements RequestExecutionCallback<T>
     // Invoke the response filters.
     if (!_responseFilters.isEmpty())
     {
-      invokeFiltersAndProcessResults(executionReport, responseData, e);
+      //todo note that we ignore response attachments in this case
+      invokeFiltersAndProcessResults(executionReport, responseData, e, null);
     }
     else
     {
       // Invoke the callback with the exception obtained from the resource.
-      _callback.onError(_responseHandler.buildRestException(e, _responseHandler.buildPartialResponse(_method,
+      _callback.onError(_responseHandler.buildRestException(e, _responseHandler.buildPartialResponse(_routingResult,
                                                                                                      responseData)),
                         executionReport);
     }
@@ -121,7 +122,8 @@ public class RestLiCallback<T> implements RequestExecutionCallback<T>
 
   private void invokeFiltersAndProcessResults(RequestExecutionReport executionReport,
                                               final RestLiResponseEnvelope responseData,
-                                              final Throwable appEx)
+                                              final Throwable appEx,
+                                              final RestLiStreamingAttachments streamingAttachments)
   {
     // Construct the filter response context from the partial response.
     final FilterResponseContextInternal responseContext = new FilterResponseContextAdapter(responseData);
@@ -131,15 +133,15 @@ public class RestLiCallback<T> implements RequestExecutionCallback<T>
       // Invoke onSuccess on the R2 callback since the response from the resource was
       // successfully processed by the filters.
       // Convert response data to partial rest response.
-      final PartialRestResponse response = _responseHandler.buildPartialResponse(_method, responseContext.getRestLiResponseEnvelope());
+      final PartialRestResponse response = _responseHandler.buildPartialResponse(_routingResult, responseContext.getRestLiResponseEnvelope());
       // Invoke the callback.
-      _callback.onSuccess(_responseHandler.buildResponse(_method, response), executionReport);
+      _callback.onSuccess(_responseHandler.buildResponse(_routingResult, response), executionReport, streamingAttachments);
     }
     catch (Throwable e)
     {
       // Invoke onError on the R2 callback since we received an exception from the filters.
       _callback.onError(_responseHandler.buildRestException(e,
-                                                            _responseHandler.buildPartialResponse(_method,
+                                                            _responseHandler.buildPartialResponse(_routingResult,
                                                                                                   responseContext.getRestLiResponseEnvelope())),
                         executionReport);
     }
@@ -172,7 +174,7 @@ public class RestLiCallback<T> implements RequestExecutionCallback<T>
     headers.put(RestConstants.HEADER_RESTLI_PROTOCOL_VERSION,
                 ProtocolVersionUtil.extractProtocolVersion(requestHeaders).toString());
     headers.put(HeaderUtil.getErrorResponseHeaderName(requestHeaders), RestConstants.HEADER_VALUE_ERROR);
-    return _responseHandler.buildExceptionResponseData(_request, _method, restLiServiceException, headers);
+    return _responseHandler.buildExceptionResponseData(_request, _routingResult, restLiServiceException, headers);
   }
 
   private void invokeResponseFilters(final FilterResponseContextInternal responseContext, Throwable lastException) throws Throwable

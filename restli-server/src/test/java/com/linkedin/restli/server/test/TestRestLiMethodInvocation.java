@@ -44,6 +44,7 @@ import com.linkedin.restli.common.PatchRequest;
 import com.linkedin.restli.common.ProtocolVersion;
 import com.linkedin.restli.common.ResourceMethod;
 import com.linkedin.restli.common.RestConstants;
+import com.linkedin.restli.common.attachments.RestLiStreamingAttachments;
 import com.linkedin.restli.internal.common.AllProtocolVersions;
 import com.linkedin.restli.internal.common.PathSegment;
 import com.linkedin.restli.internal.common.TestConstants;
@@ -265,7 +266,7 @@ public class TestRestLiMethodInvocation
       Long[] argsArray = { 1L };
       expect(mockBuilder.buildArguments(requestData, routingResult)).andReturn(argsArray);
       expect(resource.get(eq(1L))).andReturn(null).once();
-      mockCallback.onSuccess(eq(null), anyObject(RequestExecutionReport.class));
+      mockCallback.onSuccess(eq(null), anyObject(RequestExecutionReport.class), anyObject(RestLiStreamingAttachments.class));
     }
     replay(resource, mockRegistry, mockBuilder, mockFilterContext, mockFilter, mockCallback);
     invokerWithFilters.invoke(routingResult, request, mockCallback, false, mockFilterContext);
@@ -3235,7 +3236,9 @@ public class TestRestLiMethodInvocation
                       }
 
                       @Override
-                      public void onSuccess(final RestResponse result, RequestExecutionReport executionReport)
+                      public void onSuccess(RestResponse result,
+                                            RequestExecutionReport executionReport,
+                                            RestLiStreamingAttachments streamingAttachments)
                       {
                         Assert.fail("Request failed unexpectedly.");
                       }
@@ -3290,7 +3293,9 @@ public class TestRestLiMethodInvocation
                       }
 
                       @Override
-                      public void onSuccess(RestResponse result, RequestExecutionReport executionReport)
+                      public void onSuccess(RestResponse result,
+                                            RequestExecutionReport executionReport,
+                                            RestLiStreamingAttachments streamingAttachments)
                       {
                         Assert.fail("Request failed unexpectedly.");
                       }
@@ -3329,7 +3334,8 @@ public class TestRestLiMethodInvocation
 
                       @Override
                       public void onSuccess(RestResponse result,
-                                            RequestExecutionReport executionReport)
+                                            RequestExecutionReport executionReport,
+                                            RestLiStreamingAttachments streamingAttachments)
                       {
                         Assert.assertNotNull(executionReport.getParseqTrace());
                       }
@@ -4170,7 +4176,9 @@ public class TestRestLiMethodInvocation
                                                            HttpStatus.S_406_NOT_ACCEPTABLE.getCode());
                                      }
                                      @Override
-                                     public void onSuccess(RestResponse result, RequestExecutionReport executionReport)
+                                     public void onSuccess(RestResponse result,
+                                                           RequestExecutionReport executionReport,
+                                                           RestLiStreamingAttachments streamingAttachments)
                                      {
                                      }
                                    }, null, null);
@@ -4211,7 +4219,9 @@ public class TestRestLiMethodInvocation
                                                            HttpStatus.S_400_BAD_REQUEST.getCode());
                                      }
                                      @Override
-                                     public void onSuccess(RestResponse result, RequestExecutionReport executionReport)
+                                     public void onSuccess(RestResponse result,
+                                                           RequestExecutionReport executionReport,
+                                                           RestLiStreamingAttachments streamingAttachments)
                                      {
                                      }
                                    }, null, null);
@@ -4581,7 +4591,9 @@ public class TestRestLiMethodInvocation
         }
 
         @Override
-        public void onSuccess(final RestResponse result, RequestExecutionReport executionReport)
+        public void onSuccess(final RestResponse result,
+                              RequestExecutionReport executionReport,
+                              RestLiStreamingAttachments streamingAttachments)
         {
           if (isDebugMode)
           {
@@ -4594,7 +4606,7 @@ public class TestRestLiMethodInvocation
 
           if (callback != null)
           {
-            callback.onSuccess(result, executionReport);
+            callback.onSuccess(result, executionReport, streamingAttachments);
           }
 
           latch.countDown();
@@ -4633,7 +4645,7 @@ public class TestRestLiMethodInvocation
   {
     @SuppressWarnings("unchecked")
     RestLiCallback<Object> callback = EasyMock.createMock(RestLiCallback.class);
-    callback.onSuccess(EasyMock.anyObject(), EasyMock.capture(requestExecutionReport));
+    callback.onSuccess(EasyMock.anyObject(), EasyMock.capture(requestExecutionReport), EasyMock.anyObject(RestLiStreamingAttachments.class));
     EasyMock.expectLastCall().once();
     EasyMock.replay(callback);
     return callback;
@@ -4724,7 +4736,7 @@ public class TestRestLiMethodInvocation
       callback.onSuccess(EasyMock.anyObject(),
                          isDebugMode ?
                              EasyMock.isA(RequestExecutionReport.class) :
-                             EasyMock.<RequestExecutionReport>isNull());
+                             EasyMock.<RequestExecutionReport>isNull(), EasyMock.anyObject(RestLiStreamingAttachments.class));
       EasyMock.expectLastCall().once();
       EasyMock.replay(callback);
     }

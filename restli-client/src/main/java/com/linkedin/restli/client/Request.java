@@ -24,6 +24,7 @@ import com.linkedin.restli.common.ResourceMethod;
 import com.linkedin.restli.common.ResourceProperties;
 import com.linkedin.restli.common.ResourceSpec;
 import com.linkedin.restli.common.RestConstants;
+import com.linkedin.restli.common.attachments.RestLiStreamingAttachments;
 import com.linkedin.restli.internal.client.RestResponseDecoder;
 import com.linkedin.restli.internal.common.ResourcePropertiesImpl;
 import com.linkedin.restli.internal.common.URIParamUtils;
@@ -70,8 +71,7 @@ public class Request<T>
           String baseUriTemplate,
           Map<String, Object> pathKeys,
           RestliRequestOptions requestOptions,
-          RestLiStreamingAttachments streamingAttachments,
-          boolean responseAttachmentsAllowed)
+          RestLiStreamingAttachments streamingAttachments)
   {
     _method = method;
     _inputRecord = inputRecord;

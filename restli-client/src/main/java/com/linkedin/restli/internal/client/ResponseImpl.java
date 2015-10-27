@@ -18,7 +18,7 @@ package com.linkedin.restli.internal.client;
 
 
 import com.linkedin.restli.client.Response;
-import com.linkedin.restli.client.RestLiAttachmentReader;
+import com.linkedin.restli.common.attachments.RestLiAttachmentReader;
 import com.linkedin.restli.client.RestLiResponseException;
 import com.linkedin.restli.client.response.CreateResponse;
 import com.linkedin.restli.common.IdResponse;

@@ -27,6 +27,7 @@ import com.linkedin.r2.message.rest.RestResponseBuilder;
 import com.linkedin.restli.common.HttpStatus;
 import com.linkedin.restli.common.RestConstants;
 
+import com.linkedin.restli.common.attachments.RestLiStreamingAttachments;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -112,7 +113,8 @@ public class ParseqTraceDebugRequestHandler implements RestLiDebugRequestHandler
 
                                              @Override
                                              public void onSuccess(RestResponse result,
-                                                                   RequestExecutionReport executionReport)
+                                                                   RequestExecutionReport executionReport,
+                                                                   RestLiStreamingAttachments streamingAttachments)
                                              {
                                                sendDebugResponse(callback, executionReport, debugHandlerPath);
                                              }

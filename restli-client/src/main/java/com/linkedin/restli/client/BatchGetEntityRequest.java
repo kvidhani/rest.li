@@ -47,7 +47,7 @@ public class BatchGetEntityRequest<K, V extends RecordTemplate> extends BatchReq
                         Map<String, Object> pathKeys,
                         RestliRequestOptions requestOptions)
   {
-    super(ResourceMethod.BATCH_GET, null, headers, decoder, resourceSpec, queryParams, baseUriTemplate, pathKeys, requestOptions);
+    super(ResourceMethod.BATCH_GET, null, headers, decoder, resourceSpec, queryParams, baseUriTemplate, pathKeys, requestOptions, null);
   }
 
   @Override

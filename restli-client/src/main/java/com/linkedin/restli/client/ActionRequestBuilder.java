@@ -29,6 +29,7 @@ import com.linkedin.data.template.FieldDef;
 import com.linkedin.restli.common.ActionResponse;
 import com.linkedin.restli.common.ResourceSpec;
 import com.linkedin.restli.common.RestConstants;
+import com.linkedin.restli.common.attachments.RestLiStreamingAttachments;
 import com.linkedin.restli.common.TypeSpec;
 import com.linkedin.restli.internal.client.ActionResponseDecoder;
 import com.linkedin.util.ArgumentUtil;
@@ -51,7 +52,7 @@ public class ActionRequestBuilder<K, V> extends AbstractRequestBuilder<K, V, Act
   private K                              _id;
   private String                         _name;
   private final Map<FieldDef<?>, Object> _actionParams = new HashMap<FieldDef<?>, Object>();
-  private RestLiStreamingAttachments     _streamingAttachments;
+  private RestLiStreamingAttachments _streamingAttachments;
 
   public ActionRequestBuilder(String baseUriTemplate, Class<V> elementClass, ResourceSpec resourceSpec, RestliRequestOptions requestOptions)
   {

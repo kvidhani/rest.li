@@ -58,7 +58,8 @@ public class FindRequest<T extends RecordTemplate>
           name,
           baseUriTemplate,
           pathKeys,
-          requestOptions);
+          requestOptions,
+          null);
     _assocKey = assocKey;
   }
 

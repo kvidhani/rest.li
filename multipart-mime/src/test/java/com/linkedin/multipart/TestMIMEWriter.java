@@ -121,10 +121,9 @@ public class TestMIMEWriter extends AbstractMIMEUnitTest
     multiPartMIMEWriter.getEntityStream().setReader(fullEntityReader);
     futureCallback.get(TEST_TIMEOUT, TimeUnit.MILLISECONDS);
 
-    //todo this may change
     final StreamRequest multiPartMIMEStreamRequest =
-        new MultiPartMIMEStreamRequestBuilder(URI.create("localhost"), "mixed", multiPartMIMEWriter,
-            Collections.<String, String>emptyMap()).build();
+        MultiPartMIMEStreamRequestBuilder.generateMultiPartMIMEStreamRequest(URI.create("localhost"), "mixed", multiPartMIMEWriter,
+            Collections.<String, String>emptyMap());
 
     JavaxMailMultiPartMIMEReader javaxMailMultiPartMIMEReader =
         new JavaxMailMultiPartMIMEReader(multiPartMIMEStreamRequest.getHeader(MultiPartMIMEUtils.CONTENT_TYPE_HEADER),
@@ -202,10 +201,9 @@ public class TestMIMEWriter extends AbstractMIMEUnitTest
     multiPartMIMEWriter.getEntityStream().setReader(fullEntityReader);
     futureCallback.get(TEST_TIMEOUT, TimeUnit.MILLISECONDS);
 
-    //todo this may change
     final StreamRequest multiPartMIMEStreamRequest =
-        new MultiPartMIMEStreamRequestBuilder(URI.create("localhost"), "mixed", multiPartMIMEWriter,
-            Collections.<String, String>emptyMap()).build();
+        MultiPartMIMEStreamRequestBuilder.generateMultiPartMIMEStreamRequest(URI.create("localhost"), "mixed", multiPartMIMEWriter,
+            Collections.<String, String>emptyMap());
 
     JavaxMailMultiPartMIMEReader javaxMailMultiPartMIMEReader =
         new JavaxMailMultiPartMIMEReader(multiPartMIMEStreamRequest.getHeader(MultiPartMIMEUtils.CONTENT_TYPE_HEADER),

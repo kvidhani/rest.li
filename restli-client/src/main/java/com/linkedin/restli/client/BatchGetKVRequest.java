@@ -46,7 +46,7 @@ public class BatchGetKVRequest<K, V extends RecordTemplate> extends BatchRequest
                     Map<String, Object> pathKeys,
                     RestliRequestOptions requestOptions)
   {
-    super(ResourceMethod.BATCH_GET, null, headers, decoder, resourceSpec, queryParams, baseUriTemplate, pathKeys, requestOptions);
+    super(ResourceMethod.BATCH_GET, null, headers, decoder, resourceSpec, queryParams, baseUriTemplate, pathKeys, requestOptions, null);
   }
 
   @Override

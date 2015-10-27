@@ -14,25 +14,25 @@
    limitations under the License.
 */
 
-package com.linkedin.restli.server.multiplexer;
+package com.linkedin.restli.common.attachments;
 
 
-import com.linkedin.r2.message.rest.Request;
-import com.linkedin.r2.transport.common.RestRequestHandler;
+import com.linkedin.r2.message.streaming.Writer;
 
 
 /**
- * Main multiplexer interface. Responsible for handling of multiplexed requests.
+ * Represents a custom data source that can serve as an attachment.
  *
- * @author Dmitriy Yefremov
+ * @author Karim Vidhani
  */
-public interface MultiplexedRequestHandler extends RestRequestHandler
+public interface RestLiAttachmentDataSource extends Writer
 {
   /**
-   * Checks if the given request is a multiplexed request.
+   * Denotes a unique identifier for this attachment. It is recommended to choose identifiers with a high degree
+   * of uniqueness, such as Type 1 UUIDs. For most use cases there should be a corresponding String field in a PDSC
+   * to indicate affiliation.
    *
-   * @param request the request to check
-   * @return true if it is a multiplexer request, false otherwise
+   * @return the {@link java.lang.String} representing this attachment.
    */
-  boolean isMultiplexedRequest(Request request);
+  public String getAttachmentID();
 }

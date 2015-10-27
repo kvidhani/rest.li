@@ -22,6 +22,7 @@ import com.linkedin.restli.common.BatchCreateIdResponse;
 import com.linkedin.restli.common.CollectionRequest;
 import com.linkedin.restli.common.ResourceMethod;
 import com.linkedin.restli.common.ResourceSpec;
+import com.linkedin.restli.common.attachments.RestLiStreamingAttachments;
 import com.linkedin.restli.internal.client.BatchCreateIdDecoder;
 
 import java.util.Map;

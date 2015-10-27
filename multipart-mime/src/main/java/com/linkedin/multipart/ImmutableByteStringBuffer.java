@@ -1,14 +1,11 @@
 package com.linkedin.multipart;
 
-import com.linkedin.data.ByteString;
-
-import java.util.List;
-
 /**
  * Created by kvidhani on 8/12/15.
  */
-class ImmutableByteStringBuffer extends ByteStringBuffer
+class ImmutableByteStringBuffer //extends ByteStringBuffer
 {
+  /*
   ImmutableByteStringBuffer(final int byteOffsetBeginning,
                             final int byteOffsetEnd,
                             final List<ByteString> byteStringList)
@@ -45,5 +42,5 @@ class ImmutableByteStringBuffer extends ByteStringBuffer
   void add(ByteString byteString) {
     throw new UnsupportedOperationException("Addition is not allowed on sub ByteStringBuffers");
   }
-
+*/
 }

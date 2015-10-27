@@ -56,7 +56,8 @@ public class GetRequest<T extends RecordTemplate> extends Request<T>
           null,
           baseUriTemplate,
           pathKeys,
-          requestOptions);
+          requestOptions,
+          null);
 
     _templateClass = templateClass;
     _id = id;

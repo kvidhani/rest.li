@@ -16,18 +16,35 @@
 
 package com.linkedin.restli.server;
 
+
 import com.linkedin.common.callback.Callback;
+import com.linkedin.data.ByteString;
 import com.linkedin.jersey.api.uri.UriBuilder;
+import com.linkedin.multipart.MultiPartMIMEReader;
+import com.linkedin.multipart.MultiPartMIMEReaderCallback;
+import com.linkedin.multipart.MultiPartMIMEStreamResponseBuilder;
+import com.linkedin.multipart.MultiPartMIMEWriter;
+import com.linkedin.multipart.SinglePartMIMEReaderCallback;
+import com.linkedin.multipart.exceptions.IllegalMultiPartMIMEFormatException;
 import com.linkedin.parseq.Engine;
 import com.linkedin.r2.message.RequestContext;
+import com.linkedin.r2.message.rest.Messages;
+import com.linkedin.r2.message.rest.Request;
 import com.linkedin.r2.message.rest.RestRequest;
 import com.linkedin.r2.message.rest.RestRequestBuilder;
 import com.linkedin.r2.message.rest.RestResponse;
+import com.linkedin.r2.message.rest.StreamRequest;
+import com.linkedin.r2.message.rest.StreamResponse;
+import com.linkedin.r2.message.streaming.ByteStringWriter;
 import com.linkedin.r2.util.URIUtil;
 import com.linkedin.restli.common.HttpStatus;
 import com.linkedin.restli.common.ProtocolVersion;
+import com.linkedin.restli.common.RestConstants;
+import com.linkedin.restli.common.attachments.RestLiAttachmentReader;
+import com.linkedin.restli.common.attachments.RestLiStreamingAttachments;
 import com.linkedin.restli.internal.common.AllProtocolVersions;
 import com.linkedin.restli.internal.common.ProtocolVersionUtil;
+import com.linkedin.restli.internal.common.attachments.AttachmentUtilities;
 import com.linkedin.restli.internal.server.RestLiCallback;
 import com.linkedin.restli.internal.server.RestLiMethodInvoker;
 import com.linkedin.restli.internal.server.RestLiResponseHandler;
@@ -41,18 +58,19 @@ import com.linkedin.restli.internal.server.model.ResourceMethodDescriptor;
 import com.linkedin.restli.internal.server.model.ResourceMethodDescriptor.InterfaceType;
 import com.linkedin.restli.internal.server.model.ResourceModel;
 import com.linkedin.restli.internal.server.model.RestLiApiBuilder;
+import com.linkedin.restli.internal.server.util.MIMEParse;
 import com.linkedin.restli.server.filter.ResponseFilter;
 import com.linkedin.restli.server.multiplexer.MultiplexedRequestHandler;
 import com.linkedin.restli.server.multiplexer.MultiplexedRequestHandlerImpl;
 import com.linkedin.restli.server.resources.PrototypeResourceFactory;
 import com.linkedin.restli.server.resources.ResourceFactory;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
+import javax.mail.internet.ContentType;
+import javax.mail.internet.ParseException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -60,6 +78,7 @@ import org.slf4j.LoggerFactory;
  * @author dellamag
  * @author Zhenkai Zhu
  * @author nshankar
+ * @author Karim Vidhani
  */
 //TODO: Remove this once use of InvokeAware has been discontinued.
 @SuppressWarnings("deprecation")
@@ -168,6 +187,11 @@ public class RestLiServer extends BaseRestServer
                                  final RequestContext requestContext,
                                  final Callback<RestResponse> callback)
   {
+    //Until RestRequest is removed, this code path cannot accept content types or accept types that contain
+    //multipart/related. This is because these types of requests will usually have very large payloads and therefore
+    //would degrade server performance since RestRequest reads everything into memory.
+    verifyAttachmentSupportNotNeeded(request, callback);
+
     if (isDocumentationRequest(request))
     {
       handleDocumentationRequest(request, callback);
@@ -189,6 +213,7 @@ public class RestLiServer extends BaseRestServer
         handleResourceRequest(request,
                               requestContext,
                               new RequestExecutionCallbackAdapter<RestResponse>(callback),
+                              null,
                               false);
       }
     }
@@ -252,7 +277,7 @@ public class RestLiServer extends BaseRestServer
         uriBuilder.replacePath(request.getURI().getPath().substring(0, debugSegmentIndex - 1));
         requestBuilder.setURI(uriBuilder.build());
 
-        handleResourceRequest(requestBuilder.build(), requestContext, callback, true);
+        handleResourceRequest(requestBuilder.build(), requestContext, callback, null, true);
       }
     }, callback);
   }
@@ -260,6 +285,7 @@ public class RestLiServer extends BaseRestServer
   private void handleResourceRequest(final RestRequest request,
                                      final RequestContext requestContext,
                                      final RequestExecutionCallback<RestResponse> callback,
+                                     final RestLiAttachmentReader attachmentReader,
                                      final boolean isDebugMode)
   {
     try
@@ -276,7 +302,7 @@ public class RestLiServer extends BaseRestServer
     final RoutingResult method;
     try
     {
-      method = _router.process(request, requestContext);
+      method = _router.process(request, requestContext, attachmentReader);
     }
     catch (Exception e)
     {
@@ -319,13 +345,13 @@ public class RestLiServer extends BaseRestServer
       return new RequestExecutionCallback<RestResponse>()
       {
         @Override
-        public void onSuccess(RestResponse result, RequestExecutionReport executionReport)
+        public void onSuccess(RestResponse result, RequestExecutionReport executionReport, RestLiStreamingAttachments attachments)
         {
           for (Callback<RestResponse> callback : invokeAwareCallbacks)
           {
             callback.onSuccess(result);
           }
-          originalCallback.onSuccess(result, executionReport);
+          originalCallback.onSuccess(result, executionReport, attachments);
         }
 
         @Override
@@ -344,7 +370,7 @@ public class RestLiServer extends BaseRestServer
   }
 
 
-  private boolean isMultiplexedRequest(RestRequest request) {
+  private boolean isMultiplexedRequest(Request request) {
     return _multiplexedRequestHandler.isMultiplexedRequest(request);
   }
 
@@ -352,7 +378,7 @@ public class RestLiServer extends BaseRestServer
     _multiplexedRequestHandler.handleRequest(request, requestContext, callback);
   }
 
-  private boolean isDocumentationRequest(RestRequest request) {
+  private boolean isDocumentationRequest(Request request) {
     return _docRequestHandler != null && _docRequestHandler.isDocumentationRequest(request);
   }
 
@@ -385,7 +411,7 @@ public class RestLiServer extends BaseRestServer
     }
   }
 
-  private RestLiDebugRequestHandler findDebugRequestHandler(RestRequest request)
+  private RestLiDebugRequestHandler findDebugRequestHandler(Request request)
   {
     String[] pathSegments = URIUtil.tokenizePath(request.getURI().getPath());
     String debugHandlerId = null;
@@ -434,9 +460,370 @@ public class RestLiServer extends BaseRestServer
     }
 
     @Override
-    public void onSuccess(T result, RequestExecutionReport executionReport)
+    public void onSuccess(T result, RequestExecutionReport executionReport, RestLiStreamingAttachments attachments)
     {
       _wrappedCallback.onSuccess(result);
+    }
+  }
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  //Streaming related functionality defined here.
+  //In the future we will deprecate and remove RestRequest/RestResponse. Until then we need to be minimally invasive
+  //while still offering existing functionality.
+
+  /**
+   * @see BaseRestServer#doHandleStreamRequest(com.linkedin.r2.message.rest.StreamRequest,
+   *      com.linkedin.r2.message.RequestContext, com.linkedin.common.callback.Callback)
+   */
+  @Override
+  protected void doHandleStreamRequest(final StreamRequest request,
+      final RequestContext requestContext,
+      final Callback<StreamResponse> callback)
+  {
+    //Eventually - when RestRequest is removed, we will migrate all of these code paths to StreamRequest.
+
+    //For documentation requests, it is important to note that the payload is ignored therefore we can just read
+    //everything into memory.
+    if (isDocumentationRequest(request))
+    {
+      Messages.toRestRequest(request, new Callback<RestRequest>()
+      {
+        @Override
+        public void onError(Throwable e)
+        {
+          callback.onError(e);
+        }
+
+        @Override
+        public void onSuccess(RestRequest result)
+        {
+          handleDocumentationRequest(result, Messages.toRestCallback(callback));
+        }
+      });
+    }
+    //For multiplexed requests, we read everything into memory. If individual requests specify multipart/related
+    //as a content type or accept type, a bad request will be thrown later when the multiplexer calls
+    //handleRequest(RestRequest request ....) for each individual request.
+    else if (isMultiplexedRequest(request))
+    {
+      Messages.toRestRequest(request, new Callback<RestRequest>()
+      {
+        @Override
+        public void onError(Throwable e)
+        {
+          callback.onError(e);
+        }
+
+        @Override
+        public void onSuccess(RestRequest result)
+        {
+          handleMultiplexedRequest(result, requestContext, Messages.toRestCallback(callback));
+        }
+      });
+    }
+    else
+    {
+      final RestLiDebugRequestHandler debugHandlerForRequest = findDebugRequestHandler(request);
+
+      if (debugHandlerForRequest != null)
+      {
+        //Currently we will not support debugging + attachment support.
+        verifyAttachmentSupportNotNeeded(request, callback);
+
+        Messages.toRestRequest(request, new Callback<RestRequest>()
+        {
+          @Override
+          public void onError(Throwable e)
+          {
+            callback.onError(e);
+          }
+
+          @Override
+          public void onSuccess(RestRequest result)
+          {
+            handleDebugRequest(debugHandlerForRequest, result, requestContext, Messages.toRestCallback(callback));
+          }
+        });
+      }
+      else
+      {
+        //At this point we need to check the content-type to understand how we should handle the request.
+        String header = request.getHeader(RestConstants.HEADER_CONTENT_TYPE);
+        if (header != null)
+        {
+          ContentType contentType = null;
+          try
+          {
+            contentType = new ContentType(header);
+          }
+          catch (ParseException e)
+          {
+            callback.onError(new RestLiServiceException(HttpStatus.S_400_BAD_REQUEST, "Unable to parse Content-Type: " + header));
+          }
+
+          if (contentType.getBaseType().equalsIgnoreCase(RestConstants.HEADER_VALUE_MULTIPART_RELATED))
+          {
+            //We need to reconstruct a RestRequest that has the first part of the multipart/related payload as the
+            //traditional metadata payload of a RestRequest.
+            final MultiPartMIMEReader multiPartMIMEReader = MultiPartMIMEReader.createAndAcquireStream(request);
+            final RestRequestBuilder restRequestBuilder = new RestRequestBuilder(request);
+            final TopLevelReaderCallback firstPartReader =
+                new TopLevelReaderCallback(restRequestBuilder, requestContext, callback, multiPartMIMEReader);
+            multiPartMIMEReader.registerReaderCallback(firstPartReader);
+            return;
+          }
+        }
+
+        //If we get here this means that the content-type is missing (which is supported to maintain backwards compatibility)
+        //or that it exists and is something other then multipart/related. This means we can read the entire payload into memory
+        //and reconstruct the RestRequest.
+        Messages.toRestRequest(request, new Callback<RestRequest>()
+        {
+          @Override
+          public void onError(Throwable e)
+          {
+            callback.onError(e);
+          }
+
+          @Override
+          public void onSuccess(RestRequest result)
+          {
+            //This callback is invoked once the incoming StreamRequest is converted into a RestRequest. We can now
+            //move forward with this request.
+            //It is important to note that the server's response may include attachments so we factor that into
+            //consideration upon completion of this request.
+            final StreamingCallbackAdaptor streamingCallbackAdaptor = new StreamingCallbackAdaptor(callback);
+            handleResourceRequest(result, requestContext, streamingCallbackAdaptor, null, false);
+          }
+        });
+      }
+    }
+  }
+
+  private class TopLevelReaderCallback implements MultiPartMIMEReaderCallback
+  {
+    private final RestRequestBuilder _restRequestBuilder;
+    private final ByteString _requestPayload = null;
+    private final RequestContext _requestContext;
+    private final Callback<StreamResponse> _streamResponseCallback;
+    private final MultiPartMIMEReader _multiPartMIMEReader;
+
+    private TopLevelReaderCallback(final RestRequestBuilder restRequestBuilder, final RequestContext requestContext,
+        final Callback<StreamResponse> streamResponseCallback, final MultiPartMIMEReader multiPartMIMEReader)
+    {
+      _restRequestBuilder = restRequestBuilder;
+      _requestContext = requestContext;
+      _streamResponseCallback = streamResponseCallback;
+      _multiPartMIMEReader = multiPartMIMEReader;
+    }
+
+    @Override
+    public void onNewPart(MultiPartMIMEReader.SinglePartMIMEReader singleParMIMEReader)
+    {
+      if (_requestPayload == null)
+      {
+        //The first time this is invoked we read in the first part.
+        //At this point in time the Content-Type is still multipart/related for the artificially created RestRequest.
+        //Therefore care must be taken to make sure that we propagate the Content-Type from the first part as the Content-Type
+        //of the artificially created RestRequest.
+        final Map<String, String> singlePartHeaders = singleParMIMEReader.dataSourceHeaders(); //Case-insensitive map already.
+        final String contentTypeString = singlePartHeaders.get(RestConstants.HEADER_CONTENT_TYPE);
+        if (contentTypeString == null)
+        {
+          _streamResponseCallback.onError(new RestLiServiceException(HttpStatus.S_400_BAD_REQUEST,
+              "Incorrect multipart/related payload. First part must contain the Content-Type!"));
+        }
+
+        ContentType contentType = null;
+        try
+        {
+          contentType = new ContentType(contentTypeString);
+        }
+        catch (ParseException e)
+        {
+          _streamResponseCallback.onError(new RestLiServiceException(HttpStatus.S_400_BAD_REQUEST,
+              "Unable to parse Content-Type: " + contentTypeString));
+        }
+
+        final String baseType = contentType.getBaseType();
+        if (!baseType.equalsIgnoreCase(RestConstants.HEADER_VALUE_APPLICATION_JSON) ||
+            !baseType.equalsIgnoreCase(RestConstants.HEADER_VALUE_APPLICATION_PSON))
+        {
+          _streamResponseCallback.onError(new RestLiServiceException(HttpStatus.S_415_UNSUPPORTED_MEDIA_TYPE,
+          "Unknown Content-Type for first part of multipart/related payload: " + contentType.toString()));
+        }
+
+        _restRequestBuilder.setHeader(RestConstants.HEADER_CONTENT_TYPE, contentTypeString);
+        FirstPartReaderCallback firstPartReaderCallback = new FirstPartReaderCallback(this, singleParMIMEReader, _requestPayload);
+        singleParMIMEReader.registerReaderCallback(firstPartReaderCallback);
+        singleParMIMEReader.requestPartData();
+      }
+      else
+      {
+        //This is the beginning of the 2nd part, so pass this to the client.
+        _restRequestBuilder.setEntity(_requestPayload);
+        final StreamingCallbackAdaptor streamingCallbackAdaptor = new StreamingCallbackAdaptor(_streamResponseCallback);
+        handleResourceRequest(_restRequestBuilder.build(), _requestContext, streamingCallbackAdaptor,
+            new RestLiAttachmentReader(_multiPartMIMEReader), false);
+      }
+    }
+
+    @Override
+    public void onFinished()
+    {
+      //Verify we actually had some parts.
+      if (_requestPayload == null)
+      {
+        _streamResponseCallback.onError(new RestLiServiceException(HttpStatus.S_400_BAD_REQUEST,
+            "Did not receive any parts in the multipart mime request!"));
+      }
+
+      //At this point, this means that the multipart mime envelope didn't have any attachments (apart from the
+      //json/pson payload).
+      //In this case we set the attachment reader to null.
+      final StreamingCallbackAdaptor streamingCallbackAdaptor = new StreamingCallbackAdaptor(_streamResponseCallback);
+      handleResourceRequest(_restRequestBuilder.build(), _requestContext, streamingCallbackAdaptor, null, false);
+    }
+
+    @Override
+    public void onAbandoned()
+    {
+      _streamResponseCallback.onError(new IllegalStateException("Serious error. There should never be a call to abandon"
+          + " the entire payload when decoding a multipart mime response."));
+    }
+
+    @Override
+    public void onStreamError(Throwable throwable)
+    {
+      //At this point this could be a an exception thrown due to malformed data or this could be an exception thrown
+      //due to an invocation of a callback.
+      if (throwable instanceof IllegalMultiPartMIMEFormatException)
+      {
+        //If its an illegally formed request, then we send back 400.
+        _streamResponseCallback.onError(new RestLiServiceException(HttpStatus.S_400_BAD_REQUEST,
+            "Illegally formed multipart payload", throwable));
+      }
+      //Otherwise this is an internal server error. R2 will convert this to a 500 for us.
+      _streamResponseCallback.onError(throwable);
+    }
+  }
+
+  private class FirstPartReaderCallback implements SinglePartMIMEReaderCallback
+  {
+    private final TopLevelReaderCallback _topLevelReaderCallback;
+    private final MultiPartMIMEReader.SinglePartMIMEReader _singlePartMIMEReader;
+    private final ByteString.Builder _builder = new ByteString.Builder();
+    private ByteString _requestPayload;
+
+    public FirstPartReaderCallback(
+        final TopLevelReaderCallback topLevelReaderCallback,
+        final MultiPartMIMEReader.SinglePartMIMEReader singlePartMIMEReader,
+        final ByteString requestPayload)
+    {
+      _topLevelReaderCallback = topLevelReaderCallback;
+      _singlePartMIMEReader = singlePartMIMEReader;
+      _requestPayload = requestPayload;
+    }
+
+    @Override
+    public void onPartDataAvailable(ByteString partData)
+    {
+      _builder.append(partData);
+      _singlePartMIMEReader.requestPartData();
+    }
+
+    @Override
+    public void onFinished()
+    {
+      _requestPayload = _builder.build();
+    }
+
+    @Override
+    public void onAbandoned()
+    {
+      _topLevelReaderCallback.onStreamError(new IllegalStateException("Serious error. There should never be a call to "
+          + "abandon part data when decoding the first part in a multipart mime response."));
+    }
+
+    @Override
+    public void onStreamError(Throwable throwable)
+    {
+      //No need to do anything as the MultiPartMIMEReader will also call onStreamError() on the top level callback
+      //which will then call the response callback.
+    }
+  }
+
+  private class StreamingCallbackAdaptor implements RequestExecutionCallback<RestResponse>
+  {
+    private final Callback<StreamResponse> _streamResponseCallback;
+
+    private StreamingCallbackAdaptor(final Callback<StreamResponse> streamResponseCallback)
+    {
+      _streamResponseCallback = streamResponseCallback;
+    }
+
+    @Override
+    public void onError(final Throwable e, final RequestExecutionReport executionReport)
+    {
+      _streamResponseCallback.onError(e);
+    }
+
+    @Override
+    public void onSuccess(final RestResponse result, final RequestExecutionReport executionReport,
+        final RestLiStreamingAttachments attachments)
+    {
+      //Construct the StreamResponse and invoke the callback. The RestResponse entity should be the first part.
+      //There may potentially be attachments included in the response .
+      if (attachments != null && attachments.getStreamingDataSources().size() > 0)
+      {
+        final ByteStringWriter firstPartWriter = new ByteStringWriter(result.getEntity());
+        final MultiPartMIMEWriter multiPartMIMEWriter = AttachmentUtilities.createMultiPartMIMEWriter(firstPartWriter,
+          result.getHeader(RestConstants.HEADER_CONTENT_TYPE), attachments);
+
+        final StreamResponse streamResponse =
+            MultiPartMIMEStreamResponseBuilder.generateMultiPartMIMEStreamResponse(AttachmentUtilities.RESTLI_MULTIPART_SUBTYPE, multiPartMIMEWriter);
+        _streamResponseCallback.onSuccess(streamResponse);
+      }
+      else
+      {
+        _streamResponseCallback.onSuccess(Messages.toStreamResponse(result));
+      }
+    }
+  }
+
+  //Note that using the raw type here on Callback is acceptable
+  private static void verifyAttachmentSupportNotNeeded(final Request request, final Callback callback)
+  {
+    final Map<String, String> requestHeaders = request.getHeaders();
+    try
+    {
+      final String contentTypeString = requestHeaders.get(RestConstants.HEADER_CONTENT_TYPE);
+      if (contentTypeString != null)
+      {
+        final ContentType contentType = new ContentType(contentTypeString);
+        if (contentType.getBaseType().equalsIgnoreCase(RestConstants.HEADER_VALUE_MULTIPART_RELATED))
+        {
+          callback.onError(new RestLiServiceException(HttpStatus.S_415_UNSUPPORTED_MEDIA_TYPE,
+              "This server cannot handle requests with a content type of multipart/related"));
+        }
+      }
+      final String acceptTypeHeader = requestHeaders.get(RestConstants.HEADER_ACCEPT);
+      if (acceptTypeHeader != null)
+      {
+        final List<String> acceptTypes = MIMEParse.parseAcceptType(acceptTypeHeader);
+        for (final String acceptType : acceptTypes)
+        {
+          if (acceptType.equalsIgnoreCase(RestConstants.HEADER_VALUE_MULTIPART_RELATED))
+          {
+            callback.onError(new RestLiServiceException(HttpStatus.S_406_NOT_ACCEPTABLE,
+                "This server cannot handle requests with an accept type of multipart/related"));
+          }
+        }
+      }
+    }
+    catch (ParseException parseException)
+    {
+      callback.onError(new RestLiServiceException(HttpStatus.S_400_BAD_REQUEST));
     }
   }
 }

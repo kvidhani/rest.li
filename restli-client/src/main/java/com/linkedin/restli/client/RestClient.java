@@ -26,7 +26,7 @@ import com.linkedin.data.DataMap;
 import com.linkedin.data.codec.JacksonDataCodec;
 import com.linkedin.data.codec.PsonDataCodec;
 import com.linkedin.data.template.RecordTemplate;
-import com.linkedin.multipart.MultiPartMIMEDataSource;
+import com.linkedin.multipart.MultiPartMIMEStreamRequestBuilder;
 import com.linkedin.multipart.MultiPartMIMEWriter;
 import com.linkedin.r2.filter.CompressionOption;
 import com.linkedin.r2.filter.R2Constants;
@@ -39,7 +39,6 @@ import com.linkedin.r2.message.rest.StreamRequest;
 import com.linkedin.r2.message.rest.StreamRequestBuilder;
 import com.linkedin.r2.message.rest.StreamResponse;
 import com.linkedin.r2.message.streaming.ByteStringWriter;
-import com.linkedin.r2.message.streaming.WriteHandle;
 import com.linkedin.r2.transport.common.Client;
 import com.linkedin.restli.client.multiplexer.MultiplexedCallback;
 import com.linkedin.restli.client.multiplexer.MultiplexedRequest;
@@ -51,9 +50,12 @@ import com.linkedin.restli.common.OperationNameGenerator;
 import com.linkedin.restli.common.ProtocolVersion;
 import com.linkedin.restli.common.ResourceMethod;
 import com.linkedin.restli.common.RestConstants;
+import com.linkedin.restli.internal.common.attachments.AttachmentUtilities;
+import com.linkedin.restli.common.attachments.RestLiStreamingAttachments;
 import com.linkedin.restli.internal.client.RequestBodyTransformer;
 import com.linkedin.restli.internal.client.ResponseFutureImpl;
 import com.linkedin.restli.internal.common.AllProtocolVersions;
+
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -62,7 +64,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
-import java.util.TreeMap;
 import javax.mail.internet.ParseException;
 
 
@@ -454,7 +455,7 @@ public class RestClient
   // 1. Request header
   // 2. RestLiRequestOptions
   // 3. RestClient configuration
-  private void addAcceptHeaders(MessageHeadersBuilder builder, List<AcceptType> acceptTypes, boolean acceptAttachments)
+  private void addAcceptHeaders(MessageHeadersBuilder<?> builder, List<AcceptType> acceptTypes, boolean acceptAttachments)
   {
     if (builder.getHeader(RestConstants.HEADER_ACCEPT) == null)
     {
@@ -509,7 +510,7 @@ public class RestClient
   // 1. Request header
   // 2. RestLiRequestOption
   // 3. RestClient configuration
-  private ContentType resolveContentType(MessageHeadersBuilder builder, DataMap dataMap, ContentType contentType)
+  private ContentType resolveContentType(MessageHeadersBuilder<?> builder, DataMap dataMap, ContentType contentType)
     throws IOException
   {
     if (dataMap != null)
@@ -814,14 +815,6 @@ public class RestClient
     }
   }
 
-
-
-
-
-
-
-
-
   private StreamRequest buildStreamRequest(URI uri,
       ResourceMethod method,
       DataMap dataMap,
@@ -863,70 +856,13 @@ public class RestClient
         throw new IllegalStateException("Unknown ContentType:" + type);
     }
 
-    //Add the first part which is the json/pson meta data.
-    multiPartMIMEWriterBuilder.appendDataSource(new MultiPartMIMEDataSource()
-    {
-      @Override
-      public Map<String, String> dataSourceHeaders()
-      {
-        final Map<String, String> metaDataHeaders = new TreeMap<String, String>();
-        metaDataHeaders.put(RestConstants.HEADER_CONTENT_TYPE, type.getHeaderKey());
-        return metaDataHeaders;
-      }
+    final MultiPartMIMEWriter multiPartMIMEWriter = AttachmentUtilities.createMultiPartMIMEWriter(firstPartWriter,
+      type.getHeaderKey(), streamingAttachments);
 
-      @Override
-      public void onInit(WriteHandle wh)
-      {
-        firstPartWriter.onInit(wh);
-      }
-
-      @Override
-      public void onWritePossible()
-      {
-        firstPartWriter.onWritePossible();
-      }
-
-      @Override
-      public void onAbort(Throwable e)
-      {
-        firstPartWriter.onAbort(e);
-      }
-    });
-
-    //Now add all of the user specified attachments
-    for (final RestLiStreamingDataSource streamingDataSource : streamingAttachments.getStreamingDataSources())
-    {
-      multiPartMIMEWriterBuilder.appendDataSource(new MultiPartMIMEDataSource()
-      {
-        @Override
-        public Map<String, String> dataSourceHeaders()
-        {
-          final Map<String, String> dataSourceHeaders = new TreeMap<String, String>();
-          dataSourceHeaders.put(RestConstants.HEADER_CONTENT_ID, streamingDataSource.getAttachmentID());
-          return dataSourceHeaders;
-        }
-
-        @Override
-        public void onInit(WriteHandle wh)
-        {
-          streamingDataSource.onInit(wh);
-        }
-
-        @Override
-        public void onWritePossible()
-        {
-          streamingDataSource.onWritePossible();
-        }
-
-        @Override
-        public void onAbort(Throwable e)
-        {
-          streamingDataSource.onAbort(e);
-        }
-      });
-    }
-
-    return requestBuilder.build(multiPartMIMEWriterBuilder.build().getEntityStream());
+    final StreamRequest streamRequest =
+        MultiPartMIMEStreamRequestBuilder.generateMultiPartMIMEStreamRequest(AttachmentUtilities.RESTLI_MULTIPART_SUBTYPE,
+            multiPartMIMEWriter, Collections.<String, String>emptyMap(), requestBuilder);
+    return streamRequest;
   }
 
 
@@ -978,7 +914,7 @@ public class RestClient
    * @param builder
    * @param protocolVersion
    */
-  private void addProtocolVersionHeader(MessageHeadersBuilder builder, ProtocolVersion protocolVersion)
+  private void addProtocolVersionHeader(MessageHeadersBuilder<?> builder, ProtocolVersion protocolVersion)
   {
     builder.setHeader(RestConstants.HEADER_RESTLI_PROTOCOL_VERSION, protocolVersion.toString());
   }
@@ -1019,5 +955,4 @@ public class RestClient
       return _headerKey;
     }
   }
-
 }

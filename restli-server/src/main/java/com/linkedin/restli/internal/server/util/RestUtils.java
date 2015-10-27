@@ -46,13 +46,10 @@ import com.linkedin.restli.server.ProjectionMode;
 import com.linkedin.restli.server.ResourceContext;
 import com.linkedin.restli.server.RestLiServiceException;
 import com.linkedin.restli.server.RoutingException;
-
 import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.ParameterizedType;
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
-
 import org.apache.commons.lang.StringUtils;
 
 

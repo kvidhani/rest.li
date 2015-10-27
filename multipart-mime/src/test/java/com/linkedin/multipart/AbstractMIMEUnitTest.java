@@ -92,7 +92,7 @@ public abstract class AbstractMIMEUnitTest
     //This takes the place of VariableByteStringWriter if we were to use R2 directly.
     final VariableByteStringViewer variableByteStringViewer = new VariableByteStringViewer(payload, chunkSize);
 
-    doAnswer(new Answer()
+    doAnswer(new Answer<Object>()
     {
       @Override
       public Object answer(InvocationOnMock invocation) throws Throwable
@@ -133,7 +133,7 @@ public abstract class AbstractMIMEUnitTest
 
     //We need a final version of the read handle since its passed to an inner class below.
     final ReadHandle readHandleRef = readHandle;
-    doAnswer(new Answer()
+    doAnswer(new Answer<Object>()
     {
       @Override
       public Object answer(InvocationOnMock invocation) throws Throwable

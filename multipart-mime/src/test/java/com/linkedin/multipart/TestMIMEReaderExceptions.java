@@ -168,10 +168,11 @@ public class TestMIMEReaderExceptions extends AbstractMIMEUnitTest
 
       //Construct expected headers and verify they match
       final Map<String, String> expectedHeaders = new HashMap<String, String>();
-      final Enumeration allHeaders = currentExpectedPart.getAllHeaders();
+      @SuppressWarnings("unchecked")
+      final Enumeration<Header> allHeaders = currentExpectedPart.getAllHeaders();
       while (allHeaders.hasMoreElements())
       {
-        final Header header = (Header) allHeaders.nextElement();
+        final Header header = allHeaders.nextElement();
         expectedHeaders.put(header.getName(), header.getValue());
       }
       Assert.assertEquals(currentCallback._headers, expectedHeaders);
@@ -256,10 +257,11 @@ public class TestMIMEReaderExceptions extends AbstractMIMEUnitTest
 
       //Construct expected headers and verify they match
       final Map<String, String> expectedHeaders = new HashMap<String, String>();
-      final Enumeration allHeaders = currentExpectedPart.getAllHeaders();
+      @SuppressWarnings("unchecked")
+      final Enumeration<Header> allHeaders = currentExpectedPart.getAllHeaders();
       while (allHeaders.hasMoreElements())
       {
-        final Header header = (Header) allHeaders.nextElement();
+        final Header header = allHeaders.nextElement();
         expectedHeaders.put(header.getName(), header.getValue());
       }
       Assert.assertEquals(currentCallback._headers, expectedHeaders);
@@ -453,7 +455,7 @@ public class TestMIMEReaderExceptions extends AbstractMIMEUnitTest
     SinglePartMIMEExceptionReaderCallbackImpl(final MultiPartMIMEReader.SinglePartMIMEReader singlePartMIMEReader)
     {
       _singlePartMIMEReader = singlePartMIMEReader;
-      _headers = singlePartMIMEReader.getHeaders();
+      _headers = singlePartMIMEReader.dataSourceHeaders();
     }
 
     @Override

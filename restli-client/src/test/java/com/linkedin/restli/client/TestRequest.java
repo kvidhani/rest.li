@@ -170,7 +170,8 @@ public class TestRequest
                                                           null,
                                                           "testRecord",
                                                           pathKeys,
-                                                          RestliRequestOptions.DEFAULT_OPTIONS);
+                                                          RestliRequestOptions.DEFAULT_OPTIONS,
+                                                          null);
 
     ResourceProperties expectedResourceProperties =
         new ResourcePropertiesImpl(expectedResourceSpec.getSupportedMethods(),

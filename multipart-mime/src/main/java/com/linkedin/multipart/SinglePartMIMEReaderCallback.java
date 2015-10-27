@@ -35,7 +35,7 @@ public interface SinglePartMIMEReaderCallback
   /**
    * Invoked when data is available to be read on the current part.
    *
-   * @param partData the dat
+   * @param partData the {@link com.linkedin.data.ByteString} representing the current window of part data.
    */
   public void onPartDataAvailable(ByteString partData);
 

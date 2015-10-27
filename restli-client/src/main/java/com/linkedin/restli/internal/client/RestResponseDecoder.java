@@ -33,7 +33,7 @@ import com.linkedin.r2.message.rest.RestResponse;
 import com.linkedin.r2.message.rest.StreamResponse;
 import com.linkedin.r2.message.streaming.FullEntityReader;
 import com.linkedin.restli.client.Response;
-import com.linkedin.restli.client.RestLiAttachmentReader;
+import com.linkedin.restli.common.attachments.RestLiAttachmentReader;
 import com.linkedin.restli.client.RestLiDecodingException;
 import com.linkedin.restli.common.ProtocolVersion;
 import com.linkedin.restli.common.RestConstants;
@@ -183,6 +183,7 @@ public abstract class RestResponseDecoder<T>
       else
       {
         //This is the 2nd part, so pass this on to the client
+        //todo what if there is nothing left?
         _response.setAttachmentReader(new RestLiAttachmentReader(_multiPartMIMEReader));
       }
     }
@@ -253,7 +254,7 @@ public abstract class RestResponseDecoder<T>
       try
       {
         _response = createResponse(_streamResponse.getHeaders(), _streamResponse.getStatus(), _builder.build());
-        //Note that we can't answer the callback of the client yet since we don't know if there are more parts. Hence
+        //Note that we can't answer the callback of the client yet since we don't know if there are more parts.
       } catch (Exception exception)
       {
         _topLevelReaderCallback.onStreamError(exception);
@@ -263,8 +264,9 @@ public abstract class RestResponseDecoder<T>
     @Override
     public void onAbandoned()
     {
-      _responseCallback.onError(new IllegalStateException("Serious error. There should never be a call to abandon"
-          + " part data when decoding the first part in a multipart mime response."));
+      _topLevelReaderCallback.onStreamError(new IllegalStateException(
+          "Serious error. There should never be a call to abandon"
+              + " part data when decoding the first part in a multipart mime response."));
     }
 
     @Override

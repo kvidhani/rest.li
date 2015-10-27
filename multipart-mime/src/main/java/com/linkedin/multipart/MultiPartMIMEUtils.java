@@ -31,7 +31,7 @@ import java.util.TreeMap;
 
 
 /**
- * General Purpose utility functions.
+ * General purpose utility methods.
  *
  * @author Karim Vidhani
  */

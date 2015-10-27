@@ -1,10 +1,5 @@
 package com.linkedin.multipart;
 
-import com.linkedin.data.ByteString;
-
-import java.util.ArrayList;
-import java.util.List;
-
 /**
  * Created by kvidhani on 8/5/15.
  */
@@ -18,6 +13,7 @@ import java.util.List;
 //4. byteOffsetBeginning will vary. it will start with 0 but as trims occur it will change.
 
 class ByteStringBuffer {
+  /*
   protected List<ByteString> _byteStringList;
   protected int _byteOffsetBeginning; //Offset from first byte string
   protected int _byteOffsetEnd; //offset in last byte string
@@ -214,4 +210,5 @@ class ByteStringBuffer {
     IMMUTABLE,
     PART_DATA
   }
+  */
 }
