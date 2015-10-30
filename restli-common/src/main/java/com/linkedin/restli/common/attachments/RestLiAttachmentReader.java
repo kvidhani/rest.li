@@ -63,7 +63,7 @@ public final class RestLiAttachmentReader
    * Reads through and abandons the current new attachment and additionally all remaining attachments. This API can ONLY be used after
    * registration via {@link RestLiAttachmentReader#registerAttachmentReaderCallback(com.linkedin.restli.common.attachments.RestLiAttachmentReaderCallback)}
    * and after an invocation on
-   * {@link RestLiAttachmentReaderCallback#onNewPart(com.linkedin.restli.common.attachments.RestLiAttachmentReader.SinglePartRestLiAttachmentReader))}.
+   * {@link RestLiAttachmentReaderCallback#onNewPart(com.linkedin.restli.common.attachments.RestLiAttachmentReader.SingleRestLiAttachmentReader))}.
    *
    * The goal is for clients to at least see the first attachment before deciding to abandon all attachments.
    *
@@ -71,8 +71,8 @@ public final class RestLiAttachmentReader
    * Failure to do so will result in a {@link com.linkedin.multipart.exceptions.ReaderNotInitializedException}.
    *
    * This can ONLY be called if there is no attachment being actively read, meaning that
-   * the current {@link com.linkedin.restli.common.attachments.RestLiAttachmentReader.SinglePartRestLiAttachmentReader}
-   * has not been initialized with a {@link com.linkedin.restli.common.attachments.SinglePartRestLiAttachmentReaderCallback}.
+   * the current {@link com.linkedin.restli.common.attachments.RestLiAttachmentReader.SingleRestLiAttachmentReader}
+   * has not been initialized with a {@link SingleRestLiAttachmentReaderCallback}.
    * If this is violated a {@link com.linkedin.multipart.exceptions.StreamBusyException} will be thrown.
    *
    * Once all attachments have finished being abandoned, a call will be made to {@link MultiPartMIMEReaderCallback#onAbandoned()}.
@@ -100,11 +100,11 @@ public final class RestLiAttachmentReader
 
   /**
    * Register to read using this RestLiAttachmentReader. This can ONLY be called if there is no attachment being actively
-   * read meaning that the current {@link com.linkedin.restli.common.attachments.RestLiAttachmentReader.SinglePartRestLiAttachmentReader}
+   * read meaning that the current {@link com.linkedin.restli.common.attachments.RestLiAttachmentReader.SingleRestLiAttachmentReader}
    * has not had a callback registered with it. Violation of this will throw a {@link com.linkedin.multipart.exceptions.StreamBusyException}.
    *
    * This can even be set if no attachments in the stream have actually been consumed, i.e after the very first invocation of
-   * {@link RestLiAttachmentReaderCallback#onNewPart(com.linkedin.restli.common.attachments.RestLiAttachmentReader.SinglePartRestLiAttachmentReader))}.
+   * {@link RestLiAttachmentReaderCallback#onNewPart(com.linkedin.restli.common.attachments.RestLiAttachmentReader.SingleRestLiAttachmentReader))}.
    *
    * @param restLiAttachmentReaderCallback the callback to register with.
    */
@@ -122,7 +122,7 @@ public final class RestLiAttachmentReader
           onStreamError(new RemoteInvocationException("Illegally formed multipart mime envelope. RestLi attachment"
               + " is missing the ContentID!"));
         }
-        restLiAttachmentReaderCallback.onNewPart(new SinglePartRestLiAttachmentReader(singleParMIMEReader, contentID));
+        restLiAttachmentReaderCallback.onNewPart(new SingleRestLiAttachmentReader(singleParMIMEReader, contentID));
       }
 
       @Override
@@ -149,13 +149,13 @@ public final class RestLiAttachmentReader
    * Allows users to asynchronously walk through all the data in an individual attachment. Instances of this
    * can only be constructed by a {@link com.linkedin.restli.common.attachments.RestLiAttachmentReader}.
    */
-  public final class SinglePartRestLiAttachmentReader implements RestLiAttachmentDataSource
+  public final class SingleRestLiAttachmentReader implements RestLiAttachmentDataSource
   {
     private final MultiPartMIMEReader.SinglePartMIMEReader _singlePartMIMEReader;
     private final String _attachmentID;
 
-    private SinglePartRestLiAttachmentReader(final MultiPartMIMEReader.SinglePartMIMEReader singlePartMIMEReader,
-        final String attachmentID)
+    private SingleRestLiAttachmentReader(final MultiPartMIMEReader.SinglePartMIMEReader singlePartMIMEReader,
+                                         final String attachmentID)
     {
       _singlePartMIMEReader = singlePartMIMEReader;
       _attachmentID = attachmentID;
@@ -174,12 +174,12 @@ public final class RestLiAttachmentReader
 
     /**
      * Reads bytes from this attachment and notifies the registered callback on
-     * {@link SinglePartRestLiAttachmentReaderCallback#onAttachmentDataAvailable(com.linkedin.data.ByteString)}.
+     * {@link SingleRestLiAttachmentReaderCallback#onAttachmentDataAvailable(com.linkedin.data.ByteString)}.
      *
-     * Usage of this API requires registration using a {@link com.linkedin.restli.common.attachments.SinglePartRestLiAttachmentReaderCallback}.
+     * Usage of this API requires registration using a {@link SingleRestLiAttachmentReaderCallback}.
      * Failure to do so will throw a {@link com.linkedin.multipart.exceptions.PartNotInitializedException}.
      *
-     * If this attachment is fully consumed, meaning {@link com.linkedin.restli.common.attachments.SinglePartRestLiAttachmentReaderCallback#onFinished()}
+     * If this attachment is fully consumed, meaning {@link SingleRestLiAttachmentReaderCallback#onFinished()}
      * has been called, then any subsequent calls to requestAttachmentData() will throw {@link com.linkedin.multipart.exceptions.PartFinishedException}.
      *
      * Since this is async and request queueing is not allowed, repetitive calls will result in
@@ -195,13 +195,13 @@ public final class RestLiAttachmentReader
 
     /**
      * Abandons all bytes from this attachment and then notifies the registered callback (if present) on
-     * {@link com.linkedin.restli.common.attachments.SinglePartRestLiAttachmentReaderCallback#onAbandoned()}.
+     * {@link SingleRestLiAttachmentReaderCallback#onAbandoned()}.
      *
-     * Usage of this API does NOT require registration using a {@link com.linkedin.restli.common.attachments.SinglePartRestLiAttachmentReaderCallback}.
+     * Usage of this API does NOT require registration using a {@link SingleRestLiAttachmentReaderCallback}.
      * If there is no callback registration then there is no notification provided upon completion of abandoning
      * this attachment.
      *
-     * If this attachment is fully consumed, meaning {@link com.linkedin.restli.common.attachments.SinglePartRestLiAttachmentReaderCallback#onFinished()}
+     * If this attachment is fully consumed, meaning {@link SingleRestLiAttachmentReaderCallback#onFinished()}
      * has been called, then any subsequent calls to abandonPart() will throw {@link com.linkedin.multipart.exceptions.PartFinishedException}.
      *
      * Since this is async and request queueing is not allowed, repetitive calls will result in
@@ -222,7 +222,7 @@ public final class RestLiAttachmentReader
      *
      * @param callback the callback to be invoked on in order to read attachment data.
      */
-    public void registerCallback(final SinglePartRestLiAttachmentReaderCallback callback)
+    public void registerCallback(final SingleRestLiAttachmentReaderCallback callback)
     {
       _singlePartMIMEReader.registerReaderCallback(new SinglePartMIMEReaderCallback()
       {

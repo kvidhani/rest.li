@@ -327,6 +327,10 @@ public class Request<T>
     {
       return false;
     }
+    if (_streamingAttachments != null? !_streamingAttachments.equals(other._streamingAttachments) : other._streamingAttachments != null)
+    {
+      return false;
+    }
 
     return true;
   }

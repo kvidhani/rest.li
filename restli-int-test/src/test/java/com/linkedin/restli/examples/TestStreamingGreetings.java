@@ -18,7 +18,7 @@ import com.linkedin.restli.common.attachments.RestLiAttachmentDataSource;
 import com.linkedin.restli.common.attachments.RestLiAttachmentReader;
 import com.linkedin.restli.common.attachments.RestLiAttachmentReaderCallback;
 import com.linkedin.restli.common.attachments.RestLiStreamingAttachments;
-import com.linkedin.restli.common.attachments.SinglePartRestLiAttachmentReaderCallback;
+import com.linkedin.restli.common.attachments.SingleRestLiAttachmentReaderCallback;
 import com.linkedin.restli.examples.greetings.api.Greeting;
 import com.linkedin.restli.examples.greetings.streaming.StreamingGreetingsBuilders;
 import com.linkedin.restli.server.RestLiServiceException;
@@ -188,11 +188,12 @@ public class TestStreamingGreetings extends RestLiIntegrationTest
     }
 
     @Override
-    public void onNewPart(RestLiAttachmentReader.SinglePartRestLiAttachmentReader singlePartRestLiAttachmentReader)
+    public void onNewPart(RestLiAttachmentReader.SingleRestLiAttachmentReader singleRestLiAttachmentReader)
     {
-      final SingleGreetingBlobReader singleGreetingBlobReader = new SingleGreetingBlobReader(this, singlePartRestLiAttachmentReader);
-      singlePartRestLiAttachmentReader.registerCallback(singleGreetingBlobReader);
-      singlePartRestLiAttachmentReader.requestAttachmentData();
+      final SingleGreetingBlobReader singleGreetingBlobReader = new SingleGreetingBlobReader(this,
+                                                                                             singleRestLiAttachmentReader);
+      singleRestLiAttachmentReader.registerCallback(singleGreetingBlobReader);
+      singleRestLiAttachmentReader.requestAttachmentData();
     }
 
     @Override
@@ -214,17 +215,17 @@ public class TestStreamingGreetings extends RestLiIntegrationTest
     }
   }
 
-  private static class SingleGreetingBlobReader implements SinglePartRestLiAttachmentReaderCallback
+  private static class SingleGreetingBlobReader implements SingleRestLiAttachmentReaderCallback
   {
     private final GreetingBlobReader _topLevelCallback;
-    private final RestLiAttachmentReader.SinglePartRestLiAttachmentReader _singlePartRestLiAttachmentReader;
+    private final RestLiAttachmentReader.SingleRestLiAttachmentReader _singleRestLiAttachmentReader;
     private final ByteArrayOutputStream _byteArrayOutputStream = new ByteArrayOutputStream();
 
     public SingleGreetingBlobReader(GreetingBlobReader topLevelCallback,
-        RestLiAttachmentReader.SinglePartRestLiAttachmentReader singlePartRestLiAttachmentReader)
+        RestLiAttachmentReader.SingleRestLiAttachmentReader singleRestLiAttachmentReader)
     {
       _topLevelCallback = topLevelCallback;
-      _singlePartRestLiAttachmentReader = singlePartRestLiAttachmentReader;
+      _singleRestLiAttachmentReader = singleRestLiAttachmentReader;
     }
 
     @Override
@@ -233,7 +234,7 @@ public class TestStreamingGreetings extends RestLiIntegrationTest
       try
       {
         _byteArrayOutputStream.write(attachmentData.copyBytes());
-        _singlePartRestLiAttachmentReader.requestAttachmentData();
+        _singleRestLiAttachmentReader.requestAttachmentData();
       }
       catch (Exception exception)
       {

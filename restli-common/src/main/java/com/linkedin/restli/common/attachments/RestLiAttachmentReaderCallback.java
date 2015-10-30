@@ -29,10 +29,10 @@ public interface RestLiAttachmentReaderCallback
    * Invoked (at some time in the future) upon a registration with a {@link com.linkedin.restli.common.attachments.RestLiAttachmentReader}.
    * Also invoked when previous attachments are finished and new attachments are available.
    *
-   * @param singlePartRestLiAttachmentReader the {@link com.linkedin.restli.common.attachments.RestLiAttachmentReader.SinglePartRestLiAttachmentReader}
+   * @param singleRestLiAttachmentReader the {@link com.linkedin.restli.common.attachments.RestLiAttachmentReader.SingleRestLiAttachmentReader}
    *                                         which can be used to walk through this attachment.
    */
-  public void onNewPart(RestLiAttachmentReader.SinglePartRestLiAttachmentReader singlePartRestLiAttachmentReader);
+  public void onNewPart(RestLiAttachmentReader.SingleRestLiAttachmentReader singleRestLiAttachmentReader);
 
   /**
    * Invoked when this reader is finished which means all attachments have been consumed.

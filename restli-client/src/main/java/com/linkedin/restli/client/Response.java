@@ -88,8 +88,15 @@ public interface Response<T>
    */
   boolean hasError();
 
-  //todo documentation
+  /**
+   * Indicates if the response has attachments that can be read using {@link com.linkedin.restli.common.attachments.RestLiAttachmentReader}
+   * @return whether or not attachments exist in the response.
+   */
   boolean hasAttachments();
 
+  /**
+   * Returns the RestLiAttachmentReader that can be used to walk through the response attachments.
+   * @return the {@link com.linkedin.restli.common.attachments.RestLiAttachmentReader} to read the attachments.
+   */
   RestLiAttachmentReader getAttachmentReader();
 }

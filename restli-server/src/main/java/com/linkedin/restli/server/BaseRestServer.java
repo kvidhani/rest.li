@@ -16,12 +16,14 @@
 
 package com.linkedin.restli.server;
 
+
 import com.linkedin.common.callback.Callback;
 import com.linkedin.r2.message.RequestContext;
 import com.linkedin.r2.message.rest.RestRequest;
 import com.linkedin.r2.message.rest.RestResponse;
 import com.linkedin.r2.message.rest.StreamRequest;
 import com.linkedin.r2.message.rest.StreamResponse;
+import com.linkedin.r2.transport.common.RestRequestHandler;
 import com.linkedin.r2.transport.common.StreamRequestHandler;
 import com.linkedin.restli.internal.server.model.ResourceModel;
 import java.util.Map;
@@ -31,7 +33,7 @@ import org.slf4j.LoggerFactory;
 /**
  * @author dellamag
  */
-public abstract class BaseRestServer implements /*RestRequestHandler,*/ StreamRequestHandler
+public abstract class BaseRestServer implements RestRequestHandler, StreamRequestHandler
 {
   private static final Logger log = LoggerFactory.getLogger(BaseRestServer.class);
 

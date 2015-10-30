@@ -149,7 +149,7 @@ public class RestLiServer extends BaseRestServer
       _debugHandlers.put(debugHandler.getHandlerId(), debugHandler);
     }
 
-    _multiplexedRequestHandler = new MultiplexedRequestHandlerImpl(null, engine);
+    _multiplexedRequestHandler = new MultiplexedRequestHandlerImpl(this, engine);
     // verify that if there are resources using the engine, then the engine is not null
     if (engine == null)
     {
@@ -659,7 +659,7 @@ public class RestLiServer extends BaseRestServer
         }
 
         _restRequestBuilder.setHeader(RestConstants.HEADER_CONTENT_TYPE, contentTypeString);
-        FirstPartReaderCallback firstPartReaderCallback = new FirstPartReaderCallback(this, singleParMIMEReader, _requestPayload);
+        FirstPartReaderCallback firstPartReaderCallback = new FirstPartReaderCallback(this, singleParMIMEReader);
         singleParMIMEReader.registerReaderCallback(firstPartReaderCallback);
         singleParMIMEReader.requestPartData();
       }
@@ -721,8 +721,7 @@ public class RestLiServer extends BaseRestServer
 
     public FirstPartReaderCallback(
         final TopLevelReaderCallback topLevelReaderCallback,
-        final MultiPartMIMEReader.SinglePartMIMEReader singlePartMIMEReader,
-        final ByteString requestPayload)
+        final MultiPartMIMEReader.SinglePartMIMEReader singlePartMIMEReader)
     {
       _topLevelReaderCallback = topLevelReaderCallback;
       _singlePartMIMEReader = singlePartMIMEReader;

@@ -812,15 +812,58 @@ public class RestClient
     }
   }
 
+  // This throws Exception to remind the caller to deal with arbitrary exceptions including RuntimeException
+  // in a way appropriate for the public method that was originally invoked.
+  private RestRequest buildRestRequest(URI uri,
+                                       ResourceMethod method,
+                                       DataMap dataMap,
+                                       Map<String, String> headers,
+                                       ProtocolVersion protocolVersion,
+                                       ContentType contentType,
+                                       List<AcceptType> acceptTypes,
+                                       boolean acceptResponseAttachments) throws Exception
+  {
+    RestRequestBuilder requestBuilder = new RestRequestBuilder(uri).setMethod(method.getHttpMethod().toString());
+
+    requestBuilder.setHeaders(headers);
+    addAcceptHeaders(requestBuilder, acceptTypes, acceptResponseAttachments);
+
+    final ContentType type = resolveContentType(requestBuilder, dataMap, contentType);
+    if (type != null)
+    {
+      requestBuilder.setHeader(RestConstants.HEADER_CONTENT_TYPE, type.getHeaderKey());
+      switch (type)
+      {
+        case PSON:
+          requestBuilder.setEntity(PSON_DATA_CODEC.mapToBytes(dataMap));
+          break;
+        case JSON:
+          requestBuilder.setEntity(JACKSON_DATA_CODEC.mapToBytes(dataMap));
+          break;
+        default:
+          throw new IllegalStateException("Unknown ContentType:" + type);
+      }
+    }
+
+    addProtocolVersionHeader(requestBuilder, protocolVersion);
+
+    if (method.getHttpMethod() == HttpMethod.POST)
+    {
+      requestBuilder.setHeader(RestConstants.HEADER_RESTLI_REQUEST_METHOD, method.toString());
+    }
+
+    return requestBuilder.build();
+  }
+
   private StreamRequest buildStreamRequest(URI uri,
-      ResourceMethod method,
-      DataMap dataMap,
-      Map<String, String> headers,
-      ProtocolVersion protocolVersion,
-      ContentType contentType,
-      List<AcceptType> acceptTypes,
-      boolean acceptResponseAttachments,
-      RestLiStreamingAttachments streamingAttachments) throws Exception
+                                           ResourceMethod method,
+                                           DataMap dataMap,
+                                           Map<String, String> headers,
+                                           ProtocolVersion protocolVersion,
+                                           ContentType contentType,
+                                           List<AcceptType> acceptTypes,
+                                           boolean acceptResponseAttachments,
+                                           RestLiStreamingAttachments streamingAttachments) throws Exception
   {
     StreamRequestBuilder requestBuilder = new StreamRequestBuilder(uri).setMethod(method.getHttpMethod().toString());
 
@@ -869,50 +912,6 @@ public class RestClient
       return Messages.toStreamRequest(buildRestRequest(uri, method, dataMap, headers, protocolVersion, contentType, acceptTypes, acceptResponseAttachments));
     }
   }
-
-  // This throws Exception to remind the caller to deal with arbitrary exceptions including RuntimeException
-  // in a way appropriate for the public method that was originally invoked.
-  private RestRequest buildRestRequest(URI uri,
-                                       ResourceMethod method,
-                                       DataMap dataMap,
-                                       Map<String, String> headers,
-                                       ProtocolVersion protocolVersion,
-                                       ContentType contentType,
-                                       List<AcceptType> acceptTypes,
-                                       boolean acceptResponseAttachments) throws Exception
-  {
-    RestRequestBuilder requestBuilder = new RestRequestBuilder(uri).setMethod(method.getHttpMethod().toString());
-
-    requestBuilder.setHeaders(headers);
-    addAcceptHeaders(requestBuilder, acceptTypes, acceptResponseAttachments);
-
-    final ContentType type = resolveContentType(requestBuilder, dataMap, contentType);
-    if (type != null)
-    {
-      requestBuilder.setHeader(RestConstants.HEADER_CONTENT_TYPE, type.getHeaderKey());
-      switch (type)
-      {
-        case PSON:
-          requestBuilder.setEntity(PSON_DATA_CODEC.mapToBytes(dataMap));
-          break;
-        case JSON:
-          requestBuilder.setEntity(JACKSON_DATA_CODEC.mapToBytes(dataMap));
-          break;
-        default:
-          throw new IllegalStateException("Unknown ContentType:" + type);
-      }
-    }
-
-    addProtocolVersionHeader(requestBuilder, protocolVersion);
-
-    if (method.getHttpMethod() == HttpMethod.POST)
-    {
-      requestBuilder.setHeader(RestConstants.HEADER_RESTLI_REQUEST_METHOD, method.toString());
-    }
-
-    return requestBuilder.build();
-  }
-
 
   /**
    * Adds the protocol version of Rest.li used to build the request to the headers for this request

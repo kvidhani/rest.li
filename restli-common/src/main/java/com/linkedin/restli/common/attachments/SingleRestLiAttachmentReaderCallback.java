@@ -21,18 +21,18 @@ import com.linkedin.data.ByteString;
 
 
 /**
- * Used to register with {@link com.linkedin.restli.common.attachments.RestLiAttachmentReader.SinglePartRestLiAttachmentReader}
+ * Used to register with {@link com.linkedin.restli.common.attachments.RestLiAttachmentReader.SingleRestLiAttachmentReader}
  * to asynchronously drive through the reading of a single attachment.
  *
- * Most implementations of this should pass along a reference to the {@link com.linkedin.restli.common.attachments.RestLiAttachmentReader.SinglePartRestLiAttachmentReader}
+ * Most implementations of this should pass along a reference to the {@link com.linkedin.restli.common.attachments.RestLiAttachmentReader.SingleRestLiAttachmentReader}
  * during construction. This way when they are invoked on
- * {@link com.linkedin.restli.common.attachments.SinglePartRestLiAttachmentReaderCallback#onAttachmentDataAvailable(com.linkedin.data.ByteString)},
- * they can then turn around and call {@link com.linkedin.restli.common.attachments.RestLiAttachmentReader.SinglePartRestLiAttachmentReader#requestAttachmentData()}
+ * {@link SingleRestLiAttachmentReaderCallback#onAttachmentDataAvailable(com.linkedin.data.ByteString)},
+ * they can then turn around and call {@link com.linkedin.restli.common.attachments.RestLiAttachmentReader.SingleRestLiAttachmentReader#requestAttachmentData()}
  * to further progress.
  *
  * @author Karim Vidhani
  */
-public interface SinglePartRestLiAttachmentReaderCallback
+public interface SingleRestLiAttachmentReaderCallback
 {
   /**
    * Invoked when data is available to be read on the attachment.

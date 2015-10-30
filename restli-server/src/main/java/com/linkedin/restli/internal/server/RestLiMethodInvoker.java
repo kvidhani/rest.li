@@ -174,7 +174,6 @@ public class RestLiMethodInvoker
         _resourceFactory.create(resourceMethodDescriptor.getResourceModel()
                                                         .getResourceClass());
 
-
     //Acquire a handle on the ResourceContext when setting it in order to obtain any response attachments that need to
     //be streamed back.
     final ResourceContext resourceContext;

@@ -24,6 +24,7 @@ import com.linkedin.r2.message.rest.StreamRequest;
 import com.linkedin.r2.message.rest.StreamResponse;
 import com.linkedin.r2.transport.common.RestRequestHandler;
 import com.linkedin.r2.transport.common.StreamRequestHandler;
+import com.linkedin.r2.transport.common.StreamRequestHandlerAdapter;
 import com.linkedin.r2.transport.common.bridge.common.TransportCallback;
 import com.linkedin.r2.transport.common.bridge.common.TransportResponseImpl;
 import com.linkedin.r2.transport.common.bridge.server.TransportCallbackAdapter;
@@ -39,10 +40,9 @@ public class DelegatingTransportDispatcher implements TransportDispatcher
 {
   private final StreamRequestHandler _handler;
 
-  public DelegatingTransportDispatcher(final StreamRequestHandler handler)
+  public DelegatingTransportDispatcher(final RestRequestHandler handler)
   {
-    //_handler = new StreamRequestHandlerAdapter(handler);
-    _handler = handler;
+    _handler = new StreamRequestHandlerAdapter(handler);
   }
 
   @Override

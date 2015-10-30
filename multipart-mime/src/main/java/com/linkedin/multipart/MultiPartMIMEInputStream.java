@@ -48,6 +48,7 @@ import java.util.concurrent.TimeoutException;
  *
  * @author Karim Vidhani
  */
+//todo - does anything else need to be volatile
 public final class MultiPartMIMEInputStream implements MultiPartMIMEDataSource
 {
   public static final int DEFAULT_MAXIMUM_BLOCKING_DURATION = 3000;

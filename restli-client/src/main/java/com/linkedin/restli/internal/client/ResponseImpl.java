@@ -49,7 +49,7 @@ public class ResponseImpl<T> implements Response<T>
   private final Map<String, String> _headers;
   private T _entity;
   private RestLiResponseException _error;
-  private RestLiAttachmentReader _attachmentReader;
+  private RestLiAttachmentReader  _attachmentReader;
 
   ResponseImpl(Response<T> origin, RestLiResponseException error)
   {
