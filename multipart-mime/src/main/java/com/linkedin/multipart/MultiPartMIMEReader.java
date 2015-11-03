@@ -1113,7 +1113,7 @@ public final class MultiPartMIMEReader
 
   /**
    * Indicates if all parts have been finished and completely read from this MultiPartMIMEReader. If the last part is
-   * in the process of being read, this will also return true.
+   * in the process of being read, this will return false.
    *
    * @return true if the reader is completely finished.
    */
@@ -1126,6 +1126,10 @@ public final class MultiPartMIMEReader
    * Reads through and abandons the current new part and additionally the whole stream. This API can ONLY be used after
    * registration using a {@link com.linkedin.multipart.MultiPartMIMEReaderCallback}
    * and after an invocation on {@link MultiPartMIMEReaderCallback#onNewPart(com.linkedin.multipart.MultiPartMIMEReader.SinglePartMIMEReader)}.
+   *
+   * If this is called after registration and before an invocation on
+   * {@link MultiPartMIMEReaderCallback#onNewPart(com.linkedin.multipart.MultiPartMIMEReader.SinglePartMIMEReader)},
+   * then a {@link com.linkedin.multipart.exceptions.StreamBusyException} will be thrown.
    *
    * The goal is for clients to at least see the first part before deciding to abandon all parts.
    *

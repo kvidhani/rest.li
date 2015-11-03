@@ -1006,6 +1006,7 @@ public class TestGreetingsClient extends RestLiIntegrationTest
   @DataProvider(name = com.linkedin.restli.internal.common.TestConstants.RESTLI_PROTOCOL_1_2_PREFIX + "requestBuilderDataProvider")
   private static Object[][] requestBuilderDataProvider()
   {
+    new GreetingsBuilders().batchCreate().
     return new Object[][] {
       { new RootBuilderWrapper<Long, Greeting>(new GreetingsBuilders()) },
       { new RootBuilderWrapper<Long, Greeting>(new GreetingsBuilders(TestConstants.FORCE_USE_NEXT_OPTIONS)) },
