@@ -27,6 +27,7 @@ import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -49,6 +50,12 @@ public final class ByteString
   public static ByteString empty()
   {
     return EMPTY;
+  }
+
+  //todo unsafe wrap with byte array, byte buffer and maybe with a byte array and the indexes
+  public static ByteString unsafeWrap(byte[] bytes)
+  {
+    return null;
   }
 
   /**
@@ -408,6 +415,107 @@ public final class ByteString
   {
     ArgumentUtil.checkBounds(_byteArrays.getBytesNum(), offset, length);
     return new ByteString(slice(offset, length).copyBytes());
+  }
+
+  /**
+   * Tests if this ByteString starts with the specified byte array prefix.
+   *
+   * @param   prefixBytes   the byte array prefix.
+   * @return  <code>true</code> if the byte array sequence represented by the argument is a prefix of the byte sequence
+   *          represented by this ByteString; <code>false</code> otherwise.
+   *          Note also that <code>true</code> will be returned if the argument is an empty byte array or is equal to this
+   *          ByteString object as determined by the {@link #equals(Object)} method.
+   */
+  public boolean startsWith(byte[] prefixBytes)
+  {
+
+    int resumePrefixIndex = 0;
+    int runningLength = 0;
+
+    outer:
+    for (int i = 0; i < _byteArrays.getByteArrayNum(); i++)
+    {
+      final ByteArray currentByteArray = _byteArrays.get(i);
+
+      for (int k = resumePrefixIndex; k < prefixBytes.length; k++)
+      {
+        if (currentByteArray._length == k - runningLength)
+        {
+          runningLength += currentByteArray._length;
+          resumePrefixIndex = k;
+          continue outer;
+        }
+        if (currentByteArray.get(k - runningLength) != prefixBytes[k])
+        {
+          return false;
+        }
+      }
+      return true;
+    }
+
+    return false; //is this correct?
+
+
+
+    //For now this is just one array
+    //for (int i = 0; i < _byteArrays._byteArrays[0]._length - prefixBytes.length + 1; i++)
+    //{
+    //todo base cases, i.e we are empty or if prefix bytes is empty or target is smaller, etc..
+//
+//
+//      ByteArray currentByteArray = _byteArrays._byteArrays[0];
+//      int runningLength = 0;
+//      int currentByteArrayIndex = 0;
+//      for (int j = 0; j < prefixBytes.length; j++)
+//      {
+//        if (currentByteArrayIndex == currentByteArray._length)
+//        {
+//          //Move to new byte array
+//
+//        }
+//        if (currentByteArray.get(currentByteArrayIndex++ + j) != prefixBytes[j])
+//        {
+//          return false;
+//        }
+//      }
+//      return true;
+//    //}
+//
+//    return true;//todo is this correct?
+//
+//
+//    //Guaranteed to not be empty due to the restriction set forth by the builder
+//
+//
+//    for (final ByteArray byteArray : _byteArrays._byteArrays)
+//    {
+//      for (int i = 0; i < byteArray._length; i++)
+//      {
+//        for (int j = 0; j < prefixBytes.length; j++)
+//        {
+//          if (byteArray.get(i + j) != prefixBytes[j])
+//          {
+//           // return
+//          }
+//        }
+//      }
+//    }
+//    return false;
+  }
+
+  /**
+   * Returns the starting position of the first occurrence of the specified target byte array within this ByteString or
+   * -1 if there is no such occurrence. Note that is also returns -1 if the size of targetBytes is larger then
+   * this ByteString.
+   *
+   * @param targetBytes the byte array to search for as a sub array within this ByteString.
+   * @return the starting position of the first occurrence of the specified target byte array within this ByteString,
+   *         or -1 if there is no such occurrence.
+   */
+  public int indexOfBytes(byte[] targetBytes)
+  {
+    //Collections.indexOfSubList()
+    return -1;
   }
 
   @Override

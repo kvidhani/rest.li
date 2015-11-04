@@ -401,6 +401,50 @@ public class TestByteString
   }
 
   @Test
+  public void testSimpleStartsWith()
+  {
+    final ByteString sourceString = ByteString.copy("hello".getBytes());
+    final boolean result = sourceString.startsWith("hel".getBytes());
+    Assert.assertTrue(result);
+
+    final boolean result2 = sourceString.startsWith("el".getBytes());
+    Assert.assertFalse(result2);
+  }
+
+  @Test
+  public void testComplexStartsWith()
+  {
+    final ByteString.Builder builder = new ByteString.Builder();
+    builder.append(ByteString.copy("he".getBytes()));
+    builder.append(ByteString.copy("llo".getBytes()));
+    final ByteString sourceString = builder.build();
+
+    final boolean result = sourceString.startsWith("hel".getBytes());
+    Assert.assertTrue(result);
+
+    final boolean result2 = sourceString.startsWith("el".getBytes());
+    Assert.assertFalse(result2);
+  }
+
+  @Test
+  public void testComplexStartsWith2()
+  {
+    final ByteString.Builder builder = new ByteString.Builder();
+    builder.append(ByteString.copy("h".getBytes()));
+    builder.append(ByteString.copy("e".getBytes()));
+    builder.append(ByteString.copy("l".getBytes()));
+    builder.append(ByteString.copy("l".getBytes()));
+    builder.append(ByteString.copy("o".getBytes()));
+    final ByteString sourceString = builder.build();
+
+    final boolean result = sourceString.startsWith("hel".getBytes());
+    Assert.assertTrue(result);
+
+    final boolean result2 = sourceString.startsWith("el".getBytes());
+    Assert.assertFalse(result2);
+  }
+
+  @Test
   public void testBuilder()
   {
     ByteString.Builder builder = new ByteString.Builder();
