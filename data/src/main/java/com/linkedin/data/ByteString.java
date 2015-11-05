@@ -489,7 +489,7 @@ public final class ByteString
 
     int resumeTargetIndex = 0; //Tracks where we resume in our inner loop.
     int runningLength = 0; //Tracks how many bytes from previously visited byte arrays that we have gone through in our current running match.
-    //int totalLengthCovered = 0; //Tracks how many byte arrays we have gone through total so we can provide the correct index.
+    int totalLengthCovered = 0; //Tracks how many byte arrays we have gone through total so we can provide the correct index.
 
     //We need pointers to resume where we left off in case there is a mismatch.
     int previousI = 0;
@@ -519,7 +519,7 @@ public final class ByteString
             //and update the index where we have to resume in the innermost loop.
             runningLength += currentByteArray._length - j;
             resumeTargetIndex = k;
-            //totalLengthCovered += currentByteArray._length;
+            totalLengthCovered += currentByteArray._length;
             //previousJ = 0;
             continue nextByteArray;
           }
@@ -536,14 +536,14 @@ public final class ByteString
           }
         }
 
-        int totalLengthCovered = 0;
-        for (int m = 0; m < i; m++)
-        {
-          totalLengthCovered += _byteArrays.get(m)._length;
-        }
+        //int totalLengthCovered = 0;
+        //for (int m = 0; m < i; m++)
+       // {
+       //   totalLengthCovered += _byteArrays.get(m)._length;
+       // }
         return j + totalLengthCovered; //Success!
       }
-      //totalLengthCovered += currentByteArray._length;
+      totalLengthCovered += _byteArrays.get(i)._length;
     }
     //We exhausted this ByteString and didn't find anything. This should really never happen because of the check
     //we do earlier to bail early if the target byte array is larger then this ByteString. This is needed, however,
