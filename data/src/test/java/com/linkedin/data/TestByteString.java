@@ -471,66 +471,43 @@ public class TestByteString
   @Test(dataProvider = "searchableByteStrings")
   public void testStartsWith(ByteString sourceString)
   {
-    final boolean result = sourceString.startsWith("hel".getBytes());
-    Assert.assertTrue(result);
-
-    final boolean result2 = sourceString.startsWith("el".getBytes());
-    Assert.assertFalse(result2);
-
-    final boolean result3 = sourceString.startsWith("hello2".getBytes());
-    Assert.assertFalse(result3);
-
-    final boolean result4 = sourceString.startsWith("hello".getBytes());
-    Assert.assertTrue(result4);
-
-    final boolean result5 = sourceString.startsWith(ByteString.empty().copyBytes());
-    Assert.assertTrue(result5);
-
-    final boolean result6 = sourceString.startsWith("elloh".getBytes());
-    Assert.assertFalse(result6);
-
-    //todo more tests
+    Assert.assertTrue(sourceString.startsWith("hel".getBytes()));
+    Assert.assertFalse(sourceString.startsWith("el".getBytes()));
+    Assert.assertFalse(sourceString.startsWith("hello2".getBytes()));
+    Assert.assertTrue(sourceString.startsWith("hello".getBytes()));
+    Assert.assertTrue(sourceString.startsWith(ByteString.empty().copyBytes()));
+    Assert.assertFalse(sourceString.startsWith("elloh".getBytes()));
   }
 
   @Test(dataProvider = "searchableByteStrings")
   public void testIndexOfBytes(ByteString sourceString)
   {
-    /*
-    final int result = sourceString.indexOfBytes("el".getBytes());
-    Assert.assertEquals(result, 1);
-
-    final int result2 = sourceString.indexOfBytes("heel".getBytes());
-    Assert.assertEquals(result2, -1);
-
-    final int result3 = sourceString.indexOfBytes("hello".getBytes());
-    Assert.assertEquals(result3, 0);
-
-    final int result4 = sourceString.indexOfBytes("hello2".getBytes());
-    Assert.assertEquals(result4, -1);
-
-    final int result5 = sourceString.indexOfBytes("elloh".getBytes());
-    Assert.assertEquals(result5, -1);
-
+    Assert.assertEquals(sourceString.indexOfBytes("el".getBytes()), 1);
+    Assert.assertEquals(sourceString.indexOfBytes("heel".getBytes()), -1);
+    Assert.assertEquals(sourceString.indexOfBytes("hello".getBytes()), 0);
+    Assert.assertEquals(sourceString.indexOfBytes("helll".getBytes()), -1);
+    Assert.assertEquals(sourceString.indexOfBytes("hell".getBytes()), 0);
+    Assert.assertEquals(sourceString.indexOfBytes("lop".getBytes()), -1);
+    Assert.assertEquals(sourceString.indexOfBytes("hello2".getBytes()), -1);
+    Assert.assertEquals(sourceString.indexOfBytes("elloh".getBytes()), -1);
     Assert.assertEquals(sourceString.indexOfBytes("h".getBytes()), 0);
-
     Assert.assertEquals(sourceString.indexOfBytes("e".getBytes()), 1);
-
     Assert.assertEquals(sourceString.indexOfBytes("l".getBytes()), 2);
-
     Assert.assertEquals(sourceString.indexOfBytes("o".getBytes()), 4);
-
+    Assert.assertEquals(sourceString.indexOfBytes("o2".getBytes()), -1);
     Assert.assertEquals(sourceString.indexOfBytes("q".getBytes()), -1);
-*/
     Assert.assertEquals(sourceString.indexOfBytes("ll".getBytes()), 2);
-
     Assert.assertEquals(sourceString.indexOfBytes("llo".getBytes()), 2);
-
-    //todo more tests
+    Assert.assertEquals(sourceString.indexOfBytes("lo".getBytes()), 3);
+    Assert.assertEquals(sourceString.indexOfBytes("ello".getBytes()), 1);
+    Assert.assertEquals(sourceString.indexOfBytes("ell".getBytes()), 1);
+    Assert.assertEquals(sourceString.indexOfBytes("".getBytes()), 0);
   }
 
   @DataProvider
   public Object[][] searchableByteStrings()
   {
+    //hello
     final ByteString.Builder byteStringABuilder = new ByteString.Builder();
     byteStringABuilder.append(ByteString.copy("h".getBytes()));
     byteStringABuilder.append(ByteString.copy("e".getBytes()));
@@ -560,11 +537,132 @@ public class TestByteString
     byteStringEBuilder.append(ByteString.copy("lo".getBytes()));
     final ByteString byteStringE = byteStringEBuilder.build();
 
+    final ByteString.Builder byteStringFBuilder = new ByteString.Builder();
+    byteStringFBuilder.append(ByteString.copy("h".getBytes()));
+    byteStringFBuilder.append(ByteString.copy("e".getBytes()));
+    byteStringFBuilder.append(ByteString.copy("llo".getBytes()));
+    final ByteString byteStringF = byteStringFBuilder.build();
+
+    final ByteString.Builder byteStringGBuilder = new ByteString.Builder();
+    byteStringGBuilder.append(ByteString.copy("h".getBytes()));
+    byteStringGBuilder.append(ByteString.copy("e".getBytes()));
+    byteStringGBuilder.append(ByteString.copy("l".getBytes()));
+    byteStringGBuilder.append(ByteString.copy("lo".getBytes()));
+    final ByteString byteStringG = byteStringGBuilder.build();
+
+    final ByteString.Builder byteStringHBuilder = new ByteString.Builder();
+    byteStringHBuilder.append(ByteString.copy("hell".getBytes()));
+    byteStringHBuilder.append(ByteString.copy("o".getBytes()));
+    final ByteString byteStringH = byteStringHBuilder.build();
+
+    final ByteString.Builder byteStringIBuilder = new ByteString.Builder();
+    byteStringIBuilder.append(ByteString.copy("h".getBytes()));
+    byteStringIBuilder.append(ByteString.copy("ello".getBytes()));
+    final ByteString byteStringI = byteStringIBuilder.build();
+
+    final ByteString.Builder byteStringJBuilder = new ByteString.Builder();
+    byteStringJBuilder.append(ByteString.copy("he".getBytes()));
+    byteStringJBuilder.append(ByteString.copy("llo".getBytes()));
+    final ByteString byteStringJ = byteStringJBuilder.build();
+
     return new Object[][]
         {
-            {byteStringA}, {byteStringB}, {byteStringC}, {byteStringD}, {byteStringE}
-            //{byteStringC}, {byteStringD}, {byteStringE}
-            //{byteStringC}
+            {byteStringA}, {byteStringB}, {byteStringC}, {byteStringD}, {byteStringE},
+            {byteStringF}, {byteStringG}, {byteStringH}, {byteStringI}, {byteStringJ}
         };
+  }
+
+  @Test(dataProvider = "searchableByteStringsPointerResume")
+  public void testIndexOfBytesPointerResume(ByteString sourceString)
+  {
+    //This is a special series of tests that verify that if we have a running match that encompasses several ByteStrings
+    //(inside of a compound ByteString) and a mismatch occurs, that we start the next possible match in the correct
+    //index (potentially going back several ByteStrings).
+    Assert.assertEquals(sourceString.indexOfBytes("bbbbbb".getBytes()), 1);
+    Assert.assertEquals(sourceString.indexOfBytes("bbbbbcd".getBytes()), -1);
+    Assert.assertEquals(sourceString.indexOfBytes("abbbbbc".getBytes()), -1);
+    Assert.assertEquals(sourceString.indexOfBytes("bbbbbc".getBytes()), 2);
+    Assert.assertEquals(sourceString.indexOfBytes("bbbbb".getBytes()), 1);
+    Assert.assertEquals(sourceString.indexOfBytes("bbbbc".getBytes()), 3);
+    Assert.assertEquals(sourceString.indexOfBytes("bbbc".getBytes()), 4);
+    Assert.assertEquals(sourceString.indexOfBytes("bbc".getBytes()), 5);
+    Assert.assertEquals(sourceString.indexOfBytes("bc".getBytes()), 6);
+  }
+
+  @DataProvider
+  public Object[][] searchableByteStringsPointerResume()
+  {
+    //abbbbbbcno
+    final ByteString.Builder byteStringABuilder = new ByteString.Builder();
+    byteStringABuilder.append(ByteString.copy("abb".getBytes()));
+    byteStringABuilder.append(ByteString.copy("bb".getBytes()));
+    byteStringABuilder.append(ByteString.copy("bb".getBytes()));
+    byteStringABuilder.append(ByteString.copy("cno".getBytes()));
+    final ByteString byteStringA = byteStringABuilder.build();
+
+    final ByteString.Builder byteStringBBuilder = new ByteString.Builder();
+    byteStringBBuilder.append(ByteString.copy("a".getBytes()));
+    byteStringBBuilder.append(ByteString.copy("b".getBytes()));
+    byteStringBBuilder.append(ByteString.copy("b".getBytes()));
+    byteStringBBuilder.append(ByteString.copy("b".getBytes()));
+    byteStringBBuilder.append(ByteString.copy("b".getBytes()));
+    byteStringBBuilder.append(ByteString.copy("b".getBytes()));
+    byteStringBBuilder.append(ByteString.copy("b".getBytes()));
+    byteStringBBuilder.append(ByteString.copy("cno".getBytes()));
+    final ByteString byteStringB = byteStringBBuilder.build();
+
+    final ByteString.Builder byteStringCBuilder = new ByteString.Builder();
+    byteStringCBuilder.append(ByteString.copy("a".getBytes()));
+    byteStringCBuilder.append(ByteString.copy("b".getBytes()));
+    byteStringCBuilder.append(ByteString.copy("b".getBytes()));
+    byteStringCBuilder.append(ByteString.copy("b".getBytes()));
+    byteStringCBuilder.append(ByteString.copy("b".getBytes()));
+    byteStringCBuilder.append(ByteString.copy("b".getBytes()));
+    byteStringCBuilder.append(ByteString.copy("b".getBytes()));
+    byteStringCBuilder.append(ByteString.copy("c".getBytes()));
+    byteStringCBuilder.append(ByteString.copy("no".getBytes()));
+    final ByteString byteStringC = byteStringCBuilder.build();
+
+    final ByteString.Builder byteStringDBuilder = new ByteString.Builder();
+    byteStringDBuilder.append(ByteString.copy("abbb".getBytes()));
+    byteStringDBuilder.append(ByteString.copy("b".getBytes()));
+    byteStringDBuilder.append(ByteString.copy("b".getBytes()));
+    byteStringDBuilder.append(ByteString.copy("bcno".getBytes()));
+    final ByteString byteStringD = byteStringDBuilder.build();
+
+    final ByteString.Builder byteStringEBuilder = new ByteString.Builder();
+    byteStringEBuilder.append(ByteString.copy("ab".getBytes()));
+    byteStringEBuilder.append(ByteString.copy("bbb".getBytes()));
+    byteStringEBuilder.append(ByteString.copy("b".getBytes()));
+    byteStringEBuilder.append(ByteString.copy("bcno".getBytes()));
+    final ByteString byteStringE = byteStringEBuilder.build();
+
+    final ByteString.Builder byteStringFBuilder = new ByteString.Builder();
+    byteStringFBuilder.append(ByteString.copy("a".getBytes()));
+    byteStringFBuilder.append(ByteString.copy("bb".getBytes()));
+    byteStringFBuilder.append(ByteString.copy("bbb".getBytes()));
+    byteStringFBuilder.append(ByteString.copy("bcno".getBytes()));
+    final ByteString byteStringF = byteStringFBuilder.build();
+
+    final ByteString.Builder byteStringGBuilder = new ByteString.Builder();
+    byteStringGBuilder.append(ByteString.copy("abbbb".getBytes()));
+    byteStringGBuilder.append(ByteString.copy("b".getBytes()));
+    byteStringGBuilder.append(ByteString.copy("bcno".getBytes()));
+    final ByteString byteStringG = byteStringGBuilder.build();
+
+    final ByteString.Builder byteStringHBuilder = new ByteString.Builder();
+    byteStringHBuilder.append(ByteString.copy("abbbbb".getBytes()));
+    byteStringHBuilder.append(ByteString.copy("bcno".getBytes()));
+    final ByteString byteStringH = byteStringHBuilder.build();
+
+    final ByteString.Builder byteStringIBuilder = new ByteString.Builder();
+    byteStringIBuilder.append(ByteString.copy("abbbbbbcno".getBytes()));
+    final ByteString byteStringI = byteStringIBuilder.build();
+
+    return new Object[][]
+            {
+                    {byteStringA}, {byteStringB}, {byteStringC}, {byteStringD}, {byteStringE},
+                    {byteStringF}, {byteStringG}, {byteStringH}, {byteStringI}
+            };
   }
 }
