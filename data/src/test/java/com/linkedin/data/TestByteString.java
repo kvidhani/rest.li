@@ -18,10 +18,6 @@
 package com.linkedin.data;
 
 
-import org.testng.Assert;
-import org.testng.annotations.DataProvider;
-import org.testng.annotations.Test;
-
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -37,6 +33,9 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import org.testng.Assert;
+import org.testng.annotations.DataProvider;
+import org.testng.annotations.Test;
 
 /**
  * @author Chris Pettitt
@@ -401,50 +400,6 @@ public class TestByteString
   }
 
   @Test
-  public void testSimpleStartsWith()
-  {
-    final ByteString sourceString = ByteString.copy("hello".getBytes());
-    final boolean result = sourceString.startsWith("hel".getBytes());
-    Assert.assertTrue(result);
-
-    final boolean result2 = sourceString.startsWith("el".getBytes());
-    Assert.assertFalse(result2);
-  }
-
-  @Test
-  public void testComplexStartsWith()
-  {
-    final ByteString.Builder builder = new ByteString.Builder();
-    builder.append(ByteString.copy("he".getBytes()));
-    builder.append(ByteString.copy("llo".getBytes()));
-    final ByteString sourceString = builder.build();
-
-    final boolean result = sourceString.startsWith("hel".getBytes());
-    Assert.assertTrue(result);
-
-    final boolean result2 = sourceString.startsWith("el".getBytes());
-    Assert.assertFalse(result2);
-  }
-
-  @Test
-  public void testComplexStartsWith2()
-  {
-    final ByteString.Builder builder = new ByteString.Builder();
-    builder.append(ByteString.copy("h".getBytes()));
-    builder.append(ByteString.copy("e".getBytes()));
-    builder.append(ByteString.copy("l".getBytes()));
-    builder.append(ByteString.copy("l".getBytes()));
-    builder.append(ByteString.copy("o".getBytes()));
-    final ByteString sourceString = builder.build();
-
-    final boolean result = sourceString.startsWith("hel".getBytes());
-    Assert.assertTrue(result);
-
-    final boolean result2 = sourceString.startsWith("el".getBytes());
-    Assert.assertFalse(result2);
-  }
-
-  @Test
   public void testBuilder()
   {
     ByteString.Builder builder = new ByteString.Builder();
@@ -511,5 +466,105 @@ public class TestByteString
   {
     ByteString.Builder builder = new ByteString.Builder();
     return builder.append(bs1).append(bs2).build();
+  }
+
+  @Test(dataProvider = "searchableByteStrings")
+  public void testStartsWith(ByteString sourceString)
+  {
+    final boolean result = sourceString.startsWith("hel".getBytes());
+    Assert.assertTrue(result);
+
+    final boolean result2 = sourceString.startsWith("el".getBytes());
+    Assert.assertFalse(result2);
+
+    final boolean result3 = sourceString.startsWith("hello2".getBytes());
+    Assert.assertFalse(result3);
+
+    final boolean result4 = sourceString.startsWith("hello".getBytes());
+    Assert.assertTrue(result4);
+
+    final boolean result5 = sourceString.startsWith(ByteString.empty().copyBytes());
+    Assert.assertTrue(result5);
+
+    final boolean result6 = sourceString.startsWith("elloh".getBytes());
+    Assert.assertFalse(result6);
+
+    //todo more tests
+  }
+
+  @Test(dataProvider = "searchableByteStrings")
+  public void testIndexOfBytes(ByteString sourceString)
+  {
+    /*
+    final int result = sourceString.indexOfBytes("el".getBytes());
+    Assert.assertEquals(result, 1);
+
+    final int result2 = sourceString.indexOfBytes("heel".getBytes());
+    Assert.assertEquals(result2, -1);
+
+    final int result3 = sourceString.indexOfBytes("hello".getBytes());
+    Assert.assertEquals(result3, 0);
+
+    final int result4 = sourceString.indexOfBytes("hello2".getBytes());
+    Assert.assertEquals(result4, -1);
+
+    final int result5 = sourceString.indexOfBytes("elloh".getBytes());
+    Assert.assertEquals(result5, -1);
+
+    Assert.assertEquals(sourceString.indexOfBytes("h".getBytes()), 0);
+
+    Assert.assertEquals(sourceString.indexOfBytes("e".getBytes()), 1);
+
+    Assert.assertEquals(sourceString.indexOfBytes("l".getBytes()), 2);
+
+    Assert.assertEquals(sourceString.indexOfBytes("o".getBytes()), 4);
+
+    Assert.assertEquals(sourceString.indexOfBytes("q".getBytes()), -1);
+*/
+    Assert.assertEquals(sourceString.indexOfBytes("ll".getBytes()), 2);
+
+    Assert.assertEquals(sourceString.indexOfBytes("llo".getBytes()), 2);
+
+    //todo more tests
+  }
+
+  @DataProvider
+  public Object[][] searchableByteStrings()
+  {
+    final ByteString.Builder byteStringABuilder = new ByteString.Builder();
+    byteStringABuilder.append(ByteString.copy("h".getBytes()));
+    byteStringABuilder.append(ByteString.copy("e".getBytes()));
+    byteStringABuilder.append(ByteString.copy("l".getBytes()));
+    byteStringABuilder.append(ByteString.copy("l".getBytes()));
+    byteStringABuilder.append(ByteString.copy("o".getBytes()));
+    final ByteString byteStringA = byteStringABuilder.build();
+
+    final ByteString.Builder byteStringBBuilder = new ByteString.Builder();
+    byteStringBBuilder.append(ByteString.copy("hello".getBytes()));
+    final ByteString byteStringB = byteStringBBuilder.build();
+
+    final ByteString.Builder byteStringCBuilder = new ByteString.Builder();
+    byteStringCBuilder.append(ByteString.copy("he".getBytes()));
+    byteStringCBuilder.append(ByteString.copy("ll".getBytes()));
+    byteStringCBuilder.append(ByteString.copy("o".getBytes()));
+    final ByteString byteStringC = byteStringCBuilder.build();
+
+    final ByteString.Builder byteStringDBuilder = new ByteString.Builder();
+    byteStringDBuilder.append(ByteString.copy("hel".getBytes()));
+    byteStringDBuilder.append(ByteString.copy("l".getBytes()));
+    byteStringDBuilder.append(ByteString.copy("o".getBytes()));
+    final ByteString byteStringD = byteStringDBuilder.build();
+
+    final ByteString.Builder byteStringEBuilder = new ByteString.Builder();
+    byteStringEBuilder.append(ByteString.copy("hel".getBytes()));
+    byteStringEBuilder.append(ByteString.copy("lo".getBytes()));
+    final ByteString byteStringE = byteStringEBuilder.build();
+
+    return new Object[][]
+        {
+            {byteStringA}, {byteStringB}, {byteStringC}, {byteStringD}, {byteStringE}
+            //{byteStringC}, {byteStringD}, {byteStringE}
+            //{byteStringC}
+        };
   }
 }

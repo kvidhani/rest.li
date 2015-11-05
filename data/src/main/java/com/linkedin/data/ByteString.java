@@ -27,7 +27,6 @@ import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 /**
@@ -420,7 +419,7 @@ public final class ByteString
   /**
    * Tests if this ByteString starts with the specified byte array prefix.
    *
-   * @param   prefixBytes   the byte array prefix.
+   * @param   prefixBytes the byte array prefix.
    * @return  <code>true</code> if the byte array sequence represented by the argument is a prefix of the byte sequence
    *          represented by this ByteString; <code>false</code> otherwise.
    *          Note also that <code>true</code> will be returned if the argument is an empty byte array or is equal to this
@@ -428,8 +427,17 @@ public final class ByteString
    */
   public boolean startsWith(byte[] prefixBytes)
   {
+    if (prefixBytes.length == 0)
+    {
+      return true;
+    }
 
-    int resumePrefixIndex = 0;
+    if (prefixBytes.length > _byteArrays._totalLength)
+    {
+      return false;
+    }
+
+    int resumeTargetPrefixIndex = 0;
     int runningLength = 0;
 
     outer:
@@ -437,76 +445,31 @@ public final class ByteString
     {
       final ByteArray currentByteArray = _byteArrays.get(i);
 
-      for (int k = resumePrefixIndex; k < prefixBytes.length; k++)
+      for (int j = resumeTargetPrefixIndex; j < prefixBytes.length; j++)
       {
-        if (currentByteArray._length == k - runningLength)
+        if (currentByteArray._length == j - runningLength)
         {
           runningLength += currentByteArray._length;
-          resumePrefixIndex = k;
+          resumeTargetPrefixIndex = j;
           continue outer;
         }
-        if (currentByteArray.get(k - runningLength) != prefixBytes[k])
+        if (currentByteArray.get(j - runningLength) != prefixBytes[j])
         {
           return false;
         }
       }
       return true;
     }
-
-    return false; //is this correct?
-
-
-
-    //For now this is just one array
-    //for (int i = 0; i < _byteArrays._byteArrays[0]._length - prefixBytes.length + 1; i++)
-    //{
-    //todo base cases, i.e we are empty or if prefix bytes is empty or target is smaller, etc..
-//
-//
-//      ByteArray currentByteArray = _byteArrays._byteArrays[0];
-//      int runningLength = 0;
-//      int currentByteArrayIndex = 0;
-//      for (int j = 0; j < prefixBytes.length; j++)
-//      {
-//        if (currentByteArrayIndex == currentByteArray._length)
-//        {
-//          //Move to new byte array
-//
-//        }
-//        if (currentByteArray.get(currentByteArrayIndex++ + j) != prefixBytes[j])
-//        {
-//          return false;
-//        }
-//      }
-//      return true;
-//    //}
-//
-//    return true;//todo is this correct?
-//
-//
-//    //Guaranteed to not be empty due to the restriction set forth by the builder
-//
-//
-//    for (final ByteArray byteArray : _byteArrays._byteArrays)
-//    {
-//      for (int i = 0; i < byteArray._length; i++)
-//      {
-//        for (int j = 0; j < prefixBytes.length; j++)
-//        {
-//          if (byteArray.get(i + j) != prefixBytes[j])
-//          {
-//           // return
-//          }
-//        }
-//      }
-//    }
-//    return false;
+    //We exhausted this ByteString and didn't find anything. This should really never happen because of the check
+    //we do earlier to bail early if the target byte array is larger then this ByteString. This is needed, however,
+    //to satisfy the compiler.
+    return false;
   }
 
   /**
-   * Returns the starting position of the first occurrence of the specified target byte array within this ByteString or
-   * -1 if there is no such occurrence. Note that is also returns -1 if the size of targetBytes is larger then
-   * this ByteString.
+   * Returns the starting position (index) of the first occurrence of the specified target byte array within this ByteString or
+   * -1 if there is no such occurrence. If the targetBytes are larger then this ByteString, -1 is returned. If the
+   * targetBytes are empty, then 0 is returned.
    *
    * @param targetBytes the byte array to search for as a sub array within this ByteString.
    * @return the starting position of the first occurrence of the specified target byte array within this ByteString,
@@ -514,9 +477,150 @@ public final class ByteString
    */
   public int indexOfBytes(byte[] targetBytes)
   {
-    //Collections.indexOfSubList()
+    if (targetBytes.length == 0)
+    {
+      return 0;
+    }
+
+    if (targetBytes.length > _byteArrays._totalLength)
+    {
+      return -1;
+    }
+
+    int resumeTargetIndex = 0; //Tracks where we resume in our inner loop.
+    int runningLength = 0; //Tracks how many bytes from previously visited byte arrays that we have gone through in our current running match.
+    //int totalLengthCovered = 0; //Tracks how many byte arrays we have gone through total so we can provide the correct index.
+
+    //We need pointers to resume where we left off in case there is a mismatch.
+    int previousI = 0;
+    int previousJ = 0;
+
+    nextByteArray: //Advance to the next byte array in our list of byte arrays.
+    for (int i = 0; i < _byteArrays.getByteArrayNum(); i++)
+    {
+      nextByteInCurrentByteArray: //Advance to the next byte in our current byte array.
+      for (int j = 0; j < _byteArrays.get(i)._length; j++)
+      {
+        final ByteArray currentByteArray = _byteArrays.get(i);
+
+        //If we starting from the beginning of the target array, keep track of where we need to resume in the event
+        //that we see a mismatch.
+        if (resumeTargetIndex == 0)
+        {
+          previousI = i;
+          previousJ = j;
+        }
+
+        for (int k = resumeTargetIndex; k < targetBytes.length; k++)
+        {
+          if (currentByteArray._length == j + k - runningLength)
+          {
+            //If we have reached the end of the current byte array in comparison, we have to update the runningLength
+            //and update the index where we have to resume in the innermost loop.
+            runningLength += currentByteArray._length - j;
+            resumeTargetIndex = k;
+            //totalLengthCovered += currentByteArray._length;
+            //previousJ = 0;
+            continue nextByteArray;
+          }
+          if (currentByteArray.get(j + k - runningLength) != targetBytes[k])
+          {
+            //If there is a mismatch we have to restart when we come back to our innermost loop by setting
+            //resumeTargetIndex to 0. We also have to set runningLength to 0 to restart our current running length.
+            resumeTargetIndex = 0;
+            runningLength = 0;
+            //Reset i and j
+            i = previousI;
+            j = previousJ;
+            continue nextByteInCurrentByteArray;
+          }
+        }
+
+        int totalLengthCovered = 0;
+        for (int m = 0; m < i; m++)
+        {
+          totalLengthCovered += _byteArrays.get(m)._length;
+        }
+        return j + totalLengthCovered; //Success!
+      }
+      //totalLengthCovered += currentByteArray._length;
+    }
+    //We exhausted this ByteString and didn't find anything. This should really never happen because of the check
+    //we do earlier to bail early if the target byte array is larger then this ByteString. This is needed, however,
+    //to satisfy the compiler.
     return -1;
   }
+
+//
+//  private static class ByteStringIterator implements Iterator<Byte>
+//  {
+//    private int _currentByteArray;
+//    private int _indexInCurrentByteArray;
+//    private ByteString _byteString;
+//
+//    private ByteStringIterator(ByteString byteString)
+//    {
+//      _byteString = byteString;
+//      _currentByteArray = 0;
+//      _indexInCurrentByteArray = 0;
+//    }
+//
+//    /**
+//     * Returns <tt>true</tt> if the iteration has more elements. (In other
+//     * words, returns <tt>true</tt> if <tt>next</tt> would return an element
+//     * rather than throwing an exception.)
+//     *
+//     * @return <tt>true</tt> if the iterator has more elements.
+//     */
+//    @Override
+//    public boolean hasNext()
+//    {
+//      if (_currentByteArray < _byteString._byteArrays.getByteArrayNum())
+//      {
+//        if (_)
+//      }
+//    }
+//
+//    /**
+//     * Returns the next element in the iteration.
+//     *
+//     * @return the next element in the iteration.
+//     * @exception NoSuchElementException iteration has no more elements.
+//     */
+//    @Override
+//    public Byte next()
+//    {
+//      if (!hasNext())
+//      {
+//
+//      }
+//
+//    }
+//
+//
+//    /**
+//     *
+//     * Removes from the underlying collection the last element returned by the
+//     * iterator (optional operation).  This method can be called only once per
+//     * call to <tt>next</tt>.  The behavior of an iterator is unspecified if
+//     * the underlying collection is modified while the iteration is in
+//     * progress in any way other than by calling this method.
+//     *
+//     * @exception UnsupportedOperationException if the <tt>remove</tt>
+//     *		  operation is not supported by this Iterator.
+//
+//     * @exception IllegalStateException if the <tt>next</tt> method has not
+//     *		  yet been called, or the <tt>remove</tt> method has already
+//     *		  been called after the last call to the <tt>next</tt>
+//     *		  method.
+//     */
+//    @Override
+//    public void remove()
+//    {
+//      throw new UnsupportedOperationException("Not supported");
+//    }
+//  }
+
 
   @Override
   public boolean equals(Object o)
