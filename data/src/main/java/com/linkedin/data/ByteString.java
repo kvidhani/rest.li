@@ -27,6 +27,7 @@ import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -382,23 +383,29 @@ public final class ByteString
   }
 
   /**
-   * Returns a slice of ByteString which is guaranteed to not contain more then one ByteString internally. Formally
-   * this
+   * Decomposes this ByteString into a {@link java.util.List} of the original underlying ByteString(s).
    *
-   * This create a "view" of this ByteString, which holds the entire content of the original ByteString. If your code
-   * only needs a small portion of a large ByteString and is not interested in the rest of that ByteString, it is better
-   * to use {@link #copySlice} method.
+   * If this ByteString was constructed using multiple ByteStrings, then those ByteStrings are returned in a
+   * {@link java.util.List}. If this ByteString was constructed as a result of a copy, i.e {@link #copySlice} or
+   * {@link #copy}, then a {@link java.util.List} is returned with a single ByteString.
    *
-   * @param offset the starting point of the slice
-   * @param length the length of the slice
-   * @return a slice of ByteString backed by the same backing byte array
-   * @throws IndexOutOfBoundsException if offset or length is negative, or offset + length is larger than the length
-   * of this ByteString
+   * If this ByteString is empty, then a {@link java.util.List} is returned with an empty ByteString.
+   *
+   * @return a {@link java.util.List} of 1 or more ByteStrings that compose this ByteString.
    */
-  public ByteString sliceresumehere(int offset, int length)
+  public List<ByteString> getByteStrings()
   {
-    ArgumentUtil.checkBounds(_byteArrays.getBytesNum(), offset, length);
-    return new ByteString(_byteArrays.slice(offset, length));
+    final List<ByteString> decomposedList = new ArrayList<ByteString>();
+
+    //Note that if this is the empty ByteString, there is still one byte array that exists.
+    for (int i = 0; i < _byteArrays.getByteArrayNum(); i++)
+    {
+      final ByteArray[] byteArrays = new ByteArray[1];
+      byteArrays[0] = _byteArrays.get(i);
+      decomposedList.add(new ByteString(new ByteArrays(byteArrays)));
+    }
+
+    return decomposedList;
   }
 
   /**

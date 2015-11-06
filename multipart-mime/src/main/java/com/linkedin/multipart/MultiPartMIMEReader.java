@@ -621,6 +621,7 @@ public final class MultiPartMIMEReader
         //Make a copy of what we need leaving the old list to be GC'd.
         //_byteBuffer = new ArrayList<Byte>(_byteBuffer.subList(boundaryIndex, _byteBuffer.size()));
 
+        //todo use decomposer
         final ByteString clientData = _compoundByteStringBuffer.copySlice(0, boundaryIndex);
         _compoundByteStringBuffer = _compoundByteStringBuffer.slice(boundaryIndex, _compoundByteStringBuffer.length() - boundaryIndex);
 

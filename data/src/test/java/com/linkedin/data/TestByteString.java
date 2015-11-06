@@ -25,7 +25,9 @@ import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -516,9 +518,7 @@ public class TestByteString
     byteStringABuilder.append(ByteString.copy("o".getBytes()));
     final ByteString byteStringA = byteStringABuilder.build();
 
-    final ByteString.Builder byteStringBBuilder = new ByteString.Builder();
-    byteStringBBuilder.append(ByteString.copy("hello".getBytes()));
-    final ByteString byteStringB = byteStringBBuilder.build();
+    final ByteString byteStringB = ByteString.copy("hello".getBytes());
 
     final ByteString.Builder byteStringCBuilder = new ByteString.Builder();
     byteStringCBuilder.append(ByteString.copy("he".getBytes()));
@@ -664,5 +664,57 @@ public class TestByteString
                     {byteStringA}, {byteStringB}, {byteStringC}, {byteStringD}, {byteStringE},
                     {byteStringF}, {byteStringG}, {byteStringH}, {byteStringI}
             };
+  }
+
+  @Test(dataProvider = "variousCompoundByteStrings")
+  public void testDecomposer(ByteString sourceString, List<ByteString> expectedResult)
+  {
+    Assert.assertEquals(sourceString.getByteStrings(), expectedResult);
+  }
+
+  @DataProvider
+  public Object[][] variousCompoundByteStrings()
+  {
+    //hello
+    final List<ByteString> byteStringAList = new ArrayList<ByteString>();
+    byteStringAList.add(ByteString.copy("h".getBytes()));
+    byteStringAList.add(ByteString.copy("e".getBytes()));
+    byteStringAList.add(ByteString.copy("l".getBytes()));
+    byteStringAList.add(ByteString.copy("l".getBytes()));
+    byteStringAList.add(ByteString.copy("o".getBytes()));
+    final ByteString byteStringA = listToByteString(byteStringAList);
+
+    final List<ByteString> byteStringBList = new ArrayList<ByteString>();
+    byteStringBList.add(ByteString.copy("hello".getBytes()));
+    final ByteString byteStringB = listToByteString(byteStringBList);
+
+    final List<ByteString> byteStringCList = new ArrayList<ByteString>();
+    byteStringCList.add(ByteString.copy("he".getBytes()));
+    byteStringCList.add(ByteString.copy("ll".getBytes()));
+    byteStringCList.add(ByteString.copy("o".getBytes()));
+    final ByteString byteStringC = listToByteString(byteStringCList);
+
+    final List<ByteString> byteStringDList = new ArrayList<ByteString>();
+    byteStringDList.add(ByteString.copy("hel".getBytes()));
+    byteStringDList.add(ByteString.copy("l".getBytes()));
+    byteStringDList.add(ByteString.copy("o".getBytes()));
+    final ByteString byteStringD = listToByteString(byteStringDList);
+
+    return new Object[][]
+            {
+                    {byteStringA, byteStringAList}, {byteStringB, byteStringBList},
+                    {byteStringC, byteStringCList}, {byteStringD, byteStringDList},
+            };
+  }
+
+  private ByteString listToByteString(List<ByteString> byteStringList)
+  {
+    final ByteString.Builder builder = new ByteString.Builder();
+    for (final ByteString byteString : byteStringList)
+    {
+     builder.append(byteString);
+    }
+
+    return builder.build();
   }
 }
