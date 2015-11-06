@@ -294,7 +294,8 @@ public class TestMIMEReader extends AbstractMIMEUnitTest
     MultiPartMIMEReaderCallbackImpl _testMultiPartMIMEReaderCallback = new MultiPartMIMEReaderCallbackImpl(latch);
     _reader.registerReaderCallback(_testMultiPartMIMEReaderCallback);
 
-    latch.await(TEST_TIMEOUT, TimeUnit.MILLISECONDS);
+    //todo
+    latch.await(500000, TimeUnit.MILLISECONDS);
 
     try
     {

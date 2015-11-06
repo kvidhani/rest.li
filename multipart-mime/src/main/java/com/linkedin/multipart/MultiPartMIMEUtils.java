@@ -19,12 +19,9 @@ package com.linkedin.multipart;
 
 import com.linkedin.data.ByteString;
 import com.linkedin.multipart.exceptions.IllegalMultiPartMIMEFormatException;
-
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.Charset;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.TreeMap;
@@ -41,28 +38,12 @@ public final class MultiPartMIMEUtils
   public static final String CONTENT_TYPE_HEADER = "Content-Type";
   public static final String MULTIPART_PREFIX = "multipart/";
   public static final String BOUNDARY_PARAMETER = "boundary";
-  public static final Byte SPACE_BYTE = 32;
-  public static final Byte TAB_BYTE = 9;
+  public static final byte SPACE_BYTE = 32;
+  public static final byte TAB_BYTE = 9;
 
   public static final String CRLF_STRING = "\r\n";
   public static final byte[] CRLF_BYTES = "\r\n".getBytes();
-  public static final List<Byte> CRLF_BYTE_LIST = new ArrayList<Byte>();
-
   public static final byte[] CONSECUTIVE_CRLFS_BYTES = "\r\n\r\n".getBytes();
-  public static final List<Byte> CONSECUTIVE_CRLFS_BYTE_LIST = new ArrayList<Byte>();
-
-  static
-  {
-    for (final byte b : CONSECUTIVE_CRLFS_BYTES)
-    {
-      CONSECUTIVE_CRLFS_BYTE_LIST.add(b);
-    }
-
-    for (final byte b : CRLF_BYTES)
-    {
-      CRLF_BYTE_LIST.add(b);
-    }
-  }
 
   private static final char[] MULTIPART_CHARS =
       "-_1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ".toCharArray();

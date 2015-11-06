@@ -382,6 +382,26 @@ public final class ByteString
   }
 
   /**
+   * Returns a slice of ByteString which is guaranteed to not contain more then one ByteString internally. Formally
+   * this
+   *
+   * This create a "view" of this ByteString, which holds the entire content of the original ByteString. If your code
+   * only needs a small portion of a large ByteString and is not interested in the rest of that ByteString, it is better
+   * to use {@link #copySlice} method.
+   *
+   * @param offset the starting point of the slice
+   * @param length the length of the slice
+   * @return a slice of ByteString backed by the same backing byte array
+   * @throws IndexOutOfBoundsException if offset or length is negative, or offset + length is larger than the length
+   * of this ByteString
+   */
+  public ByteString sliceresumehere(int offset, int length)
+  {
+    ArgumentUtil.checkBounds(_byteArrays.getBytesNum(), offset, length);
+    return new ByteString(_byteArrays.slice(offset, length));
+  }
+
+  /**
    * Returns a slice of ByteString.
    * This create a "view" of this ByteString, which holds the entire content of the original ByteString. If your code
    * only needs a small portion of a large ByteString and is not interested in the rest of that ByteString, it is better
@@ -552,6 +572,20 @@ public final class ByteString
     return -1;
   }
 
+  /**
+   * Returns the byte located at the specified offset within this ByteString. This is a constant time operation.
+   *
+   * If this ByteString is a compound ByteString, meaning it was composed of multiple ByteStrings, then this operation
+   * becomes log(n) where n is the number of ByteStrings in the compound ByteString.
+   *
+   * @param offset the index specifying the target byte's location
+   * @return the resulting byte
+   */
+  public byte getByte(int offset)
+  {
+    return _byteArrays.getByte(offset);
+  }
+
   @Override
   public boolean equals(Object o)
   {
@@ -670,10 +704,16 @@ public final class ByteString
 
     public Builder append(ByteString dataChunk)
     {
+      if (dataChunk == null)
+      {
+        throw new IllegalArgumentException("Provided ByteString to append is null!");
+      }
+
       if (!EMPTY.equals(dataChunk))
       {
         _chunks.add(dataChunk);
       }
+
       return this;
     }
 
