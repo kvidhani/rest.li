@@ -34,6 +34,7 @@ import com.linkedin.r2.message.streaming.WriteHandle;
 import com.linkedin.r2.util.LinkedDeque;
 import java.nio.charset.Charset;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.TreeMap;
@@ -547,6 +548,27 @@ public final class MultiPartMIMEReader
         //due to re-assembly.
         //If the slice we have is empty, no need to send it to the client
         final int amountToLeaveBehind = _normalBoundaryBytes.length - 1;
+        final List<ByteString> decomposedByteStrings = _compoundByteStringBuffer.decompose();
+
+        //Find the first non empty ByteString
+        ByteString firstNonEmptyByteString = null;
+        for (int i = 0; i < decomposedByteStrings.size(); i++)
+        {
+          if (decomposedByteStrings.get(i).length() > 0)
+          {
+            firstNonEmptyByteString = decomposedByteStrings.get(i);
+            break;
+          }
+        }
+        daf
+        //This is guaranteed to be non-null.
+        assert(firstNonEmptyByteString != null);
+
+        //We can only
+
+
+
+
         final ByteString clientData = _compoundByteStringBuffer.copySlice(0, _compoundByteStringBuffer.length() - amountToLeaveBehind);
         //Make a copy of what we need leaving the old list to be GC'd
         final int offset = _compoundByteStringBuffer.length() - amountToLeaveBehind;

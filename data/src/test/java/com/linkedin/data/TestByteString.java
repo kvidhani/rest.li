@@ -27,6 +27,7 @@ import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
@@ -192,8 +193,7 @@ public class TestByteString
   {
     Assert.assertEquals(ByteString.copy(new byte[] {1,2,3,4}),
                         ByteString.copy(new byte[] {1,2,3,4}));
-    Assert.assertFalse(ByteString.copy(new byte[] {1,2,3,4}).equals(
-                       ByteString.copy(new byte[] {5,6,7,8})));
+    Assert.assertFalse(ByteString.copy(new byte[]{1, 2, 3, 4}).equals(ByteString.copy(new byte[]{5, 6, 7, 8})));
 
     ByteString bs = ByteString.copy(new byte[] {1,2,3,4});
     Assert.assertNotEquals(bs, bs.slice(0, 3));
@@ -311,7 +311,7 @@ public class TestByteString
   public void testToStringNegative()
   {
     // make sure "negative" bytes are represented as positive numbers e.g. ff for -1
-    Assert.assertTrue(ByteString.copy(new byte[] { -1 }).toString().contains("bytes=ff"));
+    Assert.assertTrue(ByteString.copy(new byte[]{-1}).toString().contains("bytes=ff"));
   }
 
   @Test
@@ -661,15 +661,15 @@ public class TestByteString
 
     return new Object[][]
             {
-                    {byteStringA}, {byteStringB}, {byteStringC}, {byteStringD}, {byteStringE},
-                    {byteStringF}, {byteStringG}, {byteStringH}, {byteStringI}
+                {byteStringA}, {byteStringB}, {byteStringC}, {byteStringD}, {byteStringE},
+                {byteStringF}, {byteStringG}, {byteStringH}, {byteStringI}
             };
   }
 
   @Test(dataProvider = "variousCompoundByteStrings")
   public void testDecomposer(ByteString sourceString, List<ByteString> expectedResult)
   {
-    Assert.assertEquals(sourceString.getByteStrings(), expectedResult);
+    Assert.assertEquals(sourceString.decompose(), expectedResult);
   }
 
   @DataProvider
@@ -700,10 +700,16 @@ public class TestByteString
     byteStringDList.add(ByteString.copy("o".getBytes()));
     final ByteString byteStringD = listToByteString(byteStringDList);
 
+    //Now some test cases where a copy is performed. These should merge everything into one ByteString internally.
+    //todo
+
     return new Object[][]
             {
-                    {byteStringA, byteStringAList}, {byteStringB, byteStringBList},
-                    {byteStringC, byteStringCList}, {byteStringD, byteStringDList},
+                {ByteString.empty(), Collections.singleton(ByteString.empty())},
+                {byteStringA, byteStringAList}, {byteStringB, byteStringBList},
+                {byteStringC, byteStringCList}, {byteStringD, byteStringDList},
+                {ByteString.copy() byteStringA.copyBytes()}
+
             };
   }
 

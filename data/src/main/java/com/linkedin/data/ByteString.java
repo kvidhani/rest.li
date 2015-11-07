@@ -27,7 +27,6 @@ import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 /**
@@ -393,7 +392,7 @@ public final class ByteString
    *
    * @return a {@link java.util.List} of 1 or more ByteStrings that compose this ByteString.
    */
-  public List<ByteString> getByteStrings()
+  public List<ByteString> decompose()
   {
     final List<ByteString> decomposedList = new ArrayList<ByteString>();
 
