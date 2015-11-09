@@ -42,7 +42,7 @@ import java.util.concurrent.Callable;
 
 
 /**
- * Async streaming multipart mime reader based on the official RFC for multipart/mime.
+ * Zero copy, async streaming multipart mime reader based on the official RFC for multipart/mime.
  *
  * This class uses R2 streaming and a look-ahead buffer to allow clients to walk through the data of all parts using an async,
  * callback based approach.
@@ -65,6 +65,10 @@ import java.util.concurrent.Callable;
  *
  * @author Karim Vidhani
  */
+//todo consider adding some empty byte strings as payloads to your tests for the new stuff you just did
+  //todo update tests to use unsafe wrap
+  //todo refactor the decomposing logic into its own method
+  //todo many comments need to be changed based on the new buffer
 public final class MultiPartMIMEReader
 {
   private final R2MultiPartMIMEReader _reader;
@@ -77,17 +81,14 @@ public final class MultiPartMIMEReader
   class R2MultiPartMIMEReader implements Reader
   {
     private volatile ReadHandle _rh;
-    //todo change this
-    //private volatile List<Byte> _byteBuffer = new ArrayList<Byte>();
     private volatile ByteString _compoundByteStringBuffer = ByteString.empty();
     //The reason for the first boundary vs normal boundary difference is because the first boundary MAY be missing the
     //leading CRLF.
-    //Note that even though it is incorrect for a client to send a multipart/mime in this manner,
+    //Note that even though it is incorrect for a client to send a multipart/mime payload in this manner,
     //the RFC states that readers should be tolerant and be able to handle such cases.
     private final String _firstBoundary;
     private final String _normalBoundary;
     private final String _finishingBoundary;
-    //todo this has changed as well
     private byte[] _firstBoundaryBytes;
     private byte[] _normalBoundaryBytes;
     private byte[] _finishingBoundaryBytes;
@@ -140,7 +141,7 @@ public final class MultiPartMIMEReader
       //client requests using data from memory we will eventually need to ask R2 for more data. At this point,
       //onError() will be called by R2 and we can clean up state and notify our clients on their callbacks.
 
-      //It could be the case that we already finished, or reach an erroneous state earlier on our own
+      //It could be the case that we already finished, or reached an erroneous state earlier on our own
       //(i.e malformed multipart mime body or a client threw an exception when we invoked their callback).
       //In such a case, just return.
       if (_multiPartReaderState == MultiPartReaderState.FINISHED)
@@ -204,7 +205,7 @@ public final class MultiPartMIMEReader
       }
 
       //Read data into our local buffer for further processing. All subsequent operations require this.
-      appendByteStringToBuffer(data);
+      _compoundByteStringBuffer = new ByteString.Builder().append(_compoundByteStringBuffer).append(data).build();
 
       if (checkAndProcessPreamble())
       {
@@ -218,21 +219,6 @@ public final class MultiPartMIMEReader
 
       //Since this is the last step we end up returning anyway.
       performPartReading();
-    }
-
-    private void appendByteStringToBuffer(final ByteString byteString)
-    {
-      //todo
-      _compoundByteStringBuffer = new ByteString.Builder().append(_compoundByteStringBuffer).append(byteString).build();
-
-      /*
-      final byte[] byteStringArray = byteString.copyBytes();
-      for (final byte b : byteStringArray)
-      {
-        //todo
-        //_compoundByteStringBuffer = new ByteString.Builder().append(_compoundByteStringBuffer).append(byteString).build();
-        //_byteBuffer.add(b);
-      }*/
     }
 
     //This method is use to iteratively invoke our callbacks to prevent a stack overflow.
@@ -324,10 +310,6 @@ public final class MultiPartMIMEReader
       //Read the preamble in.
       if (_multiPartReaderState == MultiPartReaderState.CALLBACK_BOUND_AND_READING_PREAMBLE)
       {
-        //todo fix this
-        //final int firstBoundaryLookup = Collections.indexOfSubList(_byteBuffer, _firstBoundaryBytes);
-        //final int lastBoundaryLookup = Collections.indexOfSubList(_byteBuffer, _finishingBoundaryBytes);
-
         final int firstBoundaryLookup = _compoundByteStringBuffer.indexOfBytes(_firstBoundaryBytes);
         final int lastBoundaryLookup = _compoundByteStringBuffer.indexOfBytes(_finishingBoundaryBytes);
 
@@ -356,22 +338,16 @@ public final class MultiPartMIMEReader
           }
 
           return true; //Regardless of whether the invocation to onFinished() threw or not we need to return here
-
         }
 
         //Otherwise proceed
         if (firstBoundaryLookup > -1)
         {
           //The boundary has been found. Everything up until this point is the preamble.
-          //todo
-          //final List<Byte> preambleBytes = _byteBuffer.subList(0, firstBoundaryLookup);
-          //_preamble = new String(ArrayUtils.toPrimitive(preambleBytes.toArray(new Byte[0])));
           final ByteString preambleSlice = _compoundByteStringBuffer.slice(0, firstBoundaryLookup);
           _preamble = new String(preambleSlice.copyBytes()); //Preamble should be small this copy should be okay
 
-          //todo
           //Make a new copy with the bytes we need leaving the old list to be GC'd
-          //_byteBuffer = new ArrayList<Byte>(_byteBuffer.subList(firstBoundaryLookup, _byteBuffer.size()));
           _compoundByteStringBuffer = _compoundByteStringBuffer.slice(firstBoundaryLookup, _compoundByteStringBuffer.length() - firstBoundaryLookup);
 
           //We can now transition to normal reading.
@@ -398,8 +374,6 @@ public final class MultiPartMIMEReader
     {
       //We buffer forward a bit if we have is less then the finishing boundary size.
       //This is the minimum amount of data we need in the buffer before we can go forward.
-      //todo
-      //if (_byteBuffer.size() < _finishingBoundaryBytes.size())
       if (_compoundByteStringBuffer.length() < _finishingBoundaryBytes.length)
       {
         //If this happens and r2 has not notified us that we are done, then this is a problem. This means that
@@ -459,18 +433,12 @@ public final class MultiPartMIMEReader
       final int boundarySize;
       if (_firstBoundaryEvaluated == false)
       {
-        //todo
         //Immediately after the preamble, i.e the first part we are seeing
-        //boundaryIndex = Collections.indexOfSubList(_byteBuffer, _firstBoundaryBytes);
-        //boundarySize = _firstBoundaryBytes.size();
         boundaryIndex = _compoundByteStringBuffer.indexOfBytes(_firstBoundaryBytes);
         boundarySize = _firstBoundaryBytes.length;
       }
       else
       {
-        //todo
-        //boundaryIndex = Collections.indexOfSubList(_byteBuffer, _normalBoundaryBytes);
-        //boundarySize = _normalBoundaryBytes.size();
         boundaryIndex = _compoundByteStringBuffer.indexOfBytes(_normalBoundaryBytes);
         boundarySize = _normalBoundaryBytes.length;
       }
@@ -523,8 +491,8 @@ public final class MultiPartMIMEReader
       //Assert on our invariant described above.
       assert (currentState == SingleReaderState.REQUESTED_DATA || currentState == SingleReaderState.REQUESTED_ABORT);
 
-      //We know the buffer doesn't begin with the boundary, but we can take different action if there a boundary
-      //exists in the buffer. This way we can consume the maximum amount.
+      //We know the buffer doesn't begin with the boundary, but we can take different action if a boundary
+      //exists in the buffer. This way we can consume the maximum amount of data.
       //If the boundary exists in the buffer we know we can read right up until it begins.
       //If it doesn't the maximum we can read out is limited (since we don't want to consume possible
       //future boundary data).
@@ -533,21 +501,12 @@ public final class MultiPartMIMEReader
         //Boundary doesn't exist here, let's drain what we can.
         //Note that we can't fully drain the buffer because the end of the buffer may include the partial
         //beginning of the next boundary.
+        final int amountToLeaveBehind = _normalBoundaryBytes.length - 1;
+        final int maxAmountAvailableForClient = _compoundByteStringBuffer.length() - amountToLeaveBehind;
 
-        //todo
-        //final int amountToLeaveBehind = _normalBoundaryBytes.size() - 1;
-        //final List<Byte> useableBytes = _byteBuffer.subList(0, _byteBuffer.size() - amountToLeaveBehind);
-
-        //Make a copy of what we need leaving the old list to be GC'd
-        //_byteBuffer =
-        //    new ArrayList<Byte>(_byteBuffer.subList(_byteBuffer.size() - amountToLeaveBehind, _byteBuffer.size()));
-
-        //todo this will have to use the decomposer
         //Note that we have to provide ByteStrings that are NOT compound internally. This is because clients who consume
         //these will invariably call APIs such as asByteBuffer() which, if compound, will incur a copy in memory
         //due to re-assembly.
-        //If the slice we have is empty, no need to send it to the client
-        final int amountToLeaveBehind = _normalBoundaryBytes.length - 1;
         final List<ByteString> decomposedByteStrings = _compoundByteStringBuffer.decompose();
 
         //Find the first non empty ByteString
@@ -560,32 +519,42 @@ public final class MultiPartMIMEReader
             break;
           }
         }
-        daf
-        //This is guaranteed to be non-null.
+
+        //This is guaranteed to be non-null since we verified earlier that we have sufficient buffer size.
         assert(firstNonEmptyByteString != null);
 
-        //We can only
+        //We can take as much as maxAmountAvailableForClient. Therefore we have one of three options:
+        //1. If firstNonEmptyByteString is less then maxAmountAvailableForClient, then we can give this
+        //entire ByteString to the client. We then update our _compoundByteStringBuffer by creating a slice of it
+        //that starts with an offset based off of the size of firstNonEmptyByteString.
+        //2. If firstNonEmptyByteString is greater then maxAmountAvailableForClient, then we have to take a slice
+        //of firstNonEmptyByteString from 0 to maxAmountAvailableForClient. We provide this slice to our client.
+        //We then update our _compoundByteStringBuffer by creating a slice of it that starts with an offset based
+        //on the size of the ByteString we gave to our client.
+        //3. If firstNonEmptyByteString is equal to maxAmountAvailableForClient, then either of the above are equivalent.
+        //Meaning that firstNonEmptyByteString (coincidentally) is exactly the maximum we can give to our client.
 
+        final ByteString clientData;
 
+        //We lump less then or equal to into the same case.
+        if (firstNonEmptyByteString.length() <= maxAmountAvailableForClient)
+        {
+          clientData = firstNonEmptyByteString;
+        }
+        else
+        {
+          clientData = firstNonEmptyByteString.slice(0, maxAmountAvailableForClient);
+        }
 
-
-        final ByteString clientData = _compoundByteStringBuffer.copySlice(0, _compoundByteStringBuffer.length() - amountToLeaveBehind);
-        //Make a copy of what we need leaving the old list to be GC'd
-        final int offset = _compoundByteStringBuffer.length() - amountToLeaveBehind;
-        _compoundByteStringBuffer = _compoundByteStringBuffer.slice(offset, _compoundByteStringBuffer.length() - offset);
-
-
+        //Update our buffer by trimming off references to what we don't need anymore.
+        _compoundByteStringBuffer = _compoundByteStringBuffer.slice(clientData.length(),
+                _compoundByteStringBuffer.length() - clientData.length());
 
 
         if (currentState == SingleReaderState.REQUESTED_DATA)
         {
-          //todo
-          //Grab a copy of the data before we change the client state.
-          //final ByteString clientData = ByteString.copy(ArrayUtils.toPrimitive(useableBytes.toArray(new Byte[0])));
-
           //We must set this before we provide the data. Otherwise if the client immediately decides to requestPartData()
-          //they will see an exception because we are still in REQUESTED_DATA. Technically they shouldn't do this
-          //since everything is event driven, but we still maintain caution.
+          //they will see an exception because we are still in REQUESTED_DATA.
           _currentSinglePartMIMEReader._singleReaderState = SingleReaderState.CALLBACK_BOUND_AND_READY;
 
           //This effectively does:
@@ -637,22 +606,58 @@ public final class MultiPartMIMEReader
       }
       else
       {
-        //todo
-        //Boundary is in buffer. Could be normal boundary or it could be finishing boundary.
-        //final List<Byte> useableBytes = _byteBuffer.subList(0, boundaryIndex);
-        //Make a copy of what we need leaving the old list to be GC'd.
-        //_byteBuffer = new ArrayList<Byte>(_byteBuffer.subList(boundaryIndex, _byteBuffer.size()));
+        //Boundary is in buffer. Could be normal boundary or it could be finishing boundary. We can only construct
+        //client data right up until the boundary's location.
+        final int maxAmountAvailableForClient = boundaryIndex;
 
-        //todo use decomposer
-        final ByteString clientData = _compoundByteStringBuffer.copySlice(0, boundaryIndex);
-        _compoundByteStringBuffer = _compoundByteStringBuffer.slice(boundaryIndex, _compoundByteStringBuffer.length() - boundaryIndex);
+        //Note that we have to provide ByteStrings that are NOT compound internally. This is because clients who consume
+        //these will invariably call APIs such as asByteBuffer() which, if compound, will incur a copy in memory
+        //due to re-assembly.
+        final List<ByteString> decomposedByteStrings = _compoundByteStringBuffer.decompose();
+
+        //Find the first non empty ByteString
+        ByteString firstNonEmptyByteString = null;
+        for (int i = 0; i < decomposedByteStrings.size(); i++)
+        {
+          if (decomposedByteStrings.get(i).length() > 0)
+          {
+            firstNonEmptyByteString = decomposedByteStrings.get(i);
+            break;
+          }
+        }
+
+        //This is guaranteed to be non-null.
+        assert(firstNonEmptyByteString != null);
+
+        //We can take as much as maxAmountAvailableForClient. Therefore we have one of three options:
+        //1. If firstNonEmptyByteString is less then maxAmountAvailableForClient, then we can give this
+        //entire ByteString to the client. We then update our _compoundByteStringBuffer by creating a slice of it
+        //that starts with an offset based off of the size of firstNonEmptyByteString.
+        //2. If firstNonEmptyByteString is greater then maxAmountAvailableForClient, then we have to take a slice
+        //of firstNonEmptyByteString from 0 to maxAmountAvailableForClient. We provide this slice to our client.
+        //We then update our _compoundByteStringBuffer by creating a slice of it that starts with an offset based
+        //on the size of the ByteString we gave to our client.
+        //3. If firstNonEmptyByteString is equal to maxAmountAvailableForClient, then either of the above are equivalent.
+        //Meaning that firstNonEmptyByteString (coincidentally) is exactly the maximum we can give to our client.
+
+        final ByteString clientData;
+
+        //We lump less then or equal to into the same case.
+        if (firstNonEmptyByteString.length() < maxAmountAvailableForClient)
+        {
+          clientData = firstNonEmptyByteString;
+        }
+        else
+        {
+          clientData = firstNonEmptyByteString.slice(0, maxAmountAvailableForClient);
+        }
+
+        //Update our buffer by trimming off references to what we don't need anymore.
+        _compoundByteStringBuffer = _compoundByteStringBuffer.slice(clientData.length(),
+                _compoundByteStringBuffer.length() - clientData.length());
 
         if (currentState == SingleReaderState.REQUESTED_DATA)
         {
-          //todo
-          //Grab a copy of the data beforehand.
-          //final ByteString clientData = ByteString.copy(ArrayUtils.toPrimitive(useableBytes.toArray(new Byte[0])));
-
           //We must set this before we provide the data.
           _currentSinglePartMIMEReader._singleReaderState = SingleReaderState.CALLBACK_BOUND_AND_READY;
 
@@ -714,11 +719,8 @@ public final class MultiPartMIMEReader
         return;
       }
 
-      //todo
       //Before continuing verify that this isn't the final boundary in front of us.
-      //final int lastBoundaryLookup = Collections.indexOfSubList(_byteBuffer, _finishingBoundaryBytes);
       final int lastBoundaryLookup = _compoundByteStringBuffer.indexOfBytes(_finishingBoundaryBytes);
-
 
       if (lastBoundaryLookup == 0)
       {
@@ -823,8 +825,6 @@ public final class MultiPartMIMEReader
       //We need to make sure we can look ahead a bit here first. The minimum size of the buffer must be
       //the size of the normal boundary plus consecutive CRLFs. This would be the bare minimum as it conveys
       //empty headers.
-      //todo
-      //if ((boundarySize + MultiPartMIMEUtils.CONSECUTIVE_CRLFS_BYTE_LIST.size()) > _byteBuffer.size())
       if ((boundarySize + MultiPartMIMEUtils.CONSECUTIVE_CRLFS_BYTES.length) > _compoundByteStringBuffer.length())
       {
         if (_r2Done)
@@ -841,22 +841,13 @@ public final class MultiPartMIMEReader
         return;
       }
 
-      //todo
       //Now we will determine the existence of headers.
       //In order to do this we construct a window to look into. We will look inside of the buffer starting at the
       //end of the boundary until the end of the buffer.
-      //final List<Byte> possibleHeaderArea = _byteBuffer.subList(boundarySize, _byteBuffer.size());
       final ByteString possibleHeaderArea = _compoundByteStringBuffer.slice(boundarySize, _compoundByteStringBuffer.length() - boundarySize);
 
-
-      //todo
       //Find the two consecutive CRLFs.
-      //final int headerEnding =
-      //    Collections.indexOfSubList(possibleHeaderArea, MultiPartMIMEUtils.CONSECUTIVE_CRLFS_BYTE_LIST);
       final int headerEnding = possibleHeaderArea.indexOfBytes(MultiPartMIMEUtils.CONSECUTIVE_CRLFS_BYTES);
-
-
-
 
       if (headerEnding == -1)
       {
@@ -879,18 +870,11 @@ public final class MultiPartMIMEReader
       //CRLFs. In such a case, everything up until the first occurrence of the consecutive CRLFs will be considered
       //part of the header area.
 
-      //todo
       //Let's make a window into the header area. Note that we need to include the trailing consecutive CRLF bytes
       //because we need to verify if the header area is empty, meaning it contains only consecutive CRLF bytes.
-      //final List<Byte> headerByteSubList =
-      //    possibleHeaderArea.subList(0, headerEnding + MultiPartMIMEUtils.CONSECUTIVE_CRLFS_BYTE_LIST.size());
       final ByteString headerBytesSlice = possibleHeaderArea.slice(0, headerEnding + MultiPartMIMEUtils.CONSECUTIVE_CRLFS_BYTES.length);
 
-
-
       final Map<String, String> headers;
-      //todo
-      //if (headerByteSubList.equals(MultiPartMIMEUtils.CONSECUTIVE_CRLFS_BYTE_LIST))
       if (headerBytesSlice.equals(ByteString.copy(MultiPartMIMEUtils.CONSECUTIVE_CRLFS_BYTES)))
       {
         //The region of bytes after the boundary is composed of two CRLFs. Therefore we have no headers.
@@ -906,14 +890,6 @@ public final class MultiPartMIMEReader
         //there should be a CRLF followed by the first header. We will verify that this is indeed a CRLF
         //and then we will skip it below.
 
-        //todo
-//        final List<Byte> leadingBytes = headerByteSubList.subList(0, MultiPartMIMEUtils.CRLF_BYTE_LIST.size());
-//        if (!leadingBytes.equals(MultiPartMIMEUtils.CRLF_BYTE_LIST))
-//        {
-//          handleExceptions(new IllegalMultiPartMIMEFormatException(
-//              "Malformed multipart mime request. Headers are improperly constructed."));
-//          return; //Unusable state, so return.
-//        }
         final ByteString leadingBytes = headerBytesSlice.slice(0, MultiPartMIMEUtils.CRLF_BYTES.length);
         if (!leadingBytes.equals(ByteString.copy(MultiPartMIMEUtils.CRLF_BYTES)))
         {
@@ -922,35 +898,22 @@ public final class MultiPartMIMEReader
           return; //Unusable state, so return.
         }
 
-
-
-
         //The sliding-window-header-split technique here works because we are essentially splitting the buffer
         //by looking at occurrences of CRLF bytes. This is analogous to splitting a String in Java but instead
         //we are splitting a byte array.
 
         //We start at an offset of i and currentHeaderStart because we need to skip the first CRLF.
-        //todo
-        //int currentHeaderStart = MultiPartMIMEUtils.CRLF_BYTE_LIST.size();
         int currentHeaderStart = MultiPartMIMEUtils.CRLF_BYTES.length;
         final StringBuffer runningFoldedHeader = new StringBuffer(); //For folded headers. See below for details.
 
         //Note that the end of the buffer we are sliding through is composed of two consecutive CRLFs.
         //Our sliding window algorithm here will NOT evaluate the very last CRLF bytes (which would otherwise
         //erroneously result in an empty header).
-        //todo
-        //for (int i = MultiPartMIMEUtils.CRLF_BYTES.length; i < headerByteSubList.size() - MultiPartMIMEUtils.CRLF_BYTE_LIST.size(); i++)
         for (int i = MultiPartMIMEUtils.CRLF_BYTES.length; i < headerBytesSlice.length() - MultiPartMIMEUtils.CRLF_BYTES.length; i++)
         {
-          //todo
-          //final List<Byte> currentWindow = headerByteSubList.subList(i, i + MultiPartMIMEUtils.CRLF_BYTE_LIST.size());
           final ByteString currentWindow = headerBytesSlice.slice(i, MultiPartMIMEUtils.CRLF_BYTES.length);
-          //todo
-          //if (currentWindow.equals(MultiPartMIMEUtils.CRLF_BYTE_LIST))
           if (currentWindow.equals(ByteString.copy(MultiPartMIMEUtils.CRLF_BYTES)))
           {
-            //todo
-            //final List<Byte> currentHeaderBytes = headerByteSubList.subList(currentHeaderStart, i);
             final ByteString currentHeader = headerBytesSlice.slice(currentHeaderStart, i - currentHeaderStart);
 
             //At this point we MAY have found the end of a header because the current window is a CRLF.
@@ -971,15 +934,9 @@ public final class MultiPartMIMEReader
             //2. Otherwise the character in front of us is NOT a tab or a white space. We can then consider the current
             //header bytes to compose a header that fits on a single line.
 
-            //todo
-            //final byte[] headerBytes = ArrayUtils.toPrimitive(currentHeaderBytes.toArray(new Byte[0]));
-            //String header = new String(headerBytes);
             String header = currentHeader.asString(Charset.defaultCharset());
 
-            //todo
-            //if (headerByteSubList.get(i + MultiPartMIMEUtils.CRLF_BYTE_LIST.size()) == MultiPartMIMEUtils.SPACE_BYTE
-                //|| headerByteSubList.get(i + MultiPartMIMEUtils.CRLF_BYTE_LIST.size()) == MultiPartMIMEUtils.TAB_BYTE)
-              if (headerBytesSlice.getByte(i + MultiPartMIMEUtils.CRLF_BYTES.length) == MultiPartMIMEUtils.SPACE_BYTE
+            if (headerBytesSlice.getByte(i + MultiPartMIMEUtils.CRLF_BYTES.length) == MultiPartMIMEUtils.SPACE_BYTE
                   || headerBytesSlice.getByte(i + MultiPartMIMEUtils.CRLF_BYTES.length) == MultiPartMIMEUtils.TAB_BYTE)
             {
               //Append the running concatenation of the folded header. We need to preserve the original header so
@@ -1008,7 +965,6 @@ public final class MultiPartMIMEReader
               headers.put(header.substring(0, colonIndex).trim(),
                   header.substring(colonIndex + 1, header.length()).trim());
             }
-            //todo
             currentHeaderStart = i + MultiPartMIMEUtils.CRLF_BYTES.length;
           }
         }
@@ -1016,16 +972,9 @@ public final class MultiPartMIMEReader
 
       //At this point we have actual part data starting from headerEnding going forward
       //which means we can dump everything else beforehand. We need to skip past the trailing consecutive CRLFs.
-      //todo
-      //final int consumedDataIndex = boundarySize + headerEnding + MultiPartMIMEUtils.CONSECUTIVE_CRLFS_BYTE_LIST.size();
-      //Make a copy of what we need leaving the old list to be GC'd.
-      //_byteBuffer = new ArrayList<Byte>(_byteBuffer.subList(consumedDataIndex, _byteBuffer.size()));
-
       final int consumedDataIndex = boundarySize + headerEnding + MultiPartMIMEUtils.CONSECUTIVE_CRLFS_BYTES.length;
-      //Make a copy of what we need leaving the old list to be GC'd.
+      //Update our buffer by trimming off references to what we don't need anymore.
       _compoundByteStringBuffer = _compoundByteStringBuffer.slice(consumedDataIndex, _compoundByteStringBuffer.length() - consumedDataIndex);
-
-
 
       //Notify the callback that we have a new part
       _currentSinglePartMIMEReader = new SinglePartMIMEReader(headers);
@@ -1602,7 +1551,7 @@ public final class MultiPartMIMEReader
   enum SingleReaderState
   {
     CREATED, //Initial construction, no callback bound.
-    CALLBACK_BOUND_AND_READY, //Callback has been bound, read to use APIs.
+    CALLBACK_BOUND_AND_READY, //Callback has been bound, ready to use APIs.
     REQUESTED_DATA, //Requested data, waiting to be notified.
     REQUESTED_ABORT, //Waiting for an abort to finish.
     FINISHED //This reader is done.

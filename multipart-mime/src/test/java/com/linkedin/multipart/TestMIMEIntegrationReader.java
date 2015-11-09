@@ -139,7 +139,23 @@ public class TestMIMEIntegrationReader extends AbstractMIMEIntegrationStreamTest
     bodyPartList.add(_smallDataSource);
     bodyPartList.add(_bodyLessBody);
 
-    return new Object[][]{{1, bodyPartList}, {R2Constants.DEFAULT_DATA_CHUNK_SIZE, bodyPartList}};
+    //For this particular data source, we will use a variety of chunk sizes to cover all edge cases.
+    //This is particularly useful due to the way we decompose ByteStrings when creating data
+    //for our clients. Such chunk sizes allow us to make sure that our decomposing logic works as intended.
+    final Object[][] multipleChunkPayloads = new Object[101][];
+    for (int i = 0; i < 100; i++)
+    {
+      multipleChunkPayloads[i] = new Object[2];
+      multipleChunkPayloads[i][0] = i + 1;
+      multipleChunkPayloads[i][1] = bodyPartList;
+    }
+    multipleChunkPayloads[100] = new Object[2];
+    multipleChunkPayloads[100][0] = R2Constants.DEFAULT_DATA_CHUNK_SIZE;
+    multipleChunkPayloads[100][1] = bodyPartList;
+
+    return multipleChunkPayloads;
+    //todo remove this
+    //return new Object[][]{{1, bodyPartList}, {R2Constants.DEFAULT_DATA_CHUNK_SIZE, bodyPartList}};
   }
 
   @Test(dataProvider = "multipleNormalBodiesDataSource")

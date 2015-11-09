@@ -677,16 +677,16 @@ public class TestByteString
   {
     //hello
     final List<ByteString> byteStringAList = new ArrayList<ByteString>();
-    byteStringAList.add(ByteString.copy("h".getBytes()));
-    byteStringAList.add(ByteString.copy("e".getBytes()));
-    byteStringAList.add(ByteString.copy("l".getBytes()));
-    byteStringAList.add(ByteString.copy("l".getBytes()));
-    byteStringAList.add(ByteString.copy("o".getBytes()));
+    byteStringAList.add(ByteString.copy("hello".getBytes()));
     final ByteString byteStringA = listToByteString(byteStringAList);
 
     final List<ByteString> byteStringBList = new ArrayList<ByteString>();
-    byteStringBList.add(ByteString.copy("hello".getBytes()));
-    final ByteString byteStringB = listToByteString(byteStringBList);
+    byteStringBList.add(ByteString.copy("h".getBytes()));
+    byteStringBList.add(ByteString.copy("e".getBytes()));
+    byteStringBList.add(ByteString.copy("l".getBytes()));
+    byteStringBList.add(ByteString.copy("l".getBytes()));
+    byteStringBList.add(ByteString.copy("o".getBytes()));
+    final ByteString byteStringB= listToByteString(byteStringBList);
 
     final List<ByteString> byteStringCList = new ArrayList<ByteString>();
     byteStringCList.add(ByteString.copy("he".getBytes()));
@@ -701,15 +701,17 @@ public class TestByteString
     final ByteString byteStringD = listToByteString(byteStringDList);
 
     //Now some test cases where a copy is performed. These should merge everything into one ByteString internally.
-    //todo
+    final ByteString byteStringE = ByteString.copy(byteStringA.asByteBuffer());
+    final ByteString byteStringF = ByteString.copy(byteStringB.copyBytes());
+    final ByteString byteStringG = byteStringC.copySlice(0, 3);
 
     return new Object[][]
             {
-                {ByteString.empty(), Collections.singleton(ByteString.empty())},
+                {ByteString.empty(), Collections.singletonList(ByteString.empty())},
                 {byteStringA, byteStringAList}, {byteStringB, byteStringBList},
                 {byteStringC, byteStringCList}, {byteStringD, byteStringDList},
-                {ByteString.copy() byteStringA.copyBytes()}
-
+                {byteStringE, byteStringAList}, {byteStringF, byteStringAList},  //These two return the full "hello"
+                {byteStringG, Collections.singletonList(ByteString.copy("hel".getBytes()))}
             };
   }
 
