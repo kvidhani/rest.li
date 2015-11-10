@@ -19,7 +19,7 @@ package com.linkedin.multipart;
 
 import com.linkedin.common.callback.Callback;
 import com.linkedin.data.ByteString;
-import com.linkedin.multipart.exceptions.IllegalMultiPartMIMEFormatException;
+import com.linkedin.multipart.exceptions.MultiPartIllegalFormatException;
 import com.linkedin.multipart.utils.VariableByteStringWriter;
 import com.linkedin.r2.filter.R2Constants;
 import com.linkedin.r2.message.RequestContext;
@@ -572,7 +572,7 @@ public class TestMIMEIntegrationReaderAbandon extends AbstractMIMEIntegrationStr
             new MultiPartMIMEAbandonReaderCallbackImpl(callback, shouldAbandonValue, reader);
         reader.registerReaderCallback(_testMultiPartMIMEReaderCallback);
       }
-      catch (IllegalMultiPartMIMEFormatException illegalMimeFormatException)
+      catch (MultiPartIllegalFormatException illegalMimeFormatException)
       {
         RestException restException = new RestException(RestStatus.responseForError(400, illegalMimeFormatException));
         callback.onError(restException);

@@ -74,7 +74,10 @@ public abstract class AbstractMIMEUnitTest
   @DataProvider(name = "chunkSizes")
   public Object[][] chunkSizes() throws Exception
   {
-    return new Object[][]{{1}, {R2Constants.DEFAULT_DATA_CHUNK_SIZE}};
+    return new Object[][]
+        {
+            {1}, {R2Constants.DEFAULT_DATA_CHUNK_SIZE}
+        };
   }
 
   //This is used when we need to mock out R2 and write a payload for our reader to read

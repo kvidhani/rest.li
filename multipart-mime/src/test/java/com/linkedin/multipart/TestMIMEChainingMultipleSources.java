@@ -21,9 +21,13 @@ import com.linkedin.common.callback.Callback;
 import com.linkedin.common.callback.FutureCallback;
 import com.linkedin.common.util.None;
 import com.linkedin.data.ByteString;
-import com.linkedin.multipart.exceptions.IllegalMultiPartMIMEFormatException;
+import com.linkedin.multipart.exceptions.MultiPartIllegalFormatException;
 import com.linkedin.r2.message.RequestContext;
-import com.linkedin.r2.message.rest.*;
+import com.linkedin.r2.message.rest.RestException;
+import com.linkedin.r2.message.rest.RestStatus;
+import com.linkedin.r2.message.rest.StreamRequest;
+import com.linkedin.r2.message.rest.StreamRequestBuilder;
+import com.linkedin.r2.message.rest.StreamResponse;
 import com.linkedin.r2.message.streaming.ByteStringWriter;
 import com.linkedin.r2.message.streaming.EntityStream;
 import com.linkedin.r2.message.streaming.EntityStreams;
@@ -38,9 +42,6 @@ import com.linkedin.r2.transport.http.client.HttpClientFactory;
 import com.linkedin.r2.transport.http.server.HttpServer;
 import com.linkedin.r2.transport.http.server.HttpServerFactory;
 
-import org.testng.Assert;
-import org.testng.annotations.*;
-
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -51,6 +52,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+
+import org.testng.Assert;
+import org.testng.annotations.AfterMethod;
+import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.Test;
 
 import static com.linkedin.multipart.utils.MIMETestUtils.*;
 
@@ -151,7 +157,7 @@ public class TestMIMEChainingMultipleSources extends AbstractMIMEUnitTest
         //Send the request to Server A
         _client.streamRequest(simplePost, responseCallback);
       }
-      catch (IllegalMultiPartMIMEFormatException illegalMimeFormatException)
+      catch (MultiPartIllegalFormatException illegalMimeFormatException)
       {
         RestException restException = new RestException(RestStatus.responseForError(400, illegalMimeFormatException));
         callback.onError(restException);
@@ -329,7 +335,7 @@ public class TestMIMEChainingMultipleSources extends AbstractMIMEUnitTest
             MultiPartMIMEStreamResponseBuilder.generateMultiPartMIMEStreamResponse("mixed", writer, Collections.<String, String>emptyMap());
         callback.onSuccess(streamResponse);
       }
-      catch (IllegalMultiPartMIMEFormatException illegalMimeFormatException)
+      catch (MultiPartIllegalFormatException illegalMimeFormatException)
       {
         RestException restException = new RestException(RestStatus.responseForError(400, illegalMimeFormatException));
         callback.onError(restException);

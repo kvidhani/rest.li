@@ -18,7 +18,7 @@ package com.linkedin.multipart;
 
 
 import com.linkedin.data.ByteString;
-import com.linkedin.multipart.exceptions.ReaderFinishedException;
+import com.linkedin.multipart.exceptions.MultiPartReaderFinishedException;
 import com.linkedin.r2.filter.R2Constants;
 
 import java.io.ByteArrayOutputStream;
@@ -357,7 +357,7 @@ public class TestMIMEReaderAbandon extends AbstractMIMEUnitTest
       reader.abandonAllParts();
       Assert.fail();
     }
-    catch (ReaderFinishedException readerFinishedException)
+    catch (MultiPartReaderFinishedException multiPartReaderFinishedException)
     {
     }
 

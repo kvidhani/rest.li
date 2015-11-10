@@ -19,7 +19,7 @@ package com.linkedin.multipart;
 
 import com.linkedin.common.callback.Callback;
 import com.linkedin.data.ByteString;
-import com.linkedin.multipart.exceptions.IllegalMultiPartMIMEFormatException;
+import com.linkedin.multipart.exceptions.MultiPartIllegalFormatException;
 import com.linkedin.multipart.utils.MIMEDataPart;
 import com.linkedin.r2.filter.R2Constants;
 import com.linkedin.r2.message.RequestContext;
@@ -87,7 +87,6 @@ public class TestMIMEIntegrationReaderWriter extends AbstractMIMEIntegrationStre
   @BeforeTest
   public void dataSourceSetup()
   {
-
     scheduledExecutorService = Executors.newScheduledThreadPool(10);
 
     _normalBodyData = "some normal body that is relatively small".getBytes();
@@ -138,7 +137,17 @@ public class TestMIMEIntegrationReaderWriter extends AbstractMIMEIntegrationStre
   @DataProvider(name = "eachSingleBodyDataSource")
   public Object[][] eachSingleBodyDataSource() throws Exception
   {
-    return new Object[][]{{1, _normalBody}, {R2Constants.DEFAULT_DATA_CHUNK_SIZE, _normalBody}, {1, _headerLessBody}, {R2Constants.DEFAULT_DATA_CHUNK_SIZE, _headerLessBody}, {1, _bodyLessBody}, {R2Constants.DEFAULT_DATA_CHUNK_SIZE, _bodyLessBody}, {1, _purelyEmptyBody}, {R2Constants.DEFAULT_DATA_CHUNK_SIZE, _purelyEmptyBody},};
+    return new Object[][]
+        {
+            {1, _normalBody},
+            {R2Constants.DEFAULT_DATA_CHUNK_SIZE, _normalBody},
+            {1, _headerLessBody},
+            {R2Constants.DEFAULT_DATA_CHUNK_SIZE, _headerLessBody},
+            {1, _bodyLessBody},
+            {R2Constants.DEFAULT_DATA_CHUNK_SIZE, _bodyLessBody},
+            {1, _purelyEmptyBody},
+            {R2Constants.DEFAULT_DATA_CHUNK_SIZE, _purelyEmptyBody}
+        };
   }
 
   @Test(dataProvider = "eachSingleBodyDataSource")
@@ -180,7 +189,10 @@ public class TestMIMEIntegrationReaderWriter extends AbstractMIMEIntegrationStre
   @DataProvider(name = "chunkSizes")
   public Object[][] chunkSizes() throws Exception
   {
-    return new Object[][]{{1}, {R2Constants.DEFAULT_DATA_CHUNK_SIZE}};
+    return new Object[][]
+        {
+            {1}, {R2Constants.DEFAULT_DATA_CHUNK_SIZE}
+        };
   }
 
   @Test(dataProvider = "chunkSizes")
@@ -308,8 +320,7 @@ public class TestMIMEIntegrationReaderWriter extends AbstractMIMEIntegrationStre
   private static class MultiPartMIMEReaderCallbackImpl implements MultiPartMIMEReaderCallback
   {
     final Callback<StreamResponse> _r2callback;
-    final List<SinglePartMIMEReaderCallbackImpl> _singlePartMIMEReaderCallbacks =
-        new ArrayList<SinglePartMIMEReaderCallbackImpl>();
+    final List<SinglePartMIMEReaderCallbackImpl> _singlePartMIMEReaderCallbacks = new ArrayList<SinglePartMIMEReaderCallbackImpl>();
 
     @Override
     public void onNewPart(MultiPartMIMEReader.SinglePartMIMEReader singleParMIMEReader)
@@ -366,7 +377,7 @@ public class TestMIMEIntegrationReaderWriter extends AbstractMIMEIntegrationStre
         _testMultiPartMIMEReaderCallback = new MultiPartMIMEReaderCallbackImpl(callback);
         reader.registerReaderCallback(_testMultiPartMIMEReaderCallback);
       }
-      catch (IllegalMultiPartMIMEFormatException illegalMimeFormatException)
+      catch (MultiPartIllegalFormatException illegalMimeFormatException)
       {
         RestException restException = new RestException(RestStatus.responseForError(400, illegalMimeFormatException));
         callback.onError(restException);

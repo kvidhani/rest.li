@@ -93,7 +93,6 @@ public class TestMIMEChainingReader extends AbstractMIMEUnitTest
 
   private Callback<StreamResponse> generateSuccessChainCallback(final ClientMultiPartMIMEReaderReceiver receiver)
   {
-
     return new Callback<StreamResponse>()
     {
       @Override

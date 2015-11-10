@@ -41,7 +41,7 @@ public final class MultiPartMIMEWriter
 {
   private final CompositeWriter _writer;
   private final EntityStream _entityStream;
-  private final List<EntityStream> _allDataSources;
+  private final List<Writer> _allDataSources;
   private final String _rawBoundary;
 
   /**
@@ -49,7 +49,7 @@ public final class MultiPartMIMEWriter
    */
   public static class Builder
   {
-    private List<EntityStream> _allDataSources = new ArrayList<EntityStream>();
+    private List<Writer> _allDataSources = new ArrayList<Writer>();
     private final String _preamble;
     private final String _epilogue;
     private final ByteArrayOutputStream _boundaryHeaderByteArrayOutputStream = new ByteArrayOutputStream();
@@ -79,7 +79,7 @@ public final class MultiPartMIMEWriter
       {
         final Writer preambleWriter =
             new ByteStringWriter(ByteString.copyString(_preamble, Charset.forName("US-ASCII")));
-        _allDataSources.add(EntityStreams.newEntityStream(preambleWriter));
+        _allDataSources.add(preambleWriter);
       }
     }
 
@@ -114,8 +114,8 @@ public final class MultiPartMIMEWriter
 
       //Note that that nothing happens if there is an abort in the middle of writing a boundary or headers.
       final Writer boundaryHeaderWriter = new ByteStringWriter(serializedBoundaryAndHeaders);
-      _allDataSources.add(EntityStreams.newEntityStream(boundaryHeaderWriter));
-      _allDataSources.add(EntityStreams.newEntityStream(dataSource));
+      _allDataSources.add(boundaryHeaderWriter);
+      _allDataSources.add(dataSource);
       return this;
     }
 
@@ -131,7 +131,7 @@ public final class MultiPartMIMEWriter
     {
       final Writer multiPartMIMEReaderWriter =
           new MultiPartMIMEChainReaderWriter(multiPartMIMEReader, _normalEncapsulationBoundary);
-      _allDataSources.add(EntityStreams.newEntityStream(multiPartMIMEReaderWriter));
+      _allDataSources.add(multiPartMIMEReaderWriter);
       return this;
     }
 
@@ -184,21 +184,21 @@ public final class MultiPartMIMEWriter
       }
       final Writer finalBoundaryWriter =
           new ByteStringWriter(ByteString.copy(_boundaryHeaderByteArrayOutputStream.toByteArray()));
-      _allDataSources.add(EntityStreams.newEntityStream(finalBoundaryWriter));
+      _allDataSources.add(finalBoundaryWriter);
 
       //Append epilogue
       if (!_epilogue.equalsIgnoreCase(""))
       {
         final Writer epilogueWriter =
             new ByteStringWriter(ByteString.copyString(_epilogue, Charset.forName("US-ASCII")));
-        _allDataSources.add(EntityStreams.newEntityStream(epilogueWriter));
+        _allDataSources.add(epilogueWriter);
       }
 
       return new MultiPartMIMEWriter(_allDataSources, _rawBoundary);
     }
   }
 
-  private MultiPartMIMEWriter(final List<EntityStream> allDataSources, final String rawBoundary)
+  private MultiPartMIMEWriter(final List<Writer> allDataSources, final String rawBoundary)
   {
     _allDataSources = allDataSources;
     _rawBoundary = rawBoundary;

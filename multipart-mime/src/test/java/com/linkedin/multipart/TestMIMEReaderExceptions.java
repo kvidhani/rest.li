@@ -18,9 +18,9 @@ package com.linkedin.multipart;
 
 
 import com.linkedin.data.ByteString;
-import com.linkedin.multipart.exceptions.IllegalMultiPartMIMEFormatException;
-import com.linkedin.multipart.exceptions.PartFinishedException;
-import com.linkedin.multipart.exceptions.ReaderFinishedException;
+import com.linkedin.multipart.exceptions.MultiPartIllegalFormatException;
+import com.linkedin.multipart.exceptions.SinglePartFinishedException;
+import com.linkedin.multipart.exceptions.MultiPartReaderFinishedException;
 import com.linkedin.r2.filter.R2Constants;
 import com.linkedin.r2.message.rest.StreamRequest;
 
@@ -87,7 +87,7 @@ public class TestMIMEReaderExceptions extends AbstractMIMEUnitTest
       MultiPartMIMEReader.createAndAcquireStream(streamRequest);
       Assert.fail();
     }
-    catch (IllegalMultiPartMIMEFormatException illegalMimeFormatException)
+    catch (MultiPartIllegalFormatException illegalMimeFormatException)
     {
       Assert.assertEquals(illegalMimeFormatException.getMessage(),
           "Malformed multipart mime request. No Content-Type header in this request");
@@ -109,7 +109,7 @@ public class TestMIMEReaderExceptions extends AbstractMIMEUnitTest
       ;
       Assert.fail();
     }
-    catch (IllegalMultiPartMIMEFormatException illegalMimeFormatException)
+    catch (MultiPartIllegalFormatException illegalMimeFormatException)
     {
       Assert.assertEquals(illegalMimeFormatException.getMessage(),
           "Malformed multipart mime request. Not a valid multipart mime header.");
@@ -194,14 +194,14 @@ public class TestMIMEReaderExceptions extends AbstractMIMEUnitTest
         singlePartMIMEReaderCallbacks.get(singlePartMIMEReaderCallbacks.size() - 1);
     Assert.assertNull(singlePartMIMEExceptionReaderCallback._finishedData);
     Assert
-        .assertTrue(singlePartMIMEExceptionReaderCallback._streamError instanceof IllegalMultiPartMIMEFormatException);
+        .assertTrue(singlePartMIMEExceptionReaderCallback._streamError instanceof MultiPartIllegalFormatException);
 
     try
     {
       singlePartMIMEExceptionReaderCallback._singlePartMIMEReader.requestPartData();
       Assert.fail();
     }
-    catch (PartFinishedException partFinishedException)
+    catch (SinglePartFinishedException singlePartFinishedException)
     {
       //pass
     }
@@ -420,7 +420,7 @@ public class TestMIMEReaderExceptions extends AbstractMIMEUnitTest
 
     //Verify the correct exception was sent to the reader callback. The test itself will then verify
     //if the correct error (if applicable) was sent to the single part reader callback.
-    Assert.assertTrue(_currentMultiPartMIMEReaderCallback._streamError instanceof IllegalMultiPartMIMEFormatException);
+    Assert.assertTrue(_currentMultiPartMIMEReaderCallback._streamError instanceof MultiPartIllegalFormatException);
     Assert.assertEquals(_currentMultiPartMIMEReaderCallback._streamError.getMessage(), desiredExceptionMessage);
 
     //Verify these are unusable.
@@ -429,7 +429,7 @@ public class TestMIMEReaderExceptions extends AbstractMIMEUnitTest
       reader.abandonAllParts();
       Assert.fail();
     }
-    catch (ReaderFinishedException readerFinishedException)
+    catch (MultiPartReaderFinishedException multiPartReaderFinishedException)
     {
       //pass
     }

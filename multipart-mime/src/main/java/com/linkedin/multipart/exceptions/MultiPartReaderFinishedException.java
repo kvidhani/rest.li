@@ -18,15 +18,15 @@ package com.linkedin.multipart.exceptions;
 
 
 /**
- * Represents in an illegally formed multipart mime request.
+ * Represents an attempt to use a {@link com.linkedin.multipart.MultiPartMIMEReader} that has already finished.
  *
  * @author Karim Vidhani
  */
-public class IllegalMultiPartMIMEFormatException extends GeneralMultiPartMIMEReaderStreamException
+public class MultiPartReaderFinishedException extends GeneralMultiPartMIMEReaderStreamException
 {
   private static final long serialVersionUID = 1L;
 
-  public IllegalMultiPartMIMEFormatException(String message)
+  public MultiPartReaderFinishedException(String message)
   {
     super(message);
   }

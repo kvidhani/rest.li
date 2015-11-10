@@ -17,12 +17,12 @@
 package com.linkedin.multipart;
 
 
-import com.linkedin.multipart.exceptions.PartBindException;
-import com.linkedin.multipart.exceptions.PartFinishedException;
-import com.linkedin.multipart.exceptions.PartNotInitializedException;
-import com.linkedin.multipart.exceptions.ReaderNotInitializedException;
+import com.linkedin.multipart.exceptions.SinglePartBindException;
+import com.linkedin.multipart.exceptions.SinglePartFinishedException;
+import com.linkedin.multipart.exceptions.SinglePartNotInitializedException;
+import com.linkedin.multipart.exceptions.MultiPartReaderNotInitializedException;
 import com.linkedin.multipart.exceptions.StreamBusyException;
-import com.linkedin.multipart.exceptions.ReaderFinishedException;
+import com.linkedin.multipart.exceptions.MultiPartReaderFinishedException;
 import com.linkedin.r2.message.rest.StreamRequest;
 import com.linkedin.r2.message.streaming.EntityStream;
 
@@ -60,7 +60,7 @@ public class TestMIMEReaderStateTransitions
       reader.registerReaderCallback(null);
       Assert.fail();
     }
-    catch (ReaderFinishedException readerFinishedException)
+    catch (MultiPartReaderFinishedException multiPartReaderFinishedException)
     {
     }
 
@@ -70,7 +70,7 @@ public class TestMIMEReaderStateTransitions
       reader.registerReaderCallback(null);
       Assert.fail();
     }
-    catch (ReaderFinishedException readerFinishedException)
+    catch (MultiPartReaderFinishedException multiPartReaderFinishedException)
     {
     }
 
@@ -128,7 +128,7 @@ public class TestMIMEReaderStateTransitions
       reader.abandonAllParts();
       Assert.fail();
     }
-    catch (ReaderNotInitializedException readerNotInitializedException)
+    catch (MultiPartReaderNotInitializedException multiPartReaderNotInitializedException)
     {
     }
 
@@ -138,7 +138,7 @@ public class TestMIMEReaderStateTransitions
       reader.abandonAllParts();
       Assert.fail();
     }
-    catch (ReaderFinishedException readerFinishedException)
+    catch (MultiPartReaderFinishedException multiPartReaderFinishedException)
     {
     }
 
@@ -148,7 +148,7 @@ public class TestMIMEReaderStateTransitions
       reader.abandonAllParts();
       Assert.fail();
     }
-    catch (ReaderFinishedException readerFinishedException)
+    catch (MultiPartReaderFinishedException multiPartReaderFinishedException)
     {
     }
 
@@ -213,7 +213,7 @@ public class TestMIMEReaderStateTransitions
       singlePartMIMEReader.registerReaderCallback(null);
       Assert.fail();
     }
-    catch (PartBindException partBindException)
+    catch (SinglePartBindException singlePartBindException)
     {
     }
   }
@@ -239,27 +239,27 @@ public class TestMIMEReaderStateTransitions
     singlePartMIMEReader.setState(MultiPartMIMEReader.SingleReaderState.FINISHED);
     try
     {
-      singlePartMIMEReader.verifyState();
+      singlePartMIMEReader.verifyUsableState();
       Assert.fail();
     }
-    catch (PartFinishedException partFinishedException)
+    catch (SinglePartFinishedException singlePartFinishedException)
     {
     }
 
     singlePartMIMEReader.setState(MultiPartMIMEReader.SingleReaderState.REQUESTED_DATA);
     try
     {
-      singlePartMIMEReader.verifyState();
+      singlePartMIMEReader.verifyUsableState();
       Assert.fail();
     }
     catch (StreamBusyException streamBusyException)
     {
     }
 
-    singlePartMIMEReader.setState(MultiPartMIMEReader.SingleReaderState.REQUESTED_ABORT);
+    singlePartMIMEReader.setState(MultiPartMIMEReader.SingleReaderState.REQUESTED_ABANDON);
     try
     {
-      singlePartMIMEReader.verifyState();
+      singlePartMIMEReader.verifyUsableState();
       Assert.fail();
     }
     catch (StreamBusyException streamBusyException)
@@ -286,7 +286,7 @@ public class TestMIMEReaderStateTransitions
       singlePartMIMEReader.requestPartData();
       Assert.fail();
     }
-    catch (PartNotInitializedException partNotInitializedException)
+    catch (SinglePartNotInitializedException singlePartNotInitializedException)
     {
     }
   }

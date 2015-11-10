@@ -470,6 +470,27 @@ public class TestByteString
     return builder.append(bs1).append(bs2).build();
   }
 
+  @Test
+  public void testUnsafeWrap()
+  {
+    final byte[] helloBytes = "hello".getBytes();
+    final ByteString byteString = ByteString.unsafeWrap(helloBytes);
+    Assert.assertEquals(byteString.copyBytes(), helloBytes);
+    Assert.assertEquals(byteString.decompose(), Collections.singletonList(ByteString.copy(helloBytes)));
+    helloBytes[4] = 112; //112 is p
+    Assert.assertEquals(byteString.copyBytes(), "hellp".getBytes());
+  }
+
+  @Test(dataProvider = "searchableByteStrings")
+  public void testGetByte(ByteString sourceString)
+  {
+    Assert.assertEquals(sourceString.getByte(0), "h".getBytes()[0]);
+    Assert.assertEquals(sourceString.getByte(1), "e".getBytes()[0]);
+    Assert.assertEquals(sourceString.getByte(2), "l".getBytes()[0]);
+    Assert.assertEquals(sourceString.getByte(3), "l".getBytes()[0]);
+    Assert.assertEquals(sourceString.getByte(4), "o".getBytes()[0]);
+  }
+
   @Test(dataProvider = "searchableByteStrings")
   public void testStartsWith(ByteString sourceString)
   {

@@ -18,33 +18,23 @@ package com.linkedin.multipart;
 
 
 import com.linkedin.data.ByteString;
-import com.linkedin.multipart.exceptions.PartFinishedException;
-import com.linkedin.multipart.exceptions.ReaderFinishedException;
-import com.linkedin.multipart.utils.VariableByteStringViewer;
+import com.linkedin.multipart.exceptions.SinglePartFinishedException;
+import com.linkedin.multipart.exceptions.MultiPartReaderFinishedException;
 import com.linkedin.r2.filter.R2Constants;
-import com.linkedin.r2.message.rest.StreamRequest;
-import com.linkedin.r2.message.streaming.EntityStream;
-import com.linkedin.r2.message.streaming.ReadHandle;
 
 import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
 import javax.mail.internet.MimeBodyPart;
 import javax.mail.internet.MimeMultipart;
 
-import org.mockito.invocation.InvocationOnMock;
-import org.mockito.stubbing.Answer;
 import org.testng.Assert;
 import org.testng.annotations.*;
 
 import static com.linkedin.multipart.utils.MIMETestUtils.*;
-import static org.mockito.Matchers.isA;
-import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 
 /**
@@ -111,7 +101,7 @@ public class TestMIMEReaderClientCallbackExceptions extends AbstractMIMEUnitTest
       _currentMultiPartMIMEReaderCallback._reader.abandonAllParts();
       Assert.fail();
     }
-    catch (ReaderFinishedException readerFinishedException)
+    catch (MultiPartReaderFinishedException multiPartReaderFinishedException)
     {
       //pass
     }
@@ -147,7 +137,7 @@ public class TestMIMEReaderClientCallbackExceptions extends AbstractMIMEUnitTest
       _currentMultiPartMIMEReaderCallback._reader.abandonAllParts();
       Assert.fail();
     }
-    catch (ReaderFinishedException readerFinishedException)
+    catch (MultiPartReaderFinishedException multiPartReaderFinishedException)
     {
       //pass
     }
@@ -165,7 +155,7 @@ public class TestMIMEReaderClientCallbackExceptions extends AbstractMIMEUnitTest
             .requestPartData();
         Assert.fail();
       }
-      catch (PartFinishedException partFinishedException)
+      catch (SinglePartFinishedException singlePartFinishedException)
       {
         //pass
       }
@@ -203,7 +193,7 @@ public class TestMIMEReaderClientCallbackExceptions extends AbstractMIMEUnitTest
       _currentMultiPartMIMEReaderCallback._reader.abandonAllParts();
       Assert.fail();
     }
-    catch (ReaderFinishedException readerFinishedException)
+    catch (MultiPartReaderFinishedException multiPartReaderFinishedException)
     {
       //pass
     }
@@ -241,7 +231,7 @@ public class TestMIMEReaderClientCallbackExceptions extends AbstractMIMEUnitTest
       _currentMultiPartMIMEReaderCallback._reader.abandonAllParts();
       Assert.fail();
     }
-    catch (ReaderFinishedException readerFinishedException)
+    catch (MultiPartReaderFinishedException multiPartReaderFinishedException)
     {
       //pass
     }
@@ -254,7 +244,7 @@ public class TestMIMEReaderClientCallbackExceptions extends AbstractMIMEUnitTest
       _currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.get(0)._singlePartMIMEReader.requestPartData();
       Assert.fail();
     }
-    catch (PartFinishedException partFinishedException)
+    catch (SinglePartFinishedException singlePartFinishedException)
     {
       //pass
     }
@@ -289,7 +279,7 @@ public class TestMIMEReaderClientCallbackExceptions extends AbstractMIMEUnitTest
       _currentMultiPartMIMEReaderCallback._reader.abandonAllParts();
       Assert.fail();
     }
-    catch (ReaderFinishedException readerFinishedException)
+    catch (MultiPartReaderFinishedException multiPartReaderFinishedException)
     {
       //pass
     }
@@ -302,7 +292,7 @@ public class TestMIMEReaderClientCallbackExceptions extends AbstractMIMEUnitTest
       _currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.get(0)._singlePartMIMEReader.requestPartData();
       Assert.fail();
     }
-    catch (PartFinishedException partFinishedException)
+    catch (SinglePartFinishedException singlePartFinishedException)
     {
       //pass
     }
@@ -337,7 +327,7 @@ public class TestMIMEReaderClientCallbackExceptions extends AbstractMIMEUnitTest
       _currentMultiPartMIMEReaderCallback._reader.abandonAllParts();
       Assert.fail();
     }
-    catch (ReaderFinishedException readerFinishedException)
+    catch (MultiPartReaderFinishedException multiPartReaderFinishedException)
     {
       //pass
     }
@@ -349,7 +339,7 @@ public class TestMIMEReaderClientCallbackExceptions extends AbstractMIMEUnitTest
       _currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.get(0)._singlePartMIMEReader.requestPartData();
       Assert.fail();
     }
-    catch (PartFinishedException partFinishedException)
+    catch (SinglePartFinishedException singlePartFinishedException)
     {
       //pass
     }

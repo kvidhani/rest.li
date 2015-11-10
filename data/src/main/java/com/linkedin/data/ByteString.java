@@ -51,10 +51,18 @@ public final class ByteString
     return EMPTY;
   }
 
-  //todo unsafe wrap with byte array, byte buffer and maybe with a byte array and the indexes
+  /**
+   * Returns a new {@link ByteString} that wraps the supplied bytes. Changes to the supplied bytes will be reflected
+   * in the returned {@link ByteString}. Please exercise caution when using this form of construction.
+   *
+   * @param bytes the bytes to back the ByteString.
+   * @return a {@link ByteString} that wraps the supplied bytes.
+   * @throws NullPointerException if {@code bytes} is {@code null}.
+   */
   public static ByteString unsafeWrap(byte[] bytes)
   {
-    return null;
+    ArgumentUtil.notNull(bytes, "bytes");
+    return new ByteString(bytes);
   }
 
   /**

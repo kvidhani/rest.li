@@ -18,12 +18,12 @@ package com.linkedin.multipart;
 
 
 import com.linkedin.data.ByteString;
-import com.linkedin.multipart.exceptions.IllegalMultiPartMIMEFormatException;
-import com.linkedin.multipart.exceptions.PartBindException;
-import com.linkedin.multipart.exceptions.PartFinishedException;
-import com.linkedin.multipart.exceptions.PartNotInitializedException;
-import com.linkedin.multipart.exceptions.ReaderFinishedException;
-import com.linkedin.multipart.exceptions.ReaderNotInitializedException;
+import com.linkedin.multipart.exceptions.MultiPartIllegalFormatException;
+import com.linkedin.multipart.exceptions.SinglePartBindException;
+import com.linkedin.multipart.exceptions.SinglePartFinishedException;
+import com.linkedin.multipart.exceptions.SinglePartNotInitializedException;
+import com.linkedin.multipart.exceptions.MultiPartReaderFinishedException;
+import com.linkedin.multipart.exceptions.MultiPartReaderNotInitializedException;
 import com.linkedin.multipart.exceptions.StreamBusyException;
 import com.linkedin.r2.message.rest.StreamRequest;
 import com.linkedin.r2.message.rest.StreamResponse;
@@ -32,6 +32,7 @@ import com.linkedin.r2.message.streaming.ReadHandle;
 import com.linkedin.r2.message.streaming.Reader;
 import com.linkedin.r2.message.streaming.WriteHandle;
 import com.linkedin.r2.util.LinkedDeque;
+
 import java.nio.charset.Charset;
 import java.util.Collections;
 import java.util.List;
@@ -65,10 +66,6 @@ import java.util.concurrent.Callable;
  *
  * @author Karim Vidhani
  */
-//todo consider adding some empty byte strings as payloads to your tests for the new stuff you just did
-  //todo update tests to use unsafe wrap
-  //todo refactor the decomposing logic into its own method
-  //todo many comments need to be changed based on the new buffer
 public final class MultiPartMIMEReader
 {
   private final R2MultiPartMIMEReader _reader;
@@ -128,7 +125,7 @@ public final class MultiPartMIMEReader
       _r2Done = true;
       //We need to trigger onDataAvailable() again with empty data because there is an outstanding request
       //to _rh.request(1).
-      onDataAvailable(ByteString.empty());
+      processEventAndInvokeClient();
     }
 
     @Override
@@ -165,7 +162,7 @@ public final class MultiPartMIMEReader
     private void processEventAndInvokeClient(final ByteString data)
     {
       //Note that only one thread should ever be calling processEventAndInvokeClient() at any time.
-      //We control invocation of this this method using the various states.
+      //We control invocation of this method using the various states.
       //Client API calls (from the readers) will call processEventAndInvokeClient() to refresh the logic and drive forward
       //in a forcefully sequential manner.
       //When more data is needed to fulfill a client's request, we will ask R2 and R2 will call us sequentially as well.
@@ -173,26 +170,11 @@ public final class MultiPartMIMEReader
       //It is for this reason we don't have to synchronize any data used within this method. This is a big
       //performance win.
       //
-      //Anything thrown by us will can it to R2 or to our clients. This should ideally never ever happen and if it
-      //happens its a bug.
-      //If R2 does receive a RuntimeException from us, Regardless, if this was the case and we throw to R2 then:
+      //Any runtime exceptions thrown by us will make it to R2 or to our clients, depending on who invoked us.
+      //This should ideally never ever happen and if it happens its a bug.
+      //If R2 does receive a RuntimeException from us then:
       //A. In case of the server, R2 send back a 500 internal server error.
       //B. In case of the client, R2 will close the connection.
-      //
-      //Also note that look ahead buffering uses an ArrayList<Byte>. When we need to consume data from the
-      //_byteBuffer, we create a sublist() representing the data to be consumed. Once the data is consumed we
-      //must update the _byteBuffer to forget about these bytes. We can't simply update _byteBuffer to point
-      //to a new sublist() that is offset from the original because sublist() maintains a reference to the parent
-      //list thereby preventing GC.
-      //Hence we have two options on updating the buffer to remove this data:
-      //1. Calling clear() on the sublist which we just consumed. This will clear the bytes in the parent list.
-      //However it seems that most sublists created from parent lists do not allow mutations and therefore will throw
-      //ConcurrentModificationException. Hence we cannot use this option.
-      //2. Copying the data from the offset we need going forward into a new ArrayList<Byte> and setting that to
-      //_byteBuffer. This leaves the original list to be GC'd.
-      //
-      //For the current implementation we have no choice but to use option 2. It may be a pragmatic exercise in the
-      //future to write a custom mutable byte buffer or to research more off the shelf options.
 
       if (checkAndProcessEpilogue())
       {
@@ -212,16 +194,11 @@ public final class MultiPartMIMEReader
         return;
       }
 
-      if (checkForSufficientBufferSize())
-      {
-        return;
-      }
-
       //Since this is the last step we end up returning anyway.
       performPartReading();
     }
 
-    //This method is use to iteratively invoke our callbacks to prevent a stack overflow.
+    //This method is used to iteratively invoke our callbacks to prevent a stack overflow.
     private void processAndInvokeCallableQueue()
     {
       //This variable indicates that there is no current iterative invocation taking place. We can start one here.
@@ -275,7 +252,7 @@ public final class MultiPartMIMEReader
 
     private boolean checkAndProcessAbandonment()
     {
-      //Drop bytes for a top level abort.
+      //Drop bytes for a top level abandonment.
       if (_multiPartReaderState == MultiPartReaderState.ABANDONING)
       {
         if (_r2Done)
@@ -337,15 +314,15 @@ public final class MultiPartMIMEReader
             handleExceptions(clientCallbackException);
           }
 
-          return true; //Regardless of whether the invocation to onFinished() threw or not we need to return here
+          return true; //Regardless of whether the invocation to onFinished() threw or not we need to return here.
         }
 
-        //Otherwise proceed
+        //Otherwise proceed.
         if (firstBoundaryLookup > -1)
         {
           //The boundary has been found. Everything up until this point is the preamble.
           final ByteString preambleSlice = _compoundByteStringBuffer.slice(0, firstBoundaryLookup);
-          _preamble = new String(preambleSlice.copyBytes()); //Preamble should be small this copy should be okay
+          _preamble = preambleSlice.asString(Charset.defaultCharset());
 
           //Make a new copy with the bytes we need leaving the old list to be GC'd
           _compoundByteStringBuffer = _compoundByteStringBuffer.slice(firstBoundaryLookup, _compoundByteStringBuffer.length() - firstBoundaryLookup);
@@ -355,12 +332,12 @@ public final class MultiPartMIMEReader
         }
         else
         {
-          //The boundary has not been found in the buffer, so keep looking
+          //The boundary has not been found in the buffer, so keep looking.
           if (_r2Done)
           {
             //If this happens that means that there was a problem. This means that r2 has
             //fully given us all of the stream and we haven't found the boundary.
-            handleExceptions(new IllegalMultiPartMIMEFormatException("Malformed multipart mime request. No boundary found!"));
+            handleExceptions(new MultiPartIllegalFormatException("Malformed multipart mime request. No boundary found!"));
             return true; //We are in an unusable state so we return here.
           }
           _rh.request(1);
@@ -382,7 +359,7 @@ public final class MultiPartMIMEReader
         if (_r2Done)
         {
           //Notify the reader of the issue.
-          handleExceptions(new IllegalMultiPartMIMEFormatException("Malformed multipart mime request. Finishing boundary missing!"));
+          handleExceptions(new MultiPartIllegalFormatException("Malformed multipart mime request. Finishing boundary missing!"));
           return true; //We are in an unusable state so we return here.
         }
 
@@ -396,6 +373,11 @@ public final class MultiPartMIMEReader
 
     private void performPartReading()
     {
+      if (checkForSufficientBufferSize())
+      {
+        return;
+      }
+
       //READING_PARTS represents normal part reading operation and is where most of the time will be spent.
       //At this point in time in our logic this is guaranteed to be in this state.
       assert (_multiPartReaderState == MultiPartReaderState.READING_PARTS);
@@ -443,6 +425,7 @@ public final class MultiPartMIMEReader
         boundarySize = _normalBoundaryBytes.length;
       }
 
+      //Continue processing part data based on whether or not the buffer begins with a boundary.
       //We return no matter what anyway, so no need to check to see if we should return for either of these.
       if (boundaryIndex != 0)
       {
@@ -456,21 +439,15 @@ public final class MultiPartMIMEReader
 
     private void processBufferStartingWithoutBoundary(final int boundaryIndex)
     {
-      //We only proceed forward if there is a reader ready. By ready we mean that:
+      //We only proceed forward since a reader SHOULD be ready at this point. By ready we mean that:
       //1. They are ready to receive requested data on their onPartDataAvailable() callback, meaning
       //REQUESTED_DATA.
       //or
-      //2. They have requested an abort and are waiting for it to finish, meaning REQUESTED_ABORT.
-      //
-      //If the current single part reader is not ready, then we just return and move on (we already read into the buffer)
-      //since the single part reader can then drive the flow of future data.
+      //2. They have requested an abandonment are waiting for it to finish, meaning REQUESTED_ABANDON.
       //
       //It is further important to note that in the current implementation, the reader will ALWAYS be ready at this point in time.
       //This is because we strictly allow only our clients to push us forward. This means they must be in a ready state
       //when all of this logic is executed.
-      //
-      //If we need more bytes to fulfill their request we call _rh.request(1), but this only happens if the reader
-      //is ready to begin with (since the reader drove us forward and refreshed this logic).
       //
       //Formally, here is why we don't do _rh.request(2)...i.e _rh.request(n>1):
       //A. If we did this, the first onDataAvailable() invoked by R2 would potentially satisfy a client's
@@ -486,10 +463,12 @@ public final class MultiPartMIMEReader
       //thereby causing multiple threads to operate in an area where there is no synchronization.
 
       //Note that _currentSinglePartMIMEReader is guaranteed to be non-null at this point.
+      assert(_currentSinglePartMIMEReader != null);
+
       final SingleReaderState currentState = _currentSinglePartMIMEReader._singleReaderState;
 
       //Assert on our invariant described above.
-      assert (currentState == SingleReaderState.REQUESTED_DATA || currentState == SingleReaderState.REQUESTED_ABORT);
+      assert (currentState == SingleReaderState.REQUESTED_DATA || currentState == SingleReaderState.REQUESTED_ABANDON);
 
       //We know the buffer doesn't begin with the boundary, but we can take different action if a boundary
       //exists in the buffer. This way we can consume the maximum amount of data.
@@ -499,215 +478,195 @@ public final class MultiPartMIMEReader
       if (boundaryIndex == -1)
       {
         //Boundary doesn't exist here, let's drain what we can.
-        //Note that we can't fully drain the buffer because the end of the buffer may include the partial
-        //beginning of the next boundary.
-        final int amountToLeaveBehind = _normalBoundaryBytes.length - 1;
-        final int maxAmountAvailableForClient = _compoundByteStringBuffer.length() - amountToLeaveBehind;
+        processBufferNotContainingBoundary(currentState);
+      }
+      else
+      {
+        //Boundary is in buffer. We can only consume data up until the boundary.
+        processBufferContainingBoundary(boundaryIndex, currentState);
+      }
+    }
 
-        //Note that we have to provide ByteStrings that are NOT compound internally. This is because clients who consume
-        //these will invariably call APIs such as asByteBuffer() which, if compound, will incur a copy in memory
-        //due to re-assembly.
-        final List<ByteString> decomposedByteStrings = _compoundByteStringBuffer.decompose();
+    private void processBufferNotContainingBoundary(final SingleReaderState singleReaderState)
+    {
+      //Note that we can't fully drain the buffer because the end of the buffer may include the partial
+      //beginning of the next boundary.
+      final int amountToLeaveBehind = _normalBoundaryBytes.length - 1;
+      final int maxAmountAvailableForClient = _compoundByteStringBuffer.length() - amountToLeaveBehind;
 
-        //Find the first non empty ByteString
-        ByteString firstNonEmptyByteString = null;
-        for (int i = 0; i < decomposedByteStrings.size(); i++)
+      final ByteString clientData = decomposeClientDataAndUpdateBuffer(maxAmountAvailableForClient);
+
+      if (singleReaderState == SingleReaderState.REQUESTED_DATA)
+      {
+        //We must set this before we provide the data. Otherwise if the client immediately decides to requestPartData()
+        //they will see an exception because we are still in REQUESTED_DATA.
+        _currentSinglePartMIMEReader._singleReaderState = SingleReaderState.CALLBACK_BOUND_AND_READY;
+
+        //This effectively does:
+        //_currentSinglePartMIMEReader._callback.onPartDataAvailable(clientData);
+        final Callable<Void> onPartDataAvailableInvocation =
+            new OnPartDataCallable(_currentSinglePartMIMEReader._callback, clientData);
+
+        //Queue up this operation
+        _callbackQueue.add(onPartDataAvailableInvocation);
+
+        //If the while loop before us is in progress, we just return
+        if (_callbackInProgress)
         {
-          if (decomposedByteStrings.get(i).length() > 0)
-          {
-            firstNonEmptyByteString = decomposedByteStrings.get(i);
-            break;
-          }
-        }
-
-        //This is guaranteed to be non-null since we verified earlier that we have sufficient buffer size.
-        assert(firstNonEmptyByteString != null);
-
-        //We can take as much as maxAmountAvailableForClient. Therefore we have one of three options:
-        //1. If firstNonEmptyByteString is less then maxAmountAvailableForClient, then we can give this
-        //entire ByteString to the client. We then update our _compoundByteStringBuffer by creating a slice of it
-        //that starts with an offset based off of the size of firstNonEmptyByteString.
-        //2. If firstNonEmptyByteString is greater then maxAmountAvailableForClient, then we have to take a slice
-        //of firstNonEmptyByteString from 0 to maxAmountAvailableForClient. We provide this slice to our client.
-        //We then update our _compoundByteStringBuffer by creating a slice of it that starts with an offset based
-        //on the size of the ByteString we gave to our client.
-        //3. If firstNonEmptyByteString is equal to maxAmountAvailableForClient, then either of the above are equivalent.
-        //Meaning that firstNonEmptyByteString (coincidentally) is exactly the maximum we can give to our client.
-
-        final ByteString clientData;
-
-        //We lump less then or equal to into the same case.
-        if (firstNonEmptyByteString.length() <= maxAmountAvailableForClient)
-        {
-          clientData = firstNonEmptyByteString;
+          //At this point since callbackInProgress is true, we know that we have a client callback invocation in our
+          //call stack. The while loop (see processAndInvokeCallableQueue) that is now executing the callback in our
+          //call stack will also execute an invocation to the newly added callback.
+          return;
         }
         else
         {
-          clientData = firstNonEmptyByteString.slice(0, maxAmountAvailableForClient);
+          processAndInvokeCallableQueue();
+          //If invoking the callables resulting in things stopping, we will return anyway.
         }
 
-        //Update our buffer by trimming off references to what we don't need anymore.
-        _compoundByteStringBuffer = _compoundByteStringBuffer.slice(clientData.length(),
-                _compoundByteStringBuffer.length() - clientData.length());
+        //The client single part reader can then drive forward themselves.
+      }
+      else
+      {
+        //This is an abandon operation, so we need to drop the bytes and keep moving forward.
+        //Note that we don't have a client to drive us forward so we do it ourselves.
+        final Callable<Void> recursiveCallable = new RecursiveCallable(this);
 
+        //Queue up this operation
+        _callbackQueue.add(recursiveCallable);
 
-        if (currentState == SingleReaderState.REQUESTED_DATA)
+        //If the while loop before us is in progress, we just return
+        if (_callbackInProgress)
         {
-          //We must set this before we provide the data. Otherwise if the client immediately decides to requestPartData()
-          //they will see an exception because we are still in REQUESTED_DATA.
-          _currentSinglePartMIMEReader._singleReaderState = SingleReaderState.CALLBACK_BOUND_AND_READY;
-
-          //This effectively does:
-          //_currentSinglePartMIMEReader._callback.onPartDataAvailable(clientData);
-          final Callable<Void> onPartDataAvailableInvocation =
-              new MimeReaderCallables.onPartDataCallable(_currentSinglePartMIMEReader._callback, clientData);
-
-          //Queue up this operation
-          _callbackQueue.add(onPartDataAvailableInvocation);
-
-          //If the while loop before us is in progress, we just return
-          if (_callbackInProgress)
-          {
-            //We return to unwind the stack. Any queued elements will be taken care of the by the while loop
-            //before us.
-            return;
-          }
-          else
-          {
-            processAndInvokeCallableQueue();
-            //If invoking the callables resulting in things stopping, we will return anyway.
-          }
-
-          //The client single part reader can then drive forward themselves.
+          //At this point since callbackInProgress is true, we know that we have a client callback invocation in our
+          //call stack. The while loop (see processAndInvokeCallableQueue) that is now executing the callback in our
+          //call stack will also execute an invocation to the newly added callback.
+          return;
         }
         else
         {
-          //This is an abort operation, so we need to drop the bytes and keep moving forward.
-          //Note that we don't have a client to drive us forward so we do it ourselves.
-          final Callable<Void> recursiveCallable = new MimeReaderCallables.recursiveCallable(this);
+          processAndInvokeCallableQueue();
+          //If invoking the callables resulting in things stopping, we will return anyway.
+        }
+        //No need to explicitly return here.
+      }
+    }
 
-          //Queue up this operation
-          _callbackQueue.add(recursiveCallable);
+    private void processBufferContainingBoundary(final int boundaryIndex, final SingleReaderState singleReaderState)
+    {
+      //Could be normal boundary or it could be finishing boundary. We can only construct client data right up
+      //until the boundary's location.
+      final int maxAmountAvailableForClient = boundaryIndex;
 
-          //If the while loop before us is in progress, we just return
-          if (_callbackInProgress)
-          {
-            //We return to unwind the stack. Any queued elements will be taken care of the by the while loop
-            //before us.
-            return;
-          }
-          else
-          {
-            processAndInvokeCallableQueue();
-            //If invoking the callables resulting in things stopping, we will return anyway.
-          }
-          //No need to explicitly return here.
+      final ByteString clientData = decomposeClientDataAndUpdateBuffer(maxAmountAvailableForClient);
+
+      if (singleReaderState == SingleReaderState.REQUESTED_DATA)
+      {
+        //We must set this before we provide the data.
+        _currentSinglePartMIMEReader._singleReaderState = SingleReaderState.CALLBACK_BOUND_AND_READY;
+
+        //This effectively does:
+        //_currentSinglePartMIMEReader._callback.onPartDataAvailable(clientData);
+        final Callable<Void> onPartDataAvailableInvocation =
+            new OnPartDataCallable(_currentSinglePartMIMEReader._callback, clientData);
+
+        //Queue up this operation
+        _callbackQueue.add(onPartDataAvailableInvocation);
+
+        //If the while loop before us is in progress, we just return
+        if (_callbackInProgress)
+        {
+          //At this point since callbackInProgress is true, we know that we have a client callback invocation in our
+          //call stack. The while loop (see processAndInvokeCallableQueue) that is now executing the callback in our
+          //call stack will also execute an invocation to the newly added callback.
+          return;
+        }
+        else
+        {
+          processAndInvokeCallableQueue();
+          //If invoking the callables resulting in things stopping, we will return anyway.
         }
       }
       else
       {
-        //Boundary is in buffer. Could be normal boundary or it could be finishing boundary. We can only construct
-        //client data right up until the boundary's location.
-        final int maxAmountAvailableForClient = boundaryIndex;
+        //drop the bytes
+        final Callable<Void> recursiveCallable = new RecursiveCallable(this);
 
-        //Note that we have to provide ByteStrings that are NOT compound internally. This is because clients who consume
-        //these will invariably call APIs such as asByteBuffer() which, if compound, will incur a copy in memory
-        //due to re-assembly.
-        final List<ByteString> decomposedByteStrings = _compoundByteStringBuffer.decompose();
+        //Queue up this operation
+        _callbackQueue.add(recursiveCallable);
 
-        //Find the first non empty ByteString
-        ByteString firstNonEmptyByteString = null;
-        for (int i = 0; i < decomposedByteStrings.size(); i++)
+        //If the while loop before us is in progress, we just return
+        if (_callbackInProgress)
         {
-          if (decomposedByteStrings.get(i).length() > 0)
-          {
-            firstNonEmptyByteString = decomposedByteStrings.get(i);
-            break;
-          }
-        }
-
-        //This is guaranteed to be non-null.
-        assert(firstNonEmptyByteString != null);
-
-        //We can take as much as maxAmountAvailableForClient. Therefore we have one of three options:
-        //1. If firstNonEmptyByteString is less then maxAmountAvailableForClient, then we can give this
-        //entire ByteString to the client. We then update our _compoundByteStringBuffer by creating a slice of it
-        //that starts with an offset based off of the size of firstNonEmptyByteString.
-        //2. If firstNonEmptyByteString is greater then maxAmountAvailableForClient, then we have to take a slice
-        //of firstNonEmptyByteString from 0 to maxAmountAvailableForClient. We provide this slice to our client.
-        //We then update our _compoundByteStringBuffer by creating a slice of it that starts with an offset based
-        //on the size of the ByteString we gave to our client.
-        //3. If firstNonEmptyByteString is equal to maxAmountAvailableForClient, then either of the above are equivalent.
-        //Meaning that firstNonEmptyByteString (coincidentally) is exactly the maximum we can give to our client.
-
-        final ByteString clientData;
-
-        //We lump less then or equal to into the same case.
-        if (firstNonEmptyByteString.length() < maxAmountAvailableForClient)
-        {
-          clientData = firstNonEmptyByteString;
+          //At this point since callbackInProgress is true, we know that we have a client callback invocation in our
+          //call stack. The while loop (see processAndInvokeCallableQueue) that is now executing the callback in our
+          //call stack will also execute an invocation to the newly added callback.
+          return;
         }
         else
         {
-          clientData = firstNonEmptyByteString.slice(0, maxAmountAvailableForClient);
+          processAndInvokeCallableQueue();
+          //If invoking the callables resulting in things stopping, we will return anyway.
         }
-
-        //Update our buffer by trimming off references to what we don't need anymore.
-        _compoundByteStringBuffer = _compoundByteStringBuffer.slice(clientData.length(),
-                _compoundByteStringBuffer.length() - clientData.length());
-
-        if (currentState == SingleReaderState.REQUESTED_DATA)
-        {
-          //We must set this before we provide the data.
-          _currentSinglePartMIMEReader._singleReaderState = SingleReaderState.CALLBACK_BOUND_AND_READY;
-
-          //This effectively does:
-          //_currentSinglePartMIMEReader._callback.onPartDataAvailable(clientData);
-          final Callable<Void> onPartDataAvailableInvocation =
-              new MimeReaderCallables.onPartDataCallable(_currentSinglePartMIMEReader._callback, clientData);
-
-          //Queue up this operation
-          _callbackQueue.add(onPartDataAvailableInvocation);
-
-          //If the while loop before us is in progress, we just return
-          if (_callbackInProgress)
-          {
-            //We return to unwind the stack. Any queued elements will be taken care of the by the while loop
-            //before us.
-            return;
-          }
-          else
-          {
-            processAndInvokeCallableQueue();
-            //If invoking the callables resulting in things stopping, we will return anyway.
-          }
-        }
-        else
-        {
-          //drop the bytes
-          final Callable<Void> recursiveCallable = new MimeReaderCallables.recursiveCallable(this);
-
-          //Queue up this operation
-          _callbackQueue.add(recursiveCallable);
-
-          //If the while loop before us is in progress, we just return
-          if (_callbackInProgress)
-          {
-            //We return to unwind the stack. Any queued elements will be taken care of the by the while loop
-            //before us.
-            return;
-          }
-          else
-          {
-            processAndInvokeCallableQueue();
-            //If invoking the callables resulting in things stopping, we will return anyway.
-          }
-          //No need to return explicitly from here.
-        }
-        //This part is finished. Subsequently when the client asks for more data our logic
-        //will now see that the buffer begins with the boundary. This will finish up this part
-        //and then make a new part.
+        //No need to return explicitly from here.
       }
+      //This part is finished. Subsequently when the client asks for more data our logic
+      //will now see that the buffer begins with the boundary. This will finish up this part
+      //and then make a new part.
+    }
+
+    //This will decompose our _compoundByteStringBuffer and obtain the client data needed to satisfy the amount
+    //of data requested. Subsequently this will update the _compoundByteStringBuffer to drop any references to
+    //data that we gave to our Client.
+    private ByteString decomposeClientDataAndUpdateBuffer(final int maxAmountAvailableForClient)
+    {
+      //Note that we have to provide ByteStrings that are NOT compound internally. This is because clients who consume
+      //these will invariably call APIs such as asByteBuffer() which, if compound, will incur a copy in memory
+      //due to re-assembly.
+      final List<ByteString> decomposedByteStrings = _compoundByteStringBuffer.decompose();
+
+      //Find the first non empty ByteString
+      ByteString firstNonEmptyByteString = null;
+      for (int i = 0; i < decomposedByteStrings.size(); i++)
+      {
+        if (decomposedByteStrings.get(i).length() > 0)
+        {
+          firstNonEmptyByteString = decomposedByteStrings.get(i);
+          break;
+        }
+      }
+
+      //This is guaranteed to be non-null since we verified earlier that we have sufficient buffer size.
+      assert(firstNonEmptyByteString != null);
+
+      //We can take as much as maxAmountAvailableForClient. Therefore we have one of three options:
+      //1. If firstNonEmptyByteString is less then maxAmountAvailableForClient, then we can give this
+      //entire ByteString to the client. We then update our _compoundByteStringBuffer by creating a slice of it
+      //that starts with an offset based off of the size of firstNonEmptyByteString.
+      //2. If firstNonEmptyByteString is greater then maxAmountAvailableForClient, then we have to take a slice
+      //of firstNonEmptyByteString from 0 to maxAmountAvailableForClient. We provide this slice to our client.
+      //We then update our _compoundByteStringBuffer by creating a slice of it that starts with an offset based
+      //on the size of the ByteString we gave to our client.
+      //3. If firstNonEmptyByteString is equal to maxAmountAvailableForClient, then either of the above are equivalent.
+      //Meaning that firstNonEmptyByteString (coincidentally) is exactly the maximum we can give to our client.
+
+      final ByteString clientData;
+
+      //We lump less then or equal to into the same case.
+      if (firstNonEmptyByteString.length() <= maxAmountAvailableForClient)
+      {
+        clientData = firstNonEmptyByteString;
+      }
+      else
+      {
+        clientData = firstNonEmptyByteString.slice(0, maxAmountAvailableForClient);
+      }
+
+      //Update our buffer by trimming off references to what we don't need anymore.
+      _compoundByteStringBuffer = _compoundByteStringBuffer.slice(clientData.length(),
+                                                                  _compoundByteStringBuffer.length() - clientData.length());
+
+      return clientData;
     }
 
     private void processBufferStartingWithBoundary(final int boundarySize)
@@ -720,9 +679,7 @@ public final class MultiPartMIMEReader
       }
 
       //Before continuing verify that this isn't the final boundary in front of us.
-      final int lastBoundaryLookup = _compoundByteStringBuffer.indexOfBytes(_finishingBoundaryBytes);
-
-      if (lastBoundaryLookup == 0)
+      if (_compoundByteStringBuffer.startsWith(_finishingBoundaryBytes))
       {
         _multiPartReaderState = MultiPartReaderState.READING_EPILOGUE;
         //If r2 has already notified we are done, we can wrap up. Note that there still may be bytes
@@ -759,7 +716,7 @@ public final class MultiPartMIMEReader
       //Close the current single part reader (except if this is the first boundary)
       if (_currentSinglePartMIMEReader != null)
       {
-        if (_currentSinglePartMIMEReader._singleReaderState == SingleReaderState.REQUESTED_ABORT)
+        if (_currentSinglePartMIMEReader._singleReaderState == SingleReaderState.REQUESTED_ABANDON)
         {
           //If they cared to be notified of the abandonment.
           if (_currentSinglePartMIMEReader._callback != null)
@@ -833,7 +790,7 @@ public final class MultiPartMIMEReader
           //we have the remainder of the stream in memory and we see a non-finishing boundary that terminates
           //immediately without a CRLF_BYTES. This is a sign of a stream that was prematurely terminated.
           //MultiPartMIMEReader.this._clientCallback.onStreamError();
-          handleExceptions(new IllegalMultiPartMIMEFormatException("Malformed multipart mime request. Premature"
+          handleExceptions(new MultiPartIllegalFormatException("Malformed multipart mime request. Premature"
               + " termination of multipart mime body due to a boundary without a subsequent consecutive CRLF."));
           return; //Unusable state, so return.
         }
@@ -856,7 +813,7 @@ public final class MultiPartMIMEReader
           //If r2 has already notified us we are done, then this is a problem. This means that we saw a
           //a boundary followed by a potential header area. This header area does not contain
           //two consecutive CRLF_BYTES characters. This is a malformed stream.
-          handleExceptions(new IllegalMultiPartMIMEFormatException("Malformed multipart mime request. Premature " +
+          handleExceptions(new MultiPartIllegalFormatException("Malformed multipart mime request. Premature " +
               "termination of headers within a part."));
           return;//Unusable state, so return.
         }
@@ -874,8 +831,53 @@ public final class MultiPartMIMEReader
       //because we need to verify if the header area is empty, meaning it contains only consecutive CRLF bytes.
       final ByteString headerBytesSlice = possibleHeaderArea.slice(0, headerEnding + MultiPartMIMEUtils.CONSECUTIVE_CRLFS_BYTES.length);
 
+      //Parse the headers
+      final Map<String, String> headers = parseHeaders(headerBytesSlice);
+
+      if (headers == null)
+      {
+        return; //Exception occurred when parsing headers. We are in an unusable state.
+      }
+
+      //At this point we have actual part data starting from headerEnding going forward
+      //which means we can dump everything else beforehand. We need to skip past the trailing consecutive CRLFs.
+      final int consumedDataIndex = boundarySize + headerEnding + MultiPartMIMEUtils.CONSECUTIVE_CRLFS_BYTES.length;
+      //Update our buffer by trimming off references to what we don't need anymore.
+      _compoundByteStringBuffer = _compoundByteStringBuffer.slice(consumedDataIndex, _compoundByteStringBuffer.length() - consumedDataIndex);
+
+      //Notify the callback that we have a new part
+      _currentSinglePartMIMEReader = new SinglePartMIMEReader(headers);
+
+      //_clientCallback.onNewPart(_currentSinglePartMIMEReader);
+      final Callable<Void> onNewPartInvocation =
+          new OnNewPartCallable(_clientCallback, _currentSinglePartMIMEReader);
+
+      //Queue up this operation
+      _callbackQueue.add(onNewPartInvocation);
+
+      //We can now switch to absorbing the normal boundary
+      _firstBoundaryEvaluated = true;
+
+      //If the while loop before us is in progress, we just return
+      if (_callbackInProgress)
+      {
+        //At this point since callbackInProgress is true, we know that we have a client callback invocation in our
+        //call stack. The while loop (see processAndInvokeCallableQueue) that is now executing the callback in our
+        //call stack will also execute an invocation to the newly added callback.
+        return;
+      }
+      else
+      {
+        processAndInvokeCallableQueue();
+        //No need to explicitly return here even if this invocation results in an exception.
+      }
+    }
+
+    //This will return null for the headers if there is an exception when parsing.
+    private Map<String, String> parseHeaders(final ByteString headerBytes)
+    {
       final Map<String, String> headers;
-      if (headerBytesSlice.equals(ByteString.copy(MultiPartMIMEUtils.CONSECUTIVE_CRLFS_BYTES)))
+      if (headerBytes.equals(MultiPartMIMEUtils.BYTE_STRING_CONSECUTIVE_CRLFS_BYTES))
       {
         //The region of bytes after the boundary is composed of two CRLFs. Therefore we have no headers.
         headers = Collections.emptyMap();
@@ -890,12 +892,12 @@ public final class MultiPartMIMEReader
         //there should be a CRLF followed by the first header. We will verify that this is indeed a CRLF
         //and then we will skip it below.
 
-        final ByteString leadingBytes = headerBytesSlice.slice(0, MultiPartMIMEUtils.CRLF_BYTES.length);
-        if (!leadingBytes.equals(ByteString.copy(MultiPartMIMEUtils.CRLF_BYTES)))
+        final ByteString leadingBytes = headerBytes.slice(0, MultiPartMIMEUtils.CRLF_BYTES.length);
+        if (!leadingBytes.equals(MultiPartMIMEUtils.BYTE_STRING_CRLF_BYTES))
         {
-          handleExceptions(new IllegalMultiPartMIMEFormatException(
+          handleExceptions(new MultiPartIllegalFormatException(
               "Malformed multipart mime request. Headers are improperly constructed."));
-          return; //Unusable state, so return.
+          return null; //Unusable state, so return.
         }
 
         //The sliding-window-header-split technique here works because we are essentially splitting the buffer
@@ -904,17 +906,17 @@ public final class MultiPartMIMEReader
 
         //We start at an offset of i and currentHeaderStart because we need to skip the first CRLF.
         int currentHeaderStart = MultiPartMIMEUtils.CRLF_BYTES.length;
-        final StringBuffer runningFoldedHeader = new StringBuffer(); //For folded headers. See below for details.
+        final StringBuilder runningFoldedHeader = new StringBuilder(); //For folded headers. See below for details.
 
         //Note that the end of the buffer we are sliding through is composed of two consecutive CRLFs.
         //Our sliding window algorithm here will NOT evaluate the very last CRLF bytes (which would otherwise
         //erroneously result in an empty header).
-        for (int i = MultiPartMIMEUtils.CRLF_BYTES.length; i < headerBytesSlice.length() - MultiPartMIMEUtils.CRLF_BYTES.length; i++)
+        for (int i = MultiPartMIMEUtils.CRLF_BYTES.length; i < headerBytes.length() - MultiPartMIMEUtils.CRLF_BYTES.length; i++)
         {
-          final ByteString currentWindow = headerBytesSlice.slice(i, MultiPartMIMEUtils.CRLF_BYTES.length);
-          if (currentWindow.equals(ByteString.copy(MultiPartMIMEUtils.CRLF_BYTES)))
+          final ByteString currentWindow = headerBytes.slice(i, MultiPartMIMEUtils.CRLF_BYTES.length);
+          if (currentWindow.equals(MultiPartMIMEUtils.BYTE_STRING_CRLF_BYTES))
           {
-            final ByteString currentHeader = headerBytesSlice.slice(currentHeaderStart, i - currentHeaderStart);
+            final ByteString currentHeader = headerBytes.slice(currentHeaderStart, i - currentHeaderStart);
 
             //At this point we MAY have found the end of a header because the current window is a CRLF.
             //This could POTENTIALLY mean that from currentHeaderStart until i is a header.
@@ -936,8 +938,8 @@ public final class MultiPartMIMEReader
 
             String header = currentHeader.asString(Charset.defaultCharset());
 
-            if (headerBytesSlice.getByte(i + MultiPartMIMEUtils.CRLF_BYTES.length) == MultiPartMIMEUtils.SPACE_BYTE
-                  || headerBytesSlice.getByte(i + MultiPartMIMEUtils.CRLF_BYTES.length) == MultiPartMIMEUtils.TAB_BYTE)
+            if (headerBytes.getByte(i + MultiPartMIMEUtils.CRLF_BYTES.length) == MultiPartMIMEUtils.SPACE_BYTE
+                || headerBytes.getByte(i + MultiPartMIMEUtils.CRLF_BYTES.length) == MultiPartMIMEUtils.TAB_BYTE)
             {
               //Append the running concatenation of the folded header. We need to preserve the original header so
               //we also include the CRLF. The subsequent LWSP(s) will be also preserved because we don't trim here.
@@ -958,49 +960,19 @@ public final class MultiPartMIMEReader
               final int colonIndex = header.indexOf(":");
               if (colonIndex == -1)
               {
-                handleExceptions(new IllegalMultiPartMIMEFormatException(
+                handleExceptions(new MultiPartIllegalFormatException(
                     "Malformed multipart mime request. Individual headers are improperly formatted."));
-                return; //Unusable state, so return.
+                return null; //Unusable state, so return.
               }
               headers.put(header.substring(0, colonIndex).trim(),
-                  header.substring(colonIndex + 1, header.length()).trim());
+                          header.substring(colonIndex + 1, header.length()).trim());
             }
             currentHeaderStart = i + MultiPartMIMEUtils.CRLF_BYTES.length;
           }
         }
       }
 
-      //At this point we have actual part data starting from headerEnding going forward
-      //which means we can dump everything else beforehand. We need to skip past the trailing consecutive CRLFs.
-      final int consumedDataIndex = boundarySize + headerEnding + MultiPartMIMEUtils.CONSECUTIVE_CRLFS_BYTES.length;
-      //Update our buffer by trimming off references to what we don't need anymore.
-      _compoundByteStringBuffer = _compoundByteStringBuffer.slice(consumedDataIndex, _compoundByteStringBuffer.length() - consumedDataIndex);
-
-      //Notify the callback that we have a new part
-      _currentSinglePartMIMEReader = new SinglePartMIMEReader(headers);
-
-      //_clientCallback.onNewPart(_currentSinglePartMIMEReader);
-      final Callable<Void> onNewPartInvocation =
-          new MimeReaderCallables.onNewPartCallable(_clientCallback, _currentSinglePartMIMEReader);
-
-      //Queue up this operation
-      _callbackQueue.add(onNewPartInvocation);
-
-      //We can now switch to absorbing the normal boundary
-      _firstBoundaryEvaluated = true;
-
-      //If the while loop before us is in progress, we just return
-      if (_callbackInProgress)
-      {
-        //We return to unwind the stack. Any queued elements will be taken care of the by the while loop
-        //before us.
-        return;
-      }
-      else
-      {
-        processAndInvokeCallableQueue();
-        //No need to explicitly return here even if this invocation results in an exception.
-      }
+      return headers;
     }
 
     void handleExceptions(final Throwable throwable)
@@ -1016,15 +988,8 @@ public final class MultiPartMIMEReader
       //It is the responsibility of the consumer of this library to catch these exceptions and return 4xx.
 
       _rh.cancel();
-      _multiPartReaderState = MultiPartReaderState.FINISHED;
-      try
-      {
-        _clientCallback.onStreamError(throwable);
-      }
-      catch (RuntimeException runtimeException)
-      {
-        //Swallow. What more can we do here?
-      }
+
+      //Call the single part callback first.
       if (_currentSinglePartMIMEReader != null)
       {
         _currentSinglePartMIMEReader._singleReaderState = SingleReaderState.FINISHED;
@@ -1037,6 +1002,16 @@ public final class MultiPartMIMEReader
         {
           //Swallow. What more can we do here?
         }
+      }
+
+      _multiPartReaderState = MultiPartReaderState.FINISHED;
+      try
+      {
+        _clientCallback.onStreamError(throwable);
+      }
+      catch (RuntimeException runtimeException)
+      {
+        //Swallow. What more can we do here?
       }
     }
 
@@ -1073,10 +1048,10 @@ public final class MultiPartMIMEReader
    * @param request the request containing the {@link com.linkedin.r2.message.streaming.EntityStream} to read from.
    * @param clientCallback the callback to invoke in order to drive the client forward for reading part data.
    * @return the newly created MultiPartMIMEReader
-   * @throws IllegalMultiPartMIMEFormatException if the request is in any way not a valid multipart/mime request.
+   * @throws com.linkedin.multipart.exceptions.MultiPartIllegalFormatException if the request is in any way not a valid multipart/mime request.
    */
   public static MultiPartMIMEReader createAndAcquireStream(final StreamRequest request,
-      final MultiPartMIMEReaderCallback clientCallback) throws IllegalMultiPartMIMEFormatException
+      final MultiPartMIMEReaderCallback clientCallback) throws MultiPartIllegalFormatException
   {
     return new MultiPartMIMEReader(request, clientCallback);
   }
@@ -1091,10 +1066,10 @@ public final class MultiPartMIMEReader
    * @param response the response containing the {@link com.linkedin.r2.message.streaming.EntityStream} to read from.
    * @param clientCallback the callback to invoke in order to drive the client forward for reading part data.
    * @return the newly created MultiPartMIMEReader
-   * @throws IllegalMultiPartMIMEFormatException if the response is in any way not a valid multipart/mime response.
+   * @throws com.linkedin.multipart.exceptions.MultiPartIllegalFormatException if the response is in any way not a valid multipart/mime response.
    */
   public static MultiPartMIMEReader createAndAcquireStream(final StreamResponse response,
-      final MultiPartMIMEReaderCallback clientCallback) throws IllegalMultiPartMIMEFormatException
+      final MultiPartMIMEReaderCallback clientCallback) throws MultiPartIllegalFormatException
   {
     return new MultiPartMIMEReader(response, clientCallback);
   }
@@ -1108,10 +1083,10 @@ public final class MultiPartMIMEReader
    *
    * @param request the request containing the {@link com.linkedin.r2.message.streaming.EntityStream} to read from.
    * @return the newly created MultiPartMIMEReader
-   * @throws IllegalMultiPartMIMEFormatException if the request is in any way not a valid multipart/mime request.
+   * @throws com.linkedin.multipart.exceptions.MultiPartIllegalFormatException if the request is in any way not a valid multipart/mime request.
    */
   public static MultiPartMIMEReader createAndAcquireStream(final StreamRequest request)
-      throws IllegalMultiPartMIMEFormatException
+      throws MultiPartIllegalFormatException
   {
     return new MultiPartMIMEReader(request, null);
   }
@@ -1125,21 +1100,21 @@ public final class MultiPartMIMEReader
    *
    * @param response the response containing the {@link com.linkedin.r2.message.streaming.EntityStream} to read from.
    * @return the newly created MultiPartMIMEReader
-   * @throws IllegalMultiPartMIMEFormatException if the response is in any way not a valid multipart/mime response.
+   * @throws com.linkedin.multipart.exceptions.MultiPartIllegalFormatException if the response is in any way not a valid multipart/mime response.
    */
   public static MultiPartMIMEReader createAndAcquireStream(final StreamResponse response)
-      throws IllegalMultiPartMIMEFormatException
+      throws MultiPartIllegalFormatException
   {
     return new MultiPartMIMEReader(response, null);
   }
 
   private MultiPartMIMEReader(final StreamRequest request, final MultiPartMIMEReaderCallback clientCallback)
-      throws IllegalMultiPartMIMEFormatException
+      throws MultiPartIllegalFormatException
   {
     final String contentTypeHeaderValue = request.getHeader(MultiPartMIMEUtils.CONTENT_TYPE_HEADER);
     if (contentTypeHeaderValue == null)
     {
-      throw new IllegalMultiPartMIMEFormatException(
+      throw new MultiPartIllegalFormatException(
           "Malformed multipart mime request. No Content-Type header in this request");
     }
 
@@ -1154,12 +1129,12 @@ public final class MultiPartMIMEReader
   }
 
   private MultiPartMIMEReader(StreamResponse response, MultiPartMIMEReaderCallback clientCallback)
-      throws IllegalMultiPartMIMEFormatException
+      throws MultiPartIllegalFormatException
   {
     final String contentTypeHeaderValue = response.getHeader(MultiPartMIMEUtils.CONTENT_TYPE_HEADER);
     if (contentTypeHeaderValue == null)
     {
-      throw new IllegalMultiPartMIMEFormatException(
+      throw new MultiPartIllegalFormatException(
           "Malformed multipart mime request. No Content-Type header in this response");
     }
 
@@ -1196,7 +1171,7 @@ public final class MultiPartMIMEReader
    * The goal is for clients to at least see the first part before deciding to abandon all parts.
    *
    * As described, a valid {@link com.linkedin.multipart.MultiPartMIMEReaderCallback} is required to use this API.
-   * Failure to do so will result in a {@link com.linkedin.multipart.exceptions.ReaderNotInitializedException}.
+   * Failure to do so will result in a {@link com.linkedin.multipart.exceptions.MultiPartReaderNotInitializedException}.
    *
    * This can ONLY be called if there is no part being actively read, meaning that
    * the current {@link com.linkedin.multipart.MultiPartMIMEReader.SinglePartMIMEReader} has not been initialized
@@ -1205,7 +1180,7 @@ public final class MultiPartMIMEReader
    *
    * Once the stream is finished being abandoned, a call will be made to {@link MultiPartMIMEReaderCallback#onAbandoned()}.
    *
-   * If the stream is finished, subsequent calls will throw {@link com.linkedin.multipart.exceptions.ReaderFinishedException}.
+   * If the stream is finished, subsequent calls will throw {@link com.linkedin.multipart.exceptions.MultiPartReaderFinishedException}.
    *
    * Since this is async and request queueing is not allowed, repetitive calls will result in
    * {@link com.linkedin.multipart.exceptions.StreamBusyException}.
@@ -1214,14 +1189,14 @@ public final class MultiPartMIMEReader
   {
     if (_multiPartReaderState == MultiPartReaderState.CREATED)
     {
-      throw new ReaderNotInitializedException("No callback registered with the reader. Unable to proceed.");
+      throw new MultiPartReaderNotInitializedException("No callback registered with the reader. Unable to proceed.");
     }
 
     //We are already done or almost done.
     if (_multiPartReaderState == MultiPartReaderState.FINISHED
         || _multiPartReaderState == MultiPartReaderState.READING_EPILOGUE)
     {
-      throw new ReaderFinishedException("The reader is finished therefore it cannot proceed.");
+      throw new MultiPartReaderFinishedException("The reader is finished therefore it cannot proceed.");
     }
 
     if (_multiPartReaderState == MultiPartReaderState.CALLBACK_BOUND_AND_READING_PREAMBLE)
@@ -1246,7 +1221,7 @@ public final class MultiPartMIMEReader
     //for such a race.
 
     //At this stage we know for a fact that onNewPart() has been invoked on the reader callback. Just make sure its
-    //at the beginning of a new part before we continue allowing the abort.
+    //at the beginning of a new part before we continue allowing the abandonment.
     if (_currentSinglePartMIMEReader._singleReaderState != SingleReaderState.CREATED)
     {
       throw new StreamBusyException("Unable to abandon all parts due to current SinglePartMIMEReader in use.");
@@ -1270,7 +1245,7 @@ public final class MultiPartMIMEReader
    *                       to read this multipart mime body.
    */
   public void registerReaderCallback(final MultiPartMIMEReaderCallback clientCallback)
-      throws ReaderFinishedException, StreamBusyException
+      throws MultiPartReaderFinishedException, StreamBusyException
   {
     //First we throw exceptions for all _reader states where it is incorrect to transfer callbacks.
     //We have to handle all the individual incorrect states one by one so that we can that we can throw
@@ -1279,7 +1254,7 @@ public final class MultiPartMIMEReader
     if (_multiPartReaderState == MultiPartReaderState.FINISHED
         || _multiPartReaderState == MultiPartReaderState.READING_EPILOGUE)
     {
-      throw new ReaderFinishedException("Unable to register a callback. This reader has already finished reading.");
+      throw new MultiPartReaderFinishedException("Unable to register a callback. This reader has already finished reading.");
     }
 
     if (_multiPartReaderState == MultiPartReaderState.CALLBACK_BOUND_AND_READING_PREAMBLE)
@@ -1363,6 +1338,64 @@ public final class MultiPartMIMEReader
     _currentSinglePartMIMEReader = singlePartMIMEReader;
   }
 
+  //MultiPartMIMEReader callable wrappers:
+  private static class OnNewPartCallable implements Callable<Void>
+  {
+    private final MultiPartMIMEReaderCallback _multiPartMIMEReaderCallback;
+    private final MultiPartMIMEReader.SinglePartMIMEReader _singlePartMIMEReader;
+
+    @Override
+    public Void call() throws Exception
+    {
+      _multiPartMIMEReaderCallback.onNewPart(_singlePartMIMEReader);
+      return null; //This is ignored
+    }
+
+    OnNewPartCallable(final MultiPartMIMEReaderCallback multiPartMIMEReaderCallback,
+                      final MultiPartMIMEReader.SinglePartMIMEReader singlePartMIMEReader)
+    {
+      _multiPartMIMEReaderCallback = multiPartMIMEReaderCallback;
+      _singlePartMIMEReader = singlePartMIMEReader;
+    }
+  }
+
+  private static class RecursiveCallable implements Callable<Void>
+  {
+    private final MultiPartMIMEReader.R2MultiPartMIMEReader _r2MultiPartMIMEReader;
+
+    @Override
+    public Void call() throws Exception
+    {
+      _r2MultiPartMIMEReader.onDataAvailable(ByteString.empty());
+      return null; //This is ignored
+    }
+
+    RecursiveCallable(final MultiPartMIMEReader.R2MultiPartMIMEReader r2MultiPartMIMEReader)
+    {
+      _r2MultiPartMIMEReader = r2MultiPartMIMEReader;
+    }
+  }
+
+  //SinglePartMIMEReaderCallback callable wrappers:
+  private static class OnPartDataCallable implements Callable<Void>
+  {
+    private final SinglePartMIMEReaderCallback _singlePartMIMEReaderCallback;
+    private final ByteString _data;
+
+    @Override
+    public Void call() throws Exception
+    {
+      _singlePartMIMEReaderCallback.onPartDataAvailable(_data);
+      return null; //This is ignored.
+    }
+
+    OnPartDataCallable(final SinglePartMIMEReaderCallback singlePartMIMEReaderCallback, final ByteString data)
+    {
+      _singlePartMIMEReaderCallback = singlePartMIMEReaderCallback;
+      _data = data;
+    }
+  }
+
   /**
    * A reader to register with and walk through an individual multipart mime body.
    *
@@ -1385,13 +1418,13 @@ public final class MultiPartMIMEReader
     SinglePartMIMEReader(Map<String, String> headers)
     {
       _r2MultiPartMIMEReader = MultiPartMIMEReader.this._reader;
-      _headers = headers;
+      _headers = Collections.unmodifiableMap(headers);
     }
 
     /**
      * This call registers a callback and commits to reading this part. This can only happen once per life of each
      * SinglePartMIMEReader. Subsequent attempts to modify this will throw
-     * {@link com.linkedin.multipart.exceptions.PartBindException}.
+     * {@link com.linkedin.multipart.exceptions.SinglePartBindException}.
      *
      * @param callback the callback to be invoked on in order to read data
      */
@@ -1401,7 +1434,7 @@ public final class MultiPartMIMEReader
       //have been not null to begin with, so we just check for that.
       if (_singleReaderState != SingleReaderState.CREATED)
       {
-        throw new PartBindException("Callback already registered.");
+        throw new SinglePartBindException("Callback already registered.");
       }
       _singleReaderState = SingleReaderState.CALLBACK_BOUND_AND_READY;
       _callback = callback;
@@ -1412,25 +1445,25 @@ public final class MultiPartMIMEReader
      * {@link SinglePartMIMEReaderCallback#onPartDataAvailable(com.linkedin.data.ByteString)}.
      *
      * Usage of this API requires registration using a {@link com.linkedin.multipart.SinglePartMIMEReaderCallback}.
-     * Failure to do so will throw a {@link com.linkedin.multipart.exceptions.PartNotInitializedException}.
+     * Failure to do so will throw a {@link com.linkedin.multipart.exceptions.SinglePartNotInitializedException}.
      *
      * If this part is fully consumed, meaning {@link SinglePartMIMEReaderCallback#onFinished()} has been called,
-     * then any subsequent calls to requestPartData() will throw {@link com.linkedin.multipart.exceptions.PartFinishedException}.
+     * then any subsequent calls to requestPartData() will throw {@link com.linkedin.multipart.exceptions.SinglePartFinishedException}.
      *
      * Since this is async and request queueing is not allowed, repetitive calls will result in
      * {@link com.linkedin.multipart.exceptions.StreamBusyException}.
      *
      * If the r2 reader is done, either through an error or a proper finish. Calls to requestPartData() will throw
-     * {@link com.linkedin.multipart.exceptions.PartFinishedException}.
+     * {@link com.linkedin.multipart.exceptions.SinglePartFinishedException}.
      */
     public void requestPartData()
     {
-      verifyState();
+      verifyUsableState();
 
       //Additionally, unlike abandonPartData(), requestPartData() can only be used if a callback is registered.
       if (_singleReaderState == SingleReaderState.CREATED)
       {
-        throw new PartNotInitializedException("This SinglePartMIMEReader has not had a callback registered with it yet.");
+        throw new SinglePartNotInitializedException("This SinglePartMIMEReader has not had a callback registered with it yet.");
       }
 
       //We know we are now at SingleReaderState.CALLBACK_BOUND_AND_READY
@@ -1450,32 +1483,32 @@ public final class MultiPartMIMEReader
      * this part.
      *
      * If this part is fully consumed, meaning {@link SinglePartMIMEReaderCallback#onFinished()} has been called,
-     * then any subsequent calls to abandonPart() will throw {@link com.linkedin.multipart.exceptions.PartFinishedException}.
+     * then any subsequent calls to abandonPart() will throw {@link com.linkedin.multipart.exceptions.SinglePartFinishedException}.
      *
      * Since this is async and request queueing is not allowed, repetitive calls will result in
      * {@link com.linkedin.multipart.exceptions.StreamBusyException}.
      *
      * * If the r2 reader is done, either through an error or a proper finish. Calls to abandonPart() will throw
-     * {@link com.linkedin.multipart.exceptions.PartFinishedException}.
+     * {@link com.linkedin.multipart.exceptions.SinglePartFinishedException}.
      */
     public void abandonPart()
     {
-      verifyState();
+      verifyUsableState();
 
       //We know we are now at SingleReaderState.CALLBACK_BOUND_AND_READY
-      _singleReaderState = SingleReaderState.REQUESTED_ABORT;
+      _singleReaderState = SingleReaderState.REQUESTED_ABANDON;
 
-      //We have updated our desire to be aborted. Now we signal the reader to refresh itself and forcing it
+      //We have updated our desire to be abandoned. Now we signal the reader to refresh itself and forcing it
       //to read from the internal buffer as much as possible. We do this by notifying it of an empty ByteString.
       _r2MultiPartMIMEReader.processEventAndInvokeClient();
     }
 
     //Package private for testing.
-    void verifyState()
+    void verifyUsableState()
     {
       if (_singleReaderState == SingleReaderState.FINISHED)
       {
-        throw new PartFinishedException("This SinglePartMIMEReader has already finished.");
+        throw new SinglePartFinishedException("This SinglePartMIMEReader has already finished.");
       }
 
       if (_singleReaderState == SingleReaderState.REQUESTED_DATA)
@@ -1484,7 +1517,7 @@ public final class MultiPartMIMEReader
             "This SinglePartMIMEReader is currently busy fulfilling a call to requestPartData().");
       }
 
-      if (_singleReaderState == SingleReaderState.REQUESTED_ABORT)
+      if (_singleReaderState == SingleReaderState.REQUESTED_ABANDON)
       {
         throw new StreamBusyException("This SinglePartMIMEReader is currently busy fulfilling a call to abandonPart().");
       }
@@ -1553,7 +1586,7 @@ public final class MultiPartMIMEReader
     CREATED, //Initial construction, no callback bound.
     CALLBACK_BOUND_AND_READY, //Callback has been bound, ready to use APIs.
     REQUESTED_DATA, //Requested data, waiting to be notified.
-    REQUESTED_ABORT, //Waiting for an abort to finish.
+    REQUESTED_ABANDON, //Waiting for an abandon to finish.
     FINISHED //This reader is done.
   }
 }

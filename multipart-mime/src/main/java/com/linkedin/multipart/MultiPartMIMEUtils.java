@@ -18,7 +18,7 @@ package com.linkedin.multipart;
 
 
 import com.linkedin.data.ByteString;
-import com.linkedin.multipart.exceptions.IllegalMultiPartMIMEFormatException;
+import com.linkedin.multipart.exceptions.MultiPartIllegalFormatException;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.Charset;
@@ -44,6 +44,8 @@ public final class MultiPartMIMEUtils
   public static final String CRLF_STRING = "\r\n";
   public static final byte[] CRLF_BYTES = "\r\n".getBytes();
   public static final byte[] CONSECUTIVE_CRLFS_BYTES = "\r\n\r\n".getBytes();
+  public static final ByteString BYTE_STRING_CRLF_BYTES = ByteString.copy(CRLF_BYTES);
+  public static final ByteString BYTE_STRING_CONSECUTIVE_CRLFS_BYTES = ByteString.copy(CONSECUTIVE_CRLFS_BYTES);
 
   private static final char[] MULTIPART_CHARS =
       "-_1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ".toCharArray();
@@ -106,17 +108,17 @@ public final class MultiPartMIMEUtils
     return contentTypeBuilder.toString();
   }
 
-  static String extractBoundary(final String contentTypeHeader) throws IllegalMultiPartMIMEFormatException
+  static String extractBoundary(final String contentTypeHeader) throws MultiPartIllegalFormatException
   {
     if (!contentTypeHeader.toLowerCase().startsWith(MultiPartMIMEUtils.MULTIPART_PREFIX))
     {
-      throw new IllegalMultiPartMIMEFormatException(
+      throw new MultiPartIllegalFormatException(
           "Malformed multipart mime request. Not a valid multipart mime header.");
     }
 
     if (!contentTypeHeader.contains(";"))
     {
-      throw new IllegalMultiPartMIMEFormatException(
+      throw new MultiPartIllegalFormatException(
           "Malformed multipart mime request. Improperly formatted Content-Type header. "
               + "Expected at least one parameter in addition to the content type.");
     }
@@ -142,7 +144,7 @@ public final class MultiPartMIMEUtils
       //equals is the last character.
       if (firstEquals == 0 || firstEquals == -1 || firstEquals == trimmedParameter.length() - 1)
       {
-        throw new IllegalMultiPartMIMEFormatException("Invalid parameter format.");
+        throw new MultiPartIllegalFormatException("Invalid parameter format.");
       }
 
       final String parameterKey = trimmedParameter.substring(0, firstEquals);
@@ -151,7 +153,7 @@ public final class MultiPartMIMEUtils
       {
         if (parameterValue.charAt(parameterValue.length() - 1) != '"')
         {
-          throw new IllegalMultiPartMIMEFormatException("Invalid parameter format.");
+          throw new MultiPartIllegalFormatException("Invalid parameter format.");
         }
         //Remove the leading and trailing '"'
         parameterValue = parameterValue.substring(1, parameterValue.length() - 1);
@@ -161,8 +163,8 @@ public final class MultiPartMIMEUtils
       //there are multiple boundary parameters.
       if (parameterMap.containsKey(parameterKey))
       {
-        throw new IllegalMultiPartMIMEFormatException(
-            "Invalid parameter format. Multiple decelerations of the same parameter!");
+        throw new MultiPartIllegalFormatException(
+            "Invalid parameter format. Multiple declarations of the same parameter!");
       }
       parameterMap.put(parameterKey, parameterValue);
     }
@@ -171,42 +173,32 @@ public final class MultiPartMIMEUtils
 
     if (boundaryValue == null)
     {
-      throw new IllegalMultiPartMIMEFormatException("No boundary parameter found!");
+      throw new MultiPartIllegalFormatException("No boundary parameter found!");
     }
 
     return boundaryValue;
   }
 
-  static final ThreadLocal<ByteArrayOutputStream> threadLocalOutputStream = new ThreadLocal<ByteArrayOutputStream>()
-  {
-    @Override
-    protected ByteArrayOutputStream initialValue()
-    {
-      return new ByteArrayOutputStream();
-    }
-  };
-
   static ByteString serializeBoundaryAndHeaders(final byte[] normalEncapsulationBoundary,
       final MultiPartMIMEDataSource dataSource) throws IOException
   {
-    final ByteArrayOutputStream localOutputStream = threadLocalOutputStream.get();
-    localOutputStream.reset();
+    final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
 
     //Write the headers out for this new part
-    localOutputStream.write(normalEncapsulationBoundary);
-    localOutputStream.write(MultiPartMIMEUtils.CRLF_BYTES);
+    byteArrayOutputStream.write(normalEncapsulationBoundary);
+    byteArrayOutputStream.write(MultiPartMIMEUtils.CRLF_BYTES);
 
     if (!dataSource.dataSourceHeaders().isEmpty())
     {
       //Serialize the headers
-      serializeHeaders(dataSource.dataSourceHeaders(), localOutputStream);
+      serializeHeaders(dataSource.dataSourceHeaders(), byteArrayOutputStream);
     }
 
     //Regardless of whether or not there were headers the RFC calls for another CRLF here.
     //If there were no headers we end up with two CRLFs after the boundary
     //If there were headers CRLF_BYTES we end up with one CRLF after the boundary and one after the last header
-    localOutputStream.write(MultiPartMIMEUtils.CRLF_BYTES);
+    byteArrayOutputStream.write(MultiPartMIMEUtils.CRLF_BYTES);
 
-    return ByteString.copy(localOutputStream.toByteArray());
+    return ByteString.unsafeWrap(byteArrayOutputStream.toByteArray());
   }
 }

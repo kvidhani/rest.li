@@ -18,15 +18,16 @@ package com.linkedin.multipart.exceptions;
 
 
 /**
- * Represents an attempt to use a {@link com.linkedin.multipart.MultiPartMIMEReader} that has already finished.
+ * Represents an error when trying to use APIs on {@link com.linkedin.multipart.MultiPartMIMEReader.SinglePartMIMEReader}
+ * without prior callback registration.
  *
  * @author Karim Vidhani
  */
-public class ReaderFinishedException extends GeneralMultiPartMIMEReaderStreamException
+public class SinglePartNotInitializedException extends GeneralMultiPartMIMEReaderStreamException
 {
   private static final long serialVersionUID = 1L;
 
-  public ReaderFinishedException(String message)
+  public SinglePartNotInitializedException(String message)
   {
     super(message);
   }

@@ -1,13 +1,10 @@
 package com.linkedin.r2.message.streaming;
 
+
 import com.linkedin.data.ByteString;
-import com.linkedin.r2.message.streaming.EntityStream;
-import com.linkedin.r2.message.streaming.ReadHandle;
-import com.linkedin.r2.message.streaming.Reader;
-import com.linkedin.r2.message.streaming.WriteHandle;
-import com.linkedin.r2.message.streaming.Writer;
 import java.util.Arrays;
 import java.util.Iterator;
+import java.util.List;
 
 
 /**
@@ -28,6 +25,11 @@ public class CompositeWriter implements Writer
   public CompositeWriter(Writer... writers)
   {
     this(toEntityStreams(writers));
+  }
+
+  public CompositeWriter(List<Writer> writerList)
+  {
+    this(writerList.toArray(new Writer[writerList.size()]));
   }
 
   public CompositeWriter(EntityStream... entityStreams)

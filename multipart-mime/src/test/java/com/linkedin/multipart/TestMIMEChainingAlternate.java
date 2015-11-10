@@ -67,7 +67,7 @@ public class TestMIMEChainingAlternate extends AbstractMIMEUnitTest
     when(streamRequest.getHeader(MultiPartMIMEUtils.CONTENT_TYPE_HEADER)).thenReturn(contentTypeHeader);
 
     //Client side preparation to read the part back on the callback.
-    //We have tow callbacks here since we will get two responses.
+    //We have two callbacks here since we will get two responses.
     //Note the chunks size will carry over since the client is controlling how much data he gets back
     //based on the chunk size he writes.
     ClientMultiPartAlternateReceiver _clientReceiverA = new ClientMultiPartAlternateReceiver();
@@ -168,8 +168,7 @@ public class TestMIMEChainingAlternate extends AbstractMIMEUnitTest
 
   private static class ClientMultiPartAlternateReceiver implements MultiPartMIMEReaderCallback
   {
-    final List<ClientSinglePartAlternateReceiver> _singlePartMIMEReaderCallbacks =
-        new ArrayList<ClientSinglePartAlternateReceiver>();
+    final List<ClientSinglePartAlternateReceiver> _singlePartMIMEReaderCallbacks = new ArrayList<ClientSinglePartAlternateReceiver>();
 
     @Override
     public void onNewPart(MultiPartMIMEReader.SinglePartMIMEReader singleParMIMEReader)

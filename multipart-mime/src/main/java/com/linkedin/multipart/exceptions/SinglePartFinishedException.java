@@ -23,11 +23,11 @@ package com.linkedin.multipart.exceptions;
  *
  * @author Karim Vidhani
  */
-public class PartFinishedException extends GeneralMultiPartMIMEReaderStreamException
+public class SinglePartFinishedException extends GeneralMultiPartMIMEReaderStreamException
 {
   private static final long serialVersionUID = 1L;
 
-  public PartFinishedException(String message)
+  public SinglePartFinishedException(String message)
   {
     super(message);
   }

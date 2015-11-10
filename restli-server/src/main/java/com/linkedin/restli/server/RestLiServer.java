@@ -25,7 +25,7 @@ import com.linkedin.multipart.MultiPartMIMEReaderCallback;
 import com.linkedin.multipart.MultiPartMIMEStreamResponseBuilder;
 import com.linkedin.multipart.MultiPartMIMEWriter;
 import com.linkedin.multipart.SinglePartMIMEReaderCallback;
-import com.linkedin.multipart.exceptions.IllegalMultiPartMIMEFormatException;
+import com.linkedin.multipart.exceptions.MultiPartIllegalFormatException;
 import com.linkedin.parseq.Engine;
 import com.linkedin.r2.message.RequestContext;
 import com.linkedin.r2.message.rest.Messages;
@@ -702,7 +702,7 @@ public class RestLiServer extends BaseRestServer
     {
       //At this point this could be a an exception thrown due to malformed data or this could be an exception thrown
       //due to an invocation of a callback.
-      if (throwable instanceof IllegalMultiPartMIMEFormatException)
+      if (throwable instanceof MultiPartIllegalFormatException)
       {
         //If its an illegally formed request, then we send back 400.
         _streamResponseCallback.onError(new RestLiServiceException(HttpStatus.S_400_BAD_REQUEST,

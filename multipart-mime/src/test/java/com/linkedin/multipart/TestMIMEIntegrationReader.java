@@ -19,7 +19,7 @@ package com.linkedin.multipart;
 
 import com.linkedin.common.callback.Callback;
 import com.linkedin.data.ByteString;
-import com.linkedin.multipart.exceptions.IllegalMultiPartMIMEFormatException;
+import com.linkedin.multipart.exceptions.MultiPartIllegalFormatException;
 import com.linkedin.multipart.utils.VariableByteStringWriter;
 import com.linkedin.r2.filter.R2Constants;
 import com.linkedin.r2.message.RequestContext;
@@ -154,8 +154,6 @@ public class TestMIMEIntegrationReader extends AbstractMIMEIntegrationStreamTest
     multipleChunkPayloads[100][1] = bodyPartList;
 
     return multipleChunkPayloads;
-    //todo remove this
-    //return new Object[][]{{1, bodyPartList}, {R2Constants.DEFAULT_DATA_CHUNK_SIZE, bodyPartList}};
   }
 
   @Test(dataProvider = "multipleNormalBodiesDataSource")
@@ -467,7 +465,7 @@ public class TestMIMEIntegrationReader extends AbstractMIMEIntegrationStreamTest
         _testMultiPartMIMEReaderCallback = new MultiPartMIMEReaderCallbackImpl(callback);
         reader.registerReaderCallback(_testMultiPartMIMEReaderCallback);
       }
-      catch (IllegalMultiPartMIMEFormatException illegalMimeFormatException)
+      catch (MultiPartIllegalFormatException illegalMimeFormatException)
       {
         RestException restException = new RestException(RestStatus.responseForError(400, illegalMimeFormatException));
         callback.onError(restException);

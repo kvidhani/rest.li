@@ -18,16 +18,15 @@ package com.linkedin.multipart.exceptions;
 
 
 /**
- * Represents an error when trying to use APIs on {@link com.linkedin.multipart.MultiPartMIMEReader.SinglePartMIMEReader}
- * without prior callback registration.
+ * Represents in an illegally formed multipart mime request.
  *
  * @author Karim Vidhani
  */
-public class PartNotInitializedException extends GeneralMultiPartMIMEReaderStreamException
+public class MultiPartIllegalFormatException extends GeneralMultiPartMIMEReaderStreamException
 {
   private static final long serialVersionUID = 1L;
 
-  public PartNotInitializedException(String message)
+  public MultiPartIllegalFormatException(String message)
   {
     super(message);
   }

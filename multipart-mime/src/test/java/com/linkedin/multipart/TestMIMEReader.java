@@ -18,8 +18,8 @@ package com.linkedin.multipart;
 
 
 import com.linkedin.data.ByteString;
-import com.linkedin.multipart.exceptions.PartFinishedException;
-import com.linkedin.multipart.exceptions.ReaderFinishedException;
+import com.linkedin.multipart.exceptions.SinglePartFinishedException;
+import com.linkedin.multipart.exceptions.MultiPartReaderFinishedException;
 import com.linkedin.r2.filter.R2Constants;
 
 import java.io.ByteArrayOutputStream;
@@ -58,7 +58,21 @@ public class TestMIMEReader extends AbstractMIMEUnitTest
   @DataProvider(name = "eachSingleBodyDataSource")
   public Object[][] eachSingleBodyDataSource() throws Exception
   {
-    return new Object[][]{{1, _smallDataSource}, {R2Constants.DEFAULT_DATA_CHUNK_SIZE, _smallDataSource}, {1, _largeDataSource}, {R2Constants.DEFAULT_DATA_CHUNK_SIZE, _largeDataSource}, {1, _headerLessBody}, {R2Constants.DEFAULT_DATA_CHUNK_SIZE, _headerLessBody}, {1, _bodyLessBody}, {R2Constants.DEFAULT_DATA_CHUNK_SIZE, _bodyLessBody}, {1, _bytesBody}, {R2Constants.DEFAULT_DATA_CHUNK_SIZE, _bytesBody}, {1, _purelyEmptyBody}, {R2Constants.DEFAULT_DATA_CHUNK_SIZE, _purelyEmptyBody},};
+    return new Object[][]
+        {
+            {1, _smallDataSource},
+            {R2Constants.DEFAULT_DATA_CHUNK_SIZE, _smallDataSource},
+            {1, _largeDataSource},
+            {R2Constants.DEFAULT_DATA_CHUNK_SIZE, _largeDataSource},
+            {1, _headerLessBody},
+            {R2Constants.DEFAULT_DATA_CHUNK_SIZE, _headerLessBody},
+            {1, _bodyLessBody},
+            {R2Constants.DEFAULT_DATA_CHUNK_SIZE, _bodyLessBody},
+            {1, _bytesBody},
+            {R2Constants.DEFAULT_DATA_CHUNK_SIZE, _bytesBody},
+            {1, _purelyEmptyBody},
+            {R2Constants.DEFAULT_DATA_CHUNK_SIZE, _purelyEmptyBody}
+        };
   }
 
   @Test(dataProvider = "eachSingleBodyDataSource")
@@ -316,7 +330,7 @@ public class TestMIMEReader extends AbstractMIMEUnitTest
       _reader.abandonAllParts();
       Assert.fail();
     }
-    catch (ReaderFinishedException readerFinishedException)
+    catch (MultiPartReaderFinishedException multiPartReaderFinishedException)
     {
     }
 
@@ -407,7 +421,7 @@ public class TestMIMEReader extends AbstractMIMEUnitTest
         _singlePartMIMEReader.abandonPart();
         Assert.fail();
       }
-      catch (PartFinishedException partFinishedException)
+      catch (SinglePartFinishedException singlePartFinishedException)
       {
       }
 

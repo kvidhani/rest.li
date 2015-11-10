@@ -23,11 +23,11 @@ package com.linkedin.multipart.exceptions;
  *
  * @author Karim Vidhani
  */
-public class ReaderNotInitializedException extends GeneralMultiPartMIMEReaderStreamException
+public class MultiPartReaderNotInitializedException extends GeneralMultiPartMIMEReaderStreamException
 {
   private static final long serialVersionUID = 1L;
 
-  public ReaderNotInitializedException(String message)
+  public MultiPartReaderNotInitializedException(String message)
   {
     super(message);
   }
