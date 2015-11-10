@@ -98,9 +98,13 @@ public class TestMIMEWriter extends AbstractMIMEUnitTest
   @DataProvider(name = "singleDataSources")
   public Object[][] singleDataSources() throws Exception
   {
-    return new Object[][]{{ByteString.copy(_normalBodyData), _normalBodyHeaders}, {ByteString
-        .copy(_headerLessBodyData), Collections.<String, String>emptyMap()}, {ByteString
-        .empty(), _bodyLessHeaders}, {ByteString.empty(), Collections.<String, String>emptyMap()}};
+    return new Object[][]
+        {
+            {ByteString.copy(_normalBodyData), _normalBodyHeaders},
+            {ByteString.copy(_headerLessBodyData), Collections.<String, String>emptyMap()},
+            {ByteString.empty(), _bodyLessHeaders},
+            {ByteString.empty(), Collections.<String, String>emptyMap()}
+        };
   }
 
   @Test(dataProvider = "singleDataSources")

@@ -31,7 +31,6 @@ import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import static com.linkedin.multipart.utils.MIMETestUtils._largeDataSource;
-import static org.mockito.Mockito.mock;
 
 
 /**

@@ -111,7 +111,11 @@ public class TestMIMEIntegrationReaderAbandon extends AbstractMIMEIntegrationStr
     bodyPartList.add(_largeDataSource);
     bodyPartList.add(_smallDataSource);
 
-    return new Object[][]{{1, bodyPartList}, {R2Constants.DEFAULT_DATA_CHUNK_SIZE, bodyPartList}};
+    return new Object[][]
+        {
+            {1, bodyPartList},
+            {R2Constants.DEFAULT_DATA_CHUNK_SIZE, bodyPartList}
+        };
   }
 
   ///////////////////////////////////////////////////////////////////////////////////////

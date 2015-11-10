@@ -18,8 +18,8 @@ package com.linkedin.multipart;
 
 
 import com.linkedin.data.ByteString;
-import com.linkedin.multipart.exceptions.SinglePartFinishedException;
 import com.linkedin.multipart.exceptions.MultiPartReaderFinishedException;
+import com.linkedin.multipart.exceptions.SinglePartFinishedException;
 import com.linkedin.r2.filter.R2Constants;
 
 import java.io.ByteArrayOutputStream;
@@ -31,10 +31,11 @@ import javax.mail.internet.MimeBodyPart;
 import javax.mail.internet.MimeMultipart;
 
 import org.testng.Assert;
-import org.testng.annotations.*;
+import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.DataProvider;
+import org.testng.annotations.Test;
 
 import static com.linkedin.multipart.utils.MIMETestUtils.*;
-import static org.mockito.Mockito.mock;
 
 
 /**
@@ -68,7 +69,11 @@ public class TestMIMEReaderClientCallbackExceptions extends AbstractMIMEUnitTest
     bodyPartList.add(_bytesBody);
     bodyPartList.add(_purelyEmptyBody);
 
-    return new Object[][]{{1, bodyPartList}, {R2Constants.DEFAULT_DATA_CHUNK_SIZE, bodyPartList}};
+    return new Object[][]
+        {
+            {1, bodyPartList},
+            {R2Constants.DEFAULT_DATA_CHUNK_SIZE, bodyPartList}
+        };
   }
 
   @Test(dataProvider = "allTypesOfBodiesDataSource")

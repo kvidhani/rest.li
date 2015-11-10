@@ -19,19 +19,23 @@ package com.linkedin.multipart;
 
 import com.linkedin.common.callback.Callback;
 import com.linkedin.data.ByteString;
-import com.linkedin.r2.message.rest.*;
+import com.linkedin.r2.message.rest.StreamRequest;
+import com.linkedin.r2.message.rest.StreamResponse;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.util.*;
-import java.util.concurrent.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
+import static com.linkedin.multipart.utils.MIMETestUtils.*;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-import static com.linkedin.multipart.utils.MIMETestUtils.*;
 
 
 /**

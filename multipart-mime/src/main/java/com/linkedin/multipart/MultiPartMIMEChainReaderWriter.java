@@ -70,7 +70,6 @@ class MultiPartMIMEChainReaderWriter implements Writer
     }
   }
 
-  //todo Ang is fixing this to make sure this is invoked by CompositeWriter
   @Override
   public void onAbort(Throwable e)
   {

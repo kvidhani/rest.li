@@ -169,15 +169,17 @@ public class TestMIMEInputStream extends AbstractMIMEUnitTest
 
     final byte[] largeInputData = builder.toString().getBytes();
 
-    return new Object[][]{
-        //One onWritePossible() providing one write on the writeHandle which results in 1 expected write
-        {smallInputData, new StrictByteArrayInputStream(smallInputData), 1, 1},
-        //One OnWritePossible() providing three writes on the writeHandle, which results in 3 expected writes
-        {largeInputData, new StrictByteArrayInputStream(largeInputData), 3, 3},
+    return new Object[][]
+        {
+          //One onWritePossible() providing one write on the writeHandle which results in 1 expected write
+          {smallInputData, new StrictByteArrayInputStream(smallInputData), 1, 1},
+          //One OnWritePossible() providing three writes on the writeHandle, which results in 3 expected writes
+          {largeInputData, new StrictByteArrayInputStream(largeInputData), 3, 3},
 
-        //Also verify that extra writes handles available do no harm:
-        {smallInputData, new StrictByteArrayInputStream(smallInputData), 3, 1},
-        {largeInputData, new StrictByteArrayInputStream(largeInputData), 5, 3},};
+          //Also verify that extra writes handles available do no harm:
+          {smallInputData, new StrictByteArrayInputStream(smallInputData), 3, 1},
+          {largeInputData, new StrictByteArrayInputStream(largeInputData), 5, 3},
+        };
   }
 
   @Test(dataProvider = "singleOnWritePossibleDataSources")
@@ -259,22 +261,24 @@ public class TestMIMEInputStream extends AbstractMIMEUnitTest
     }
     final byte[] largeInputData = builder.toString().getBytes();
 
-    return new Object[][]{
-        //Represents 3 invocations of onWritePossible(), each providing 1 write on the write handle.
-        //We expect a total of 3 writes based on our chunk size.
-        //We also expect 5 invocations of writeHandle.remaining(). This is because the first two
-        //onWritePossibles() will lead to writeHandle.remaining() being called twice (returning 1,0)
-        //and the last onWritePossible() will lead to writeHandle.remaining() being called once (returning 1)
-        //at which point the data is finished.
-        {largeInputData, new StrictByteArrayInputStream(largeInputData), 3, 1, 3, 5},
+    return new Object[][]
+        {
+          //Represents 3 invocations of onWritePossible(), each providing 1 write on the write handle.
+          //We expect a total of 3 writes based on our chunk size.
+          //We also expect 5 invocations of writeHandle.remaining(). This is because the first two
+          //onWritePossibles() will lead to writeHandle.remaining() being called twice (returning 1,0)
+          //and the last onWritePossible() will lead to writeHandle.remaining() being called once (returning 1)
+          //at which point the data is finished.
+          {largeInputData, new StrictByteArrayInputStream(largeInputData), 3, 1, 3, 5},
 
-        //Represents 2 invocation of onWritePossible, each providing 2 writes on the write handle.
-        //We expect a total of 3 writes based on our chunk size.
-        //We also expect 4 invocation of writeHandle.remaining(). This is because the first onWritePossible()
-        //will lead to writeHandle.remaining() being called thrice (returning 2,1,0) and the second
-        //onWritePossible() will lead to writeHandle.remaining() being called once (returning 2)
-        //at which point the data is finished.
-        {largeInputData, new StrictByteArrayInputStream(largeInputData), 2, 2, 3, 4},};
+          //Represents 2 invocation of onWritePossible, each providing 2 writes on the write handle.
+          //We expect a total of 3 writes based on our chunk size.
+          //We also expect 4 invocation of writeHandle.remaining(). This is because the first onWritePossible()
+          //will lead to writeHandle.remaining() being called thrice (returning 2,1,0) and the second
+          //onWritePossible() will lead to writeHandle.remaining() being called once (returning 2)
+          //at which point the data is finished.
+          {largeInputData, new StrictByteArrayInputStream(largeInputData), 2, 2, 3, 4},
+        };
   }
 
   @Test(dataProvider = "multipleOnWritePossibleDataSources")
@@ -414,11 +418,13 @@ public class TestMIMEInputStream extends AbstractMIMEUnitTest
     //TEST_CHUNK_SIZE * 5 writes should be how much data was copied over
     final byte[] largeInputDataPartial = Arrays.copyOf(largeInputData, TEST_CHUNK_SIZE * 5);
 
-    return new Object[][]{
-        //Timeout on first read. Nothing should have been read. One call on writeHandle.remaining() should have been seen.
-        {timeoutFirst, 0, 1, new byte[0]},
-        //Timeout on the 6th read. We should expect 5 writes. Six calls on writeHandle.remaining() should have been seen.
-        {timeoutSubsequently, 5, 6, largeInputDataPartial}};
+    return new Object[][]
+        {
+          //Timeout on first read. Nothing should have been read. One call on writeHandle.remaining() should have been seen.
+          {timeoutFirst, 0, 1, new byte[0]},
+          //Timeout on the 6th read. We should expect 5 writes. Six calls on writeHandle.remaining() should have been seen.
+          {timeoutSubsequently, 5, 6, largeInputDataPartial}
+        };
   }
 
   @Test(dataProvider = "timeoutDataSources")

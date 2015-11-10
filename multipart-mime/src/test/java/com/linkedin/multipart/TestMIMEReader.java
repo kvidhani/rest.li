@@ -43,7 +43,9 @@ import org.testng.annotations.Test;
 
 import static com.linkedin.multipart.utils.MIMETestUtils.*;
 import static org.mockito.Matchers.isA;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.times;
 
 
 /**
@@ -163,7 +165,10 @@ public class TestMIMEReader extends AbstractMIMEUnitTest
     bodyPartList.add(_bodyLessBody);
     bodyPartList.add(_purelyEmptyBody);
 
-    return new Object[][]{{1, bodyPartList}, {R2Constants.DEFAULT_DATA_CHUNK_SIZE, bodyPartList}};
+    return new Object[][]
+        {
+            {1, bodyPartList}, {R2Constants.DEFAULT_DATA_CHUNK_SIZE, bodyPartList}
+        };
   }
 
   @Test(dataProvider = "multipleAbnormalBodies")
@@ -196,7 +201,11 @@ public class TestMIMEReader extends AbstractMIMEUnitTest
     bodyPartList.add(_bytesBody);
     bodyPartList.add(_purelyEmptyBody);
 
-    return new Object[][]{{1, bodyPartList}, {R2Constants.DEFAULT_DATA_CHUNK_SIZE, bodyPartList}};
+    return new Object[][]
+        {
+            {1, bodyPartList},
+            {R2Constants.DEFAULT_DATA_CHUNK_SIZE, bodyPartList}
+        };
   }
 
   @Test(dataProvider = "allTypesOfBodiesDataSource")
@@ -230,7 +239,17 @@ public class TestMIMEReader extends AbstractMIMEUnitTest
     bodyPartList.add(_bytesBody);
     bodyPartList.add(_purelyEmptyBody);
 
-    return new Object[][]{{1, bodyPartList, null, null}, {R2Constants.DEFAULT_DATA_CHUNK_SIZE, bodyPartList, null, null}, {1, bodyPartList, "Some preamble", "Some epilogue"}, {R2Constants.DEFAULT_DATA_CHUNK_SIZE, bodyPartList, "Some preamble", "Some epilogue"}, {1, bodyPartList, "Some preamble", null}, {R2Constants.DEFAULT_DATA_CHUNK_SIZE, bodyPartList, "Some preamble", null}, {1, bodyPartList, null, "Some epilogue"}, {R2Constants.DEFAULT_DATA_CHUNK_SIZE, bodyPartList, null, "Some epilogue"}};
+    return new Object[][]
+        {
+            {1, bodyPartList, null, null},
+            {R2Constants.DEFAULT_DATA_CHUNK_SIZE, bodyPartList, null, null},
+            {1, bodyPartList, "Some preamble", "Some epilogue"},
+            {R2Constants.DEFAULT_DATA_CHUNK_SIZE, bodyPartList, "Some preamble", "Some epilogue"},
+            {1, bodyPartList, "Some preamble", null},
+            {R2Constants.DEFAULT_DATA_CHUNK_SIZE, bodyPartList, "Some preamble", null},
+            {1, bodyPartList, null, "Some epilogue"},
+            {R2Constants.DEFAULT_DATA_CHUNK_SIZE, bodyPartList, null, "Some epilogue"}
+        };
   }
 
   //Just test the preamble and epilogue here
@@ -322,8 +341,7 @@ public class TestMIMEReader extends AbstractMIMEUnitTest
     MultiPartMIMEReaderCallbackImpl _testMultiPartMIMEReaderCallback = new MultiPartMIMEReaderCallbackImpl(latch);
     _reader.registerReaderCallback(_testMultiPartMIMEReaderCallback);
 
-    //todo - fix this
-    latch.await(10000, TimeUnit.MILLISECONDS);
+    latch.await(TEST_TIMEOUT, TimeUnit.MILLISECONDS);
 
     try
     {

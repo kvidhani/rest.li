@@ -93,7 +93,21 @@ public class TestMIMEIntegrationReader extends AbstractMIMEIntegrationStreamTest
   @DataProvider(name = "eachSingleBodyDataSource")
   public Object[][] eachSingleBodyDataSource() throws Exception
   {
-    return new Object[][]{{1, _smallDataSource}, {R2Constants.DEFAULT_DATA_CHUNK_SIZE, _smallDataSource}, {1, _largeDataSource}, {R2Constants.DEFAULT_DATA_CHUNK_SIZE, _largeDataSource}, {1, _headerLessBody}, {R2Constants.DEFAULT_DATA_CHUNK_SIZE, _headerLessBody}, {1, _bodyLessBody}, {R2Constants.DEFAULT_DATA_CHUNK_SIZE, _bodyLessBody}, {1, _bytesBody}, {R2Constants.DEFAULT_DATA_CHUNK_SIZE, _bytesBody}, {1, _purelyEmptyBody}, {R2Constants.DEFAULT_DATA_CHUNK_SIZE, _purelyEmptyBody}};
+    return new Object[][]
+        {
+            {1, _smallDataSource},
+            {R2Constants.DEFAULT_DATA_CHUNK_SIZE, _smallDataSource},
+            {1, _largeDataSource},
+            {R2Constants.DEFAULT_DATA_CHUNK_SIZE, _largeDataSource},
+            {1, _headerLessBody},
+            {R2Constants.DEFAULT_DATA_CHUNK_SIZE, _headerLessBody},
+            {1, _bodyLessBody},
+            {R2Constants.DEFAULT_DATA_CHUNK_SIZE, _bodyLessBody},
+            {1, _bytesBody},
+            {R2Constants.DEFAULT_DATA_CHUNK_SIZE, _bytesBody},
+            {1, _purelyEmptyBody},
+            {R2Constants.DEFAULT_DATA_CHUNK_SIZE, _purelyEmptyBody}
+        };
   }
 
   @Test(dataProvider = "eachSingleBodyDataSource")
@@ -184,7 +198,10 @@ public class TestMIMEIntegrationReader extends AbstractMIMEIntegrationStreamTest
     bodyPartList.add(_bodyLessBody);
     bodyPartList.add(_purelyEmptyBody);
 
-    return new Object[][]{{1, bodyPartList}, {R2Constants.DEFAULT_DATA_CHUNK_SIZE, bodyPartList}};
+    return new Object[][]
+        {
+            {1, bodyPartList}, {R2Constants.DEFAULT_DATA_CHUNK_SIZE, bodyPartList}
+        };
   }
 
   @Test(dataProvider = "multipleAbnormalBodies")
@@ -217,7 +234,10 @@ public class TestMIMEIntegrationReader extends AbstractMIMEIntegrationStreamTest
     bodyPartList.add(_bytesBody);
     bodyPartList.add(_purelyEmptyBody);
 
-    return new Object[][]{{1, bodyPartList}, {R2Constants.DEFAULT_DATA_CHUNK_SIZE, bodyPartList}};
+    return new Object[][]
+        {
+            {1, bodyPartList}, {R2Constants.DEFAULT_DATA_CHUNK_SIZE, bodyPartList}
+        };
   }
 
   @Test(dataProvider = "allTypesOfBodiesDataSource")
@@ -251,7 +271,17 @@ public class TestMIMEIntegrationReader extends AbstractMIMEIntegrationStreamTest
     bodyPartList.add(_bytesBody);
     bodyPartList.add(_purelyEmptyBody);
 
-    return new Object[][]{{1, bodyPartList, null, null}, {R2Constants.DEFAULT_DATA_CHUNK_SIZE, bodyPartList, null, null}, {1, bodyPartList, "Some preamble", "Some epilogue"}, {R2Constants.DEFAULT_DATA_CHUNK_SIZE, bodyPartList, "Some preamble", "Some epilogue"}, {1, bodyPartList, "Some preamble", null}, {R2Constants.DEFAULT_DATA_CHUNK_SIZE, bodyPartList, "Some preamble", null}, {1, bodyPartList, null, "Some epilogue"}, {R2Constants.DEFAULT_DATA_CHUNK_SIZE, bodyPartList, null, "Some epilogue"}};
+    return new Object[][]
+        {
+            {1, bodyPartList, null, null},
+            {R2Constants.DEFAULT_DATA_CHUNK_SIZE, bodyPartList, null, null},
+            {1, bodyPartList, "Some preamble", "Some epilogue"},
+            {R2Constants.DEFAULT_DATA_CHUNK_SIZE, bodyPartList, "Some preamble", "Some epilogue"},
+            {1, bodyPartList, "Some preamble", null},
+            {R2Constants.DEFAULT_DATA_CHUNK_SIZE, bodyPartList, "Some preamble", null},
+            {1, bodyPartList, null, "Some epilogue"},
+            {R2Constants.DEFAULT_DATA_CHUNK_SIZE, bodyPartList, null, "Some epilogue"}
+        };
   }
 
   //Just test the preamble and epilogue here

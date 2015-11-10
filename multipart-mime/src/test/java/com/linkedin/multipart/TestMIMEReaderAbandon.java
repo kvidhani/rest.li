@@ -42,7 +42,9 @@ import org.testng.annotations.Test;
 
 import static com.linkedin.multipart.utils.MIMETestUtils.*;
 import static org.mockito.Matchers.isA;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.times;
 
 
 /**
@@ -73,7 +75,10 @@ public class TestMIMEReaderAbandon extends AbstractMIMEUnitTest
     bodyPartList.add(_largeDataSource);
     bodyPartList.add(_smallDataSource);
 
-    return new Object[][]{{1, bodyPartList}, {R2Constants.DEFAULT_DATA_CHUNK_SIZE, bodyPartList}};
+    return new Object[][]
+        {
+            {1, bodyPartList}, {R2Constants.DEFAULT_DATA_CHUNK_SIZE, bodyPartList}
+        };
   }
 
   ///////////////////////////////////////////////////////////////////////////////////////

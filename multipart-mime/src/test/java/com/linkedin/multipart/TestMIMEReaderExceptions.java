@@ -19,8 +19,8 @@ package com.linkedin.multipart;
 
 import com.linkedin.data.ByteString;
 import com.linkedin.multipart.exceptions.MultiPartIllegalFormatException;
-import com.linkedin.multipart.exceptions.SinglePartFinishedException;
 import com.linkedin.multipart.exceptions.MultiPartReaderFinishedException;
+import com.linkedin.multipart.exceptions.SinglePartFinishedException;
 import com.linkedin.r2.filter.R2Constants;
 import com.linkedin.r2.message.rest.StreamRequest;
 
@@ -34,20 +34,27 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-
 import javax.mail.BodyPart;
 import javax.mail.Header;
 import javax.mail.internet.MimeBodyPart;
 import javax.mail.internet.MimeMultipart;
 
 import org.testng.Assert;
-import org.testng.annotations.*;
+import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.DataProvider;
+import org.testng.annotations.Test;
 
 import static com.linkedin.multipart.utils.MIMETestUtils.HEADER_CONTENT_TYPE;
 import static com.linkedin.multipart.utils.MIMETestUtils._bodyLessBody;
 import static com.linkedin.multipart.utils.MIMETestUtils._smallDataSource;
+
 import static org.mockito.Matchers.isA;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.atLeastOnce;
 
 
 /**
@@ -72,7 +79,10 @@ public class TestMIMEReaderExceptions extends AbstractMIMEUnitTest
     bodyPartList.add(_smallDataSource);
     bodyPartList.add(_bodyLessBody);
 
-    return new Object[][]{{1, bodyPartList}, {R2Constants.DEFAULT_DATA_CHUNK_SIZE, bodyPartList}};
+    return new Object[][]
+        {
+            {1, bodyPartList}, {R2Constants.DEFAULT_DATA_CHUNK_SIZE, bodyPartList}
+        };
   }
 
   //These tests all verify that we throw the correct exception in the face of RFC violating bodies:

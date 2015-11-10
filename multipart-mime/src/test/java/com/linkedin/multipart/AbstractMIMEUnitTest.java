@@ -20,14 +20,13 @@ package com.linkedin.multipart;
 import com.linkedin.data.ByteString;
 import com.linkedin.multipart.utils.VariableByteStringViewer;
 import com.linkedin.r2.filter.R2Constants;
+import com.linkedin.r2.message.rest.StreamRequest;
+import com.linkedin.r2.message.streaming.EntityStream;
+import com.linkedin.r2.message.streaming.ReadHandle;
 
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.atomic.AtomicReference;
-
-import com.linkedin.r2.message.rest.StreamRequest;
-import com.linkedin.r2.message.streaming.EntityStream;
-import com.linkedin.r2.message.streaming.ReadHandle;
 
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
