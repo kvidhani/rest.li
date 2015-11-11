@@ -52,7 +52,6 @@ public final class MultiPartMIMEWriter
     private List<Writer> _allDataSources = new ArrayList<Writer>();
     private final String _preamble;
     private final String _epilogue;
-    private final ByteArrayOutputStream _boundaryHeaderByteArrayOutputStream = new ByteArrayOutputStream();
 
     //Generate the boundary
     private final String _rawBoundary = MultiPartMIMEUtils.generateBoundary();
@@ -172,10 +171,10 @@ public final class MultiPartMIMEWriter
     public MultiPartMIMEWriter build()
     {
       //Append the final boundary
-      _boundaryHeaderByteArrayOutputStream.reset();
+      final ByteArrayOutputStream finalBoundaryByteArrayOutputStream = new ByteArrayOutputStream();
       try
       {
-        _boundaryHeaderByteArrayOutputStream.write(_finalEncapsulationBoundary);
+        finalBoundaryByteArrayOutputStream.write(_finalEncapsulationBoundary);
       }
       catch (IOException ioException)
       {
@@ -183,7 +182,7 @@ public final class MultiPartMIMEWriter
         throw new IllegalStateException("Serious error when constructing local byte buffer for the final boundary!");
       }
       final Writer finalBoundaryWriter =
-          new ByteStringWriter(ByteString.copy(_boundaryHeaderByteArrayOutputStream.toByteArray()));
+          new ByteStringWriter(ByteString.copy(finalBoundaryByteArrayOutputStream.toByteArray()));
       _allDataSources.add(finalBoundaryWriter);
 
       //Append epilogue
