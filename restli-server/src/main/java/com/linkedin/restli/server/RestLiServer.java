@@ -20,7 +20,14 @@ package com.linkedin.restli.server;
 import com.linkedin.common.callback.Callback;
 import com.linkedin.data.ByteString;
 import com.linkedin.jersey.api.uri.UriBuilder;
+import com.linkedin.multipart.MultiPartMIMEReader;
+import com.linkedin.multipart.MultiPartMIMEReaderCallback;
+import com.linkedin.multipart.MultiPartMIMEStreamResponseBuilder;
+import com.linkedin.multipart.MultiPartMIMEWriter;
+import com.linkedin.multipart.SinglePartMIMEReaderCallback;
+import com.linkedin.multipart.exceptions.MultiPartIllegalFormatException;
 import com.linkedin.parseq.Engine;
+import com.linkedin.r2.message.Messages;
 import com.linkedin.r2.message.Request;
 import com.linkedin.r2.message.RequestContext;
 import com.linkedin.r2.message.rest.RestRequest;
@@ -28,6 +35,7 @@ import com.linkedin.r2.message.rest.RestRequestBuilder;
 import com.linkedin.r2.message.rest.RestResponse;
 import com.linkedin.r2.message.stream.StreamRequest;
 import com.linkedin.r2.message.stream.StreamResponse;
+import com.linkedin.r2.message.stream.entitystream.ByteStringWriter;
 import com.linkedin.r2.util.URIUtil;
 import com.linkedin.restli.common.HttpStatus;
 import com.linkedin.restli.common.ProtocolVersion;
@@ -56,16 +64,13 @@ import com.linkedin.restli.server.multiplexer.MultiplexedRequestHandler;
 import com.linkedin.restli.server.multiplexer.MultiplexedRequestHandlerImpl;
 import com.linkedin.restli.server.resources.PrototypeResourceFactory;
 import com.linkedin.restli.server.resources.ResourceFactory;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
 import javax.mail.internet.ContentType;
 import javax.mail.internet.ParseException;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -705,7 +710,7 @@ public class RestLiServer extends BaseRestServer
     {
       //At this point this could be a an exception thrown due to malformed data or this could be an exception thrown
       //due to an invocation of a callback.
-      if (throwable instanceof IllegalMultiPartMIMEFormatException)
+      if (throwable instanceof MultiPartIllegalFormatException)
       {
         //If its an illegally formed request, then we send back 400.
         _streamResponseCallback.onError(new RestLiServiceException(HttpStatus.S_400_BAD_REQUEST,
@@ -787,7 +792,8 @@ public class RestLiServer extends BaseRestServer
                                        attachments);
 
         final StreamResponse streamResponse =
-            MultiPartMIMEStreamResponseBuilder.generateMultiPartMIMEStreamResponse(AttachmentUtilities.RESTLI_MULTIPART_SUBTYPE, multiPartMIMEWriter);
+            MultiPartMIMEStreamResponseBuilder
+                .generateMultiPartMIMEStreamResponse(AttachmentUtilities.RESTLI_MULTIPART_SUBTYPE, multiPartMIMEWriter);
         _streamResponseCallback.onSuccess(streamResponse);
       }
       else

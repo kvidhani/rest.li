@@ -17,7 +17,7 @@
 package com.linkedin.restli.server;
 
 
-import com.linkedin.r2.message.rest.Request;
+import com.linkedin.r2.message.Request;
 import com.linkedin.r2.message.rest.RestResponse;
 import com.linkedin.restli.internal.server.model.ResourceModel;
 

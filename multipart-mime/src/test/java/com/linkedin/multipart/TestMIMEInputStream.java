@@ -18,7 +18,7 @@ package com.linkedin.multipart;
 
 
 import com.linkedin.data.ByteString;
-import com.linkedin.r2.message.streaming.WriteHandle;
+import com.linkedin.r2.message.stream.entitystream.WriteHandle;
 
 import org.mockito.Mockito;
 import org.mockito.invocation.InvocationOnMock;

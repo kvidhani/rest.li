@@ -23,8 +23,8 @@ import com.linkedin.multipart.exceptions.SinglePartNotInitializedException;
 import com.linkedin.multipart.exceptions.MultiPartReaderNotInitializedException;
 import com.linkedin.multipart.exceptions.StreamBusyException;
 import com.linkedin.multipart.exceptions.MultiPartReaderFinishedException;
-import com.linkedin.r2.message.rest.StreamRequest;
-import com.linkedin.r2.message.streaming.EntityStream;
+import com.linkedin.r2.message.stream.StreamRequest;
+import com.linkedin.r2.message.stream.entitystream.EntityStream;
 
 import java.util.Collections;
 

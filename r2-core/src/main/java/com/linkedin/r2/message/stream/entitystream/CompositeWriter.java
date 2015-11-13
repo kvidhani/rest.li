@@ -4,6 +4,7 @@ import com.linkedin.data.ByteString;
 
 import java.util.Arrays;
 import java.util.Iterator;
+import java.util.List;
 
 
 /**
@@ -24,6 +25,11 @@ public class CompositeWriter implements Writer
   public CompositeWriter(Writer... writers)
   {
     this(toEntityStreams(writers));
+  }
+
+  public CompositeWriter(List<Writer> writerList)
+  {
+    this(writerList.toArray(new Writer[writerList.size()]));
   }
 
   public CompositeWriter(EntityStream... entityStreams)

@@ -17,7 +17,7 @@
 package com.linkedin.restli.server.multiplexer;
 
 
-import com.linkedin.r2.message.rest.Request;
+import com.linkedin.r2.message.Request;
 import com.linkedin.r2.transport.common.RestRequestHandler;
 
 

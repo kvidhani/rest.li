@@ -62,6 +62,7 @@ public class BatchDeleteRequest<K, V extends RecordTemplate> extends BatchReques
           queryParamClasses,
           baseUriTemplate,
           pathKeys,
-          requestOptions);
+          requestOptions,
+          null);
   }
 }

@@ -20,6 +20,7 @@ import com.linkedin.data.template.RecordTemplate;
 import com.linkedin.restli.common.IdEntityResponse;
 import com.linkedin.restli.common.ResourceMethod;
 import com.linkedin.restli.common.ResourceSpec;
+import com.linkedin.restli.common.attachments.RestLiStreamingAttachments;
 import com.linkedin.restli.internal.client.RestResponseDecoder;
 
 import java.net.HttpCookie;
@@ -42,7 +43,8 @@ public class CreateIdEntityRequest<K, V extends RecordTemplate> extends Request<
                         Map<String, Class<?>> queryParamClasses,
                         String baseUriTemplate,
                         Map<String, Object> pathKeys,
-                        RestliRequestOptions requestOptions)
+                        RestliRequestOptions requestOptions,
+                        RestLiStreamingAttachments streamingAttachments)
   {
     super(ResourceMethod.CREATE,
           input,
@@ -55,6 +57,7 @@ public class CreateIdEntityRequest<K, V extends RecordTemplate> extends Request<
           null,
           baseUriTemplate,
           pathKeys,
-          requestOptions);
+          requestOptions,
+          streamingAttachments);
   }
 }

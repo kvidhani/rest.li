@@ -18,11 +18,11 @@ package com.linkedin.restli.server;
 
 
 import com.linkedin.common.callback.Callback;
+import com.linkedin.r2.message.RequestContext;
 import com.linkedin.r2.message.rest.RestRequest;
 import com.linkedin.r2.message.rest.RestResponse;
-import com.linkedin.r2.message.rest.StreamRequest;
-import com.linkedin.r2.message.rest.StreamResponse;
-import com.linkedin.r2.message.RequestContext;
+import com.linkedin.r2.message.stream.StreamRequest;
+import com.linkedin.r2.message.stream.StreamResponse;
 import com.linkedin.r2.transport.common.RestRequestHandler;
 import com.linkedin.r2.transport.common.StreamRequestHandler;
 import com.linkedin.restli.internal.server.model.ResourceModel;
@@ -72,7 +72,7 @@ public abstract class BaseRestServer implements RestRequestHandler, StreamReques
                                           Callback<RestResponse> callback);
 
   /**
-   * @see com.linkedin.r2.transport.common.StreamRequestHandler#handleRequest(com.linkedin.r2.message.rest.StreamRequest,
+   * @see com.linkedin.r2.transport.common.StreamRequestHandler#handleRequest(com.linkedin.r2.message.stream.StreamRequest,
    *      com.linkedin.r2.message.RequestContext, com.linkedin.common.callback.Callback)
    */
   @Override

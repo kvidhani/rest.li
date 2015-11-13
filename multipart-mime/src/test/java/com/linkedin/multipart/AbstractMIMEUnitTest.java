@@ -20,9 +20,9 @@ package com.linkedin.multipart;
 import com.linkedin.data.ByteString;
 import com.linkedin.multipart.utils.VariableByteStringViewer;
 import com.linkedin.r2.filter.R2Constants;
-import com.linkedin.r2.message.rest.StreamRequest;
-import com.linkedin.r2.message.streaming.EntityStream;
-import com.linkedin.r2.message.streaming.ReadHandle;
+import com.linkedin.r2.message.stream.StreamRequest;
+import com.linkedin.r2.message.stream.entitystream.EntityStream;
+import com.linkedin.r2.message.stream.entitystream.ReadHandle;
 
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;

@@ -25,12 +25,12 @@ import com.linkedin.multipart.exceptions.MultiPartIllegalFormatException;
 import com.linkedin.r2.message.RequestContext;
 import com.linkedin.r2.message.rest.RestException;
 import com.linkedin.r2.message.rest.RestStatus;
-import com.linkedin.r2.message.rest.StreamRequest;
-import com.linkedin.r2.message.rest.StreamRequestBuilder;
-import com.linkedin.r2.message.rest.StreamResponse;
-import com.linkedin.r2.message.streaming.ByteStringWriter;
-import com.linkedin.r2.message.streaming.EntityStream;
-import com.linkedin.r2.message.streaming.EntityStreams;
+import com.linkedin.r2.message.stream.StreamRequest;
+import com.linkedin.r2.message.stream.StreamRequestBuilder;
+import com.linkedin.r2.message.stream.StreamResponse;
+import com.linkedin.r2.message.stream.entitystream.ByteStringWriter;
+import com.linkedin.r2.message.stream.entitystream.EntityStream;
+import com.linkedin.r2.message.stream.entitystream.EntityStreams;
 import com.linkedin.r2.sample.Bootstrap;
 import com.linkedin.r2.transport.common.Client;
 import com.linkedin.r2.transport.common.StreamRequestHandler;
@@ -41,7 +41,6 @@ import com.linkedin.r2.transport.common.bridge.server.TransportDispatcherBuilder
 import com.linkedin.r2.transport.http.client.HttpClientFactory;
 import com.linkedin.r2.transport.http.server.HttpServer;
 import com.linkedin.r2.transport.http.server.HttpServerFactory;
-
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -52,7 +51,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-
 import org.testng.Assert;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
@@ -100,8 +98,8 @@ public class TestMIMEChainingMultipleSources extends AbstractMIMEUnitTest
     final TransportDispatcher serverBTransportDispatcher =
         new TransportDispatcherBuilder().addStreamHandler(SERVER_B_URI, serverBRequestHandler).build();
 
-    _server_A = httpServerFactory.createServer(PORT_SERVER_A, serverATransportDispatcher);
-    _server_B = httpServerFactory.createServer(PORT_SERVER_B, serverBTransportDispatcher);
+    _server_A = httpServerFactory.createServer(PORT_SERVER_A, serverATransportDispatcher, true);
+    _server_B = httpServerFactory.createServer(PORT_SERVER_B, serverBTransportDispatcher, true);
     _server_A.start();
     _server_B.start();
   }

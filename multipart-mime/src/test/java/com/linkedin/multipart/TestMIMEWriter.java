@@ -20,8 +20,8 @@ package com.linkedin.multipart;
 import com.linkedin.common.callback.FutureCallback;
 import com.linkedin.data.ByteString;
 import com.linkedin.multipart.utils.MIMEDataPart;
-import com.linkedin.r2.message.rest.StreamRequest;
-import com.linkedin.r2.message.streaming.FullEntityReader;
+import com.linkedin.r2.message.stream.StreamRequest;
+import com.linkedin.r2.message.stream.entitystream.FullEntityReader;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -36,7 +36,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
-
 import javax.activation.DataSource;
 import javax.mail.BodyPart;
 import javax.mail.Header;

@@ -18,8 +18,8 @@ package com.linkedin.multipart.utils;
 
 
 import com.linkedin.data.ByteString;
-import com.linkedin.r2.message.streaming.WriteHandle;
-import com.linkedin.r2.message.streaming.Writer;
+import com.linkedin.r2.message.stream.entitystream.WriteHandle;
+import com.linkedin.r2.message.stream.entitystream.Writer;
 import com.linkedin.util.ArgumentUtil;
 
 import org.testng.Assert;

@@ -22,7 +22,7 @@ import com.linkedin.multipart.MultiPartMIMEReader;
 import com.linkedin.multipart.MultiPartMIMEReaderCallback;
 import com.linkedin.multipart.SinglePartMIMEReaderCallback;
 import com.linkedin.r2.RemoteInvocationException;
-import com.linkedin.r2.message.streaming.WriteHandle;
+import com.linkedin.r2.message.stream.entitystream.WriteHandle;
 import com.linkedin.restli.common.RestConstants;
 
 
@@ -72,7 +72,7 @@ public final class RestLiAttachmentReader
    * The goal is for clients to at least see the first attachment before deciding to abandon all attachments.
    *
    * As described, a valid {@link com.linkedin.restli.common.attachments.RestLiAttachmentReaderCallback} is required to use this API.
-   * Failure to do so will result in a {@link com.linkedin.multipart.exceptions.ReaderNotInitializedException}.
+   * Failure to do so will result in a {@link com.linkedin.multipart.exceptions.MultiPartReaderNotInitializedException}.
    *
    * This can ONLY be called if there is no attachment being actively read, meaning that
    * the current {@link com.linkedin.restli.common.attachments.RestLiAttachmentReader.SingleRestLiAttachmentReader}
@@ -81,7 +81,7 @@ public final class RestLiAttachmentReader
    *
    * Once all attachments have finished being abandoned, a call will be made to {@link MultiPartMIMEReaderCallback#onAbandoned()}.
    *
-   * If the stream is finished, subsequent calls will throw {@link com.linkedin.multipart.exceptions.ReaderFinishedException}.
+   * If the stream is finished, subsequent calls will throw {@link com.linkedin.multipart.exceptions.MultiPartReaderFinishedException}.
    *
    * Since this is async and we do not allow request queueing, repetitive calls will result in
    * {@link com.linkedin.multipart.exceptions.StreamBusyException}.
@@ -181,16 +181,16 @@ public final class RestLiAttachmentReader
      * {@link SingleRestLiAttachmentReaderCallback#onAttachmentDataAvailable(com.linkedin.data.ByteString)}.
      *
      * Usage of this API requires registration using a {@link SingleRestLiAttachmentReaderCallback}.
-     * Failure to do so will throw a {@link com.linkedin.multipart.exceptions.PartNotInitializedException}.
+     * Failure to do so will throw a {@link com.linkedin.multipart.exceptions.SinglePartNotInitializedException}.
      *
      * If this attachment is fully consumed, meaning {@link SingleRestLiAttachmentReaderCallback#onFinished()}
-     * has been called, then any subsequent calls to requestAttachmentData() will throw {@link com.linkedin.multipart.exceptions.PartFinishedException}.
+     * has been called, then any subsequent calls to requestAttachmentData() will throw {@link com.linkedin.multipart.exceptions.SinglePartFinishedException}.
      *
      * Since this is async and request queueing is not allowed, repetitive calls will result in
      * {@link com.linkedin.multipart.exceptions.StreamBusyException}.
      *
      * If this reader is done, either through an error or a proper finish. Calls to requestAttachmentData() will throw
-     * {@link com.linkedin.multipart.exceptions.PartFinishedException}.
+     * {@link com.linkedin.multipart.exceptions.SinglePartFinishedException}.
      */
     public void requestAttachmentData()
     {
@@ -206,13 +206,13 @@ public final class RestLiAttachmentReader
      * this attachment.
      *
      * If this attachment is fully consumed, meaning {@link SingleRestLiAttachmentReaderCallback#onFinished()}
-     * has been called, then any subsequent calls to abandonPart() will throw {@link com.linkedin.multipart.exceptions.PartFinishedException}.
+     * has been called, then any subsequent calls to abandonPart() will throw {@link com.linkedin.multipart.exceptions.SinglePartFinishedException}.
      *
      * Since this is async and request queueing is not allowed, repetitive calls will result in
      * {@link com.linkedin.multipart.exceptions.StreamBusyException}.
      *
      * If this reader is done, either through an error or a proper finish. Calls to abandonAttachment() will throw
-     * {@link com.linkedin.multipart.exceptions.PartFinishedException}.
+     * {@link com.linkedin.multipart.exceptions.SinglePartFinishedException}.
      */
     public void abandonAttachment()
     {
@@ -222,7 +222,7 @@ public final class RestLiAttachmentReader
     /**
      * This call registers a callback and commits to reading this attachment. This can only happen once per life of each
      * SinglePartRestLiAttachmentReader. Subsequent attempts to modify this will throw
-     * {@link com.linkedin.multipart.exceptions.PartBindException}.
+     * {@link com.linkedin.multipart.exceptions.SinglePartBindException}.
      *
      * @param callback the callback to be invoked on in order to read attachment data.
      */

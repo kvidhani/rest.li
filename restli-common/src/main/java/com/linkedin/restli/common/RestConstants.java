@@ -45,6 +45,7 @@ public interface RestConstants
   String HEADER_VALUE_MULTIPART_RELATED = "multipart/related";
   String HEADER_VALUE_ACCEPT_ANY = "*/*";
   String HEADER_RESTLI_PROTOCOL_VERSION = "X-RestLi-Protocol-Version";
+  String HEADER_CONTENT_ID = "Content-ID";
 
   List<String> SUPPORTED_MIME_TYPES = Arrays.asList(HEADER_VALUE_APPLICATION_PSON, HEADER_VALUE_APPLICATION_JSON);
 

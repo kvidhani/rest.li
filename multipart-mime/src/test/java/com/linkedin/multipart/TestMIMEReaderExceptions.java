@@ -22,7 +22,7 @@ import com.linkedin.multipart.exceptions.MultiPartIllegalFormatException;
 import com.linkedin.multipart.exceptions.MultiPartReaderFinishedException;
 import com.linkedin.multipart.exceptions.SinglePartFinishedException;
 import com.linkedin.r2.filter.R2Constants;
-import com.linkedin.r2.message.rest.StreamRequest;
+import com.linkedin.r2.message.stream.StreamRequest;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -47,14 +47,8 @@ import org.testng.annotations.Test;
 import static com.linkedin.multipart.utils.MIMETestUtils.HEADER_CONTENT_TYPE;
 import static com.linkedin.multipart.utils.MIMETestUtils._bodyLessBody;
 import static com.linkedin.multipart.utils.MIMETestUtils._smallDataSource;
-
 import static org.mockito.Matchers.isA;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
-import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.*;
 
 
 /**
