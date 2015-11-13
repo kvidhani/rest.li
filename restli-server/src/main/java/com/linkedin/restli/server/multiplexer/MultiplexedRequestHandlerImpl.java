@@ -28,6 +28,7 @@ import com.linkedin.parseq.Engine;
 import com.linkedin.parseq.Task;
 import com.linkedin.parseq.Tasks;
 import com.linkedin.r2.message.RequestContext;
+import com.linkedin.r2.message.rest.Request;
 import com.linkedin.r2.message.rest.RestRequest;
 import com.linkedin.r2.message.rest.RestRequestBuilder;
 import com.linkedin.r2.message.rest.RestResponse;

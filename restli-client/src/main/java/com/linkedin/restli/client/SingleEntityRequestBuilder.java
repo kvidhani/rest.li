@@ -19,6 +19,7 @@ package com.linkedin.restli.client;
 
 import com.linkedin.data.template.RecordTemplate;
 import com.linkedin.restli.common.ResourceSpec;
+import com.linkedin.restli.common.attachments.RestLiStreamingAttachments;
 
 
 /**
@@ -36,7 +37,6 @@ public abstract class SingleEntityRequestBuilder<K, V extends RecordTemplate, R 
 
   public SingleEntityRequestBuilder(String baseUriTemplate,
                                     Class<V> valueClass,
-
                                     ResourceSpec resourceSpec,
                                     RestliRequestOptions requestOptions)
   {
@@ -63,6 +63,18 @@ public abstract class SingleEntityRequestBuilder<K, V extends RecordTemplate, R 
   protected SingleEntityRequestBuilder<K, V, R> input(V entity)
   {
     _input = entity;
+    return this;
+  }
+
+  /**
+   * Sets any attachments that need to be streamed.
+   *
+   * @param streamingAttachments an ordered list of all attachments that will be sent with this request.
+   * @return the request builder itself.
+   */
+  protected SingleEntityRequestBuilder<K, V, R> streamingAttachments(final RestLiStreamingAttachments streamingAttachments)
+  {
+    _streamingAttachments = streamingAttachments;
     return this;
   }
 
@@ -100,6 +112,15 @@ public abstract class SingleEntityRequestBuilder<K, V extends RecordTemplate, R 
   protected V getInput()
   {
     return _input;
+  }
+
+  /**
+   * Returns the ordered list of attachments that need to be streamed for this request.
+   * @return the streaming attachments.
+   */
+  protected RestLiStreamingAttachments getStreamingAttachments()
+  {
+    return _streamingAttachments;
   }
 
   /**

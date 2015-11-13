@@ -17,6 +17,9 @@
 package com.linkedin.restli.server;
 
 
+import com.linkedin.restli.common.attachments.RestLiStreamingAttachments;
+
+
 /**
  * The callback interface to be invoked at the end of a Rest.li request execution.
  * @param <T>
@@ -38,6 +41,7 @@ public interface RequestExecutionCallback<T>
    * @param result the result of the asynchronous operation
    * @param executionReport contains data about the request execution process. This parameter will contain a value
    *                        only if the request was a debug request.
+   * @param streamingAttachments any application developer specified attachments that need to be streamed back to the client.
    */
-  void onSuccess(T result, RequestExecutionReport executionReport);
+  void onSuccess(T result, RequestExecutionReport executionReport, RestLiStreamingAttachments streamingAttachments);
 }

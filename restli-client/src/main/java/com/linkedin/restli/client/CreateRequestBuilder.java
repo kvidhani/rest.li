@@ -20,6 +20,7 @@ package com.linkedin.restli.client;
 import com.linkedin.data.template.RecordTemplate;
 import com.linkedin.restli.common.ResourceSpec;
 import com.linkedin.restli.common.TypeSpec;
+import com.linkedin.restli.common.attachments.RestLiStreamingAttachments;
 import com.linkedin.restli.internal.client.CreateResponseDecoder;
 
 import java.util.Map;
@@ -45,6 +46,13 @@ public class CreateRequestBuilder<K, V extends RecordTemplate>
   public CreateRequestBuilder<K, V> input(V entity)
   {
     super.input(entity);
+    return this;
+  }
+
+  @Override
+  public CreateRequestBuilder<K, V> streamingAttachments(RestLiStreamingAttachments streamingAttachments)
+  {
+    super.streamingAttachments(streamingAttachments);
     return this;
   }
 
@@ -125,6 +133,7 @@ public class CreateRequestBuilder<K, V extends RecordTemplate>
                                 getQueryParamClasses(),
                                 getBaseUriTemplate(),
                                 buildReadOnlyPathKeys(),
-                                getRequestOptions());
+                                getRequestOptions(),
+                                getStreamingAttachments());
   }
 }

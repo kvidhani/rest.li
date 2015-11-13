@@ -39,6 +39,7 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 
 import junit.framework.Assert;
+
 import org.easymock.EasyMock;
 import org.testng.annotations.Test;
 
@@ -206,8 +207,8 @@ public class TestParseqTraceDebugRequestHandler
                                   {
                                     @Override
                                     public void handleRequest(RestRequest request,
-                                                               RequestContext requestContext,
-                                                               RequestExecutionCallback<RestResponse> callback)
+                                                              RequestContext requestContext,
+                                                              RequestExecutionCallback<RestResponse> callback)
                                     {
                                       RestResponse response = EasyMock.createMock(RestResponse.class);
                                       RequestExecutionReportBuilder executionReportBuilder =
@@ -225,7 +226,7 @@ public class TestParseqTraceDebugRequestHandler
                                         //test will fail later
                                       }
 
-                                      callback.onSuccess(response, executionReportBuilder.build());
+                                      callback.onSuccess(response, executionReportBuilder.build(), null);
                                     }
                                   },
                                   callback);

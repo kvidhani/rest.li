@@ -21,6 +21,7 @@ import com.linkedin.data.template.RecordTemplate;
 import com.linkedin.restli.client.CreateIdRequestBuilder;
 import com.linkedin.restli.client.RestliRequestOptions;
 import com.linkedin.restli.common.ResourceSpec;
+import com.linkedin.restli.common.attachments.RestLiStreamingAttachments;
 
 
 /**
@@ -45,6 +46,13 @@ public class CreateIdRequestBuilderBase<K,
   public RB input(V entity)
   {
     return (RB) super.input(entity);
+  }
+
+  @SuppressWarnings({"unchecked"})
+  @Override
+  public RB streamingAttachments(RestLiStreamingAttachments streamingAttachments)
+  {
+    return (RB) super.streamingAttachments(streamingAttachments);
   }
 
   @SuppressWarnings({"unchecked"})

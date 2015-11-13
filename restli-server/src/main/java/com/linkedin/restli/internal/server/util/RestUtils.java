@@ -53,7 +53,6 @@ import com.linkedin.restli.server.RestLiServiceException;
 import com.linkedin.restli.server.RoutingException;
 
 import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.ParameterizedType;
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
@@ -66,7 +65,6 @@ import org.apache.commons.lang.StringUtils;
  */
 public class RestUtils
 {
-
   public static CollectionMetadata buildMetadata(final URI requestUri,
                                                  final ResourceContext resourceContext,
                                                  final ResourceMethodDescriptor methodDescriptor,
@@ -223,11 +221,24 @@ public class RestUtils
   public static String pickBestEncoding(String acceptHeader)
   {
     if (acceptHeader == null || acceptHeader.isEmpty())
+    {
       return RestConstants.HEADER_VALUE_APPLICATION_JSON;
+    }
+
+    //For backward compatibility reasons, we have to assume that if there is ONLY multipart/related as an accept
+    //type that this means to default to JSON.
+    //TODO - we are parsing accept header twice - here and in RestLiRouter. Move this into one area.
+    final List<String> acceptTypes = MIMEParse.parseAcceptType(acceptHeader);
+    if(acceptTypes.size() == 1 && acceptTypes.get(0).equalsIgnoreCase(RestConstants.HEADER_VALUE_MULTIPART_RELATED))
+    {
+      return RestConstants.HEADER_VALUE_APPLICATION_JSON;
+    }
+
     try
     {
       return MIMEParse.bestMatch(RestConstants.SUPPORTED_MIME_TYPES, acceptHeader);
     }
+
     // Handle the case when an accept MIME type that was passed in along with the
     // request is invalid.
     catch (InvalidMimeTypeException e)

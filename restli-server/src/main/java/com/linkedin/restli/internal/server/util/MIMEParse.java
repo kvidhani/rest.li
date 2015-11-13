@@ -270,7 +270,18 @@ public final class MIMEParse
             : "";
   }
 
-  // hidden
+  public static List<String> parseAcceptType(final String header)
+  {
+    List<String> acceptTypes = new LinkedList<String>();
+    for (String acceptType : StringUtils.split(header, ','))
+    {
+      final ParseResults parseResults = parseMimeType(acceptType);
+      acceptTypes.add(parseResults.type + "/" + parseResults.subType);
+    }
+    return acceptTypes;
+  }
+
+  //Disable instantiation
   private MIMEParse()
   {
   }

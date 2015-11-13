@@ -24,6 +24,7 @@ import com.linkedin.data.template.FieldDef;
 import com.linkedin.restli.client.ActionRequestBuilder;
 import com.linkedin.restli.client.RestliRequestOptions;
 import com.linkedin.restli.common.ResourceSpec;
+import com.linkedin.restli.common.attachments.RestLiStreamingAttachments;
 
 
 /**
@@ -54,6 +55,13 @@ public abstract class ActionRequestBuilderBase<K, V, RB extends ActionRequestBui
   public RB id(K id)
   {
     return (RB) super.id(id);
+  }
+
+  @SuppressWarnings({"unchecked"})
+  @Override
+  public RB streamingAttachments(RestLiStreamingAttachments streamingAttachments)
+  {
+    return (RB) super.streamingAttachments(streamingAttachments);
   }
 
   @SuppressWarnings({"unchecked"})

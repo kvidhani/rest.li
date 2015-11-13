@@ -19,6 +19,7 @@ package com.linkedin.restli.client;
 
 import com.linkedin.data.template.RecordTemplate;
 import com.linkedin.restli.common.ResourceSpec;
+import com.linkedin.restli.common.attachments.RestLiStreamingAttachments;
 import com.linkedin.restli.common.TypeSpec;
 import com.linkedin.restli.internal.client.IdResponseDecoder;
 
@@ -44,6 +45,13 @@ public class CreateIdRequestBuilder<K, V extends RecordTemplate>
   public CreateIdRequestBuilder<K, V> input(V entity)
   {
     super.input(entity);
+    return this;
+  }
+
+  @Override
+  protected CreateIdRequestBuilder<K, V> streamingAttachments(RestLiStreamingAttachments streamingAttachments)
+  {
+    super.streamingAttachments(streamingAttachments);
     return this;
   }
 

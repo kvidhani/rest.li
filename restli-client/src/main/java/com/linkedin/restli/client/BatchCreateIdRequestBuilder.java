@@ -22,6 +22,7 @@ import com.linkedin.data.template.RecordTemplate;
 import com.linkedin.restli.common.CollectionRequest;
 import com.linkedin.restli.common.ResourceSpec;
 import com.linkedin.restli.common.TypeSpec;
+import com.linkedin.restli.common.attachments.RestLiStreamingAttachments;
 import com.linkedin.restli.internal.client.BatchCreateIdDecoder;
 
 import java.util.ArrayList;
@@ -38,6 +39,7 @@ public class BatchCreateIdRequestBuilder<K, V extends RecordTemplate> extends Re
 {
   private final List<V> _entities = new ArrayList<V>();
   private final Class<V> _valueClass;
+  private RestLiStreamingAttachments _streamingAttachments;
 
   protected BatchCreateIdRequestBuilder(String baseURITemplate,
                                         Class<V> valueClass,
@@ -57,6 +59,12 @@ public class BatchCreateIdRequestBuilder<K, V extends RecordTemplate> extends Re
   public BatchCreateIdRequestBuilder<K, V> inputs(List<V> entities)
   {
     _entities.addAll(entities);
+    return this;
+  }
+
+  public BatchCreateIdRequestBuilder<K, V> streamingAttachments(final RestLiStreamingAttachments streamingAttachments)
+  {
+    _streamingAttachments = streamingAttachments;
     return this;
   }
 
@@ -133,7 +141,8 @@ public class BatchCreateIdRequestBuilder<K, V extends RecordTemplate> extends Re
                                           getQueryParamClasses(),
                                           getBaseUriTemplate(),
                                           buildReadOnlyPathKeys(),
-                                          getRequestOptions());
+                                          getRequestOptions(),
+                                          _streamingAttachments);
   }
 
   private CollectionRequest<V> buildReadOnlyInput()

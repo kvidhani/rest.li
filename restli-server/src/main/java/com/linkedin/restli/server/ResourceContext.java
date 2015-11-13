@@ -17,13 +17,15 @@
 package com.linkedin.restli.server;
 
 
-import java.net.HttpCookie;
-import java.util.List;
-import java.util.Map;
-
 import com.linkedin.data.transform.filter.request.MaskTree;
 import com.linkedin.r2.message.RequestContext;
 import com.linkedin.r2.message.rest.RestRequest;
+import com.linkedin.restli.common.attachments.RestLiAttachmentReader;
+import com.linkedin.restli.common.attachments.RestLiStreamingAttachments;
+
+import java.net.HttpCookie;
+import java.util.List;
+import java.util.Map;
 
 
 /**
@@ -175,4 +177,48 @@ public interface ResourceContext
    * @param mode Projection mode for the response body for the CollectionResult metadata.
    */
   void setMetadataProjectionMode(ProjectionMode mode);
+
+  /**
+   * Returns whether or not there are attachments present in the request. Users of this API should first check this,
+   * and if this returns true, continue by using {@link ResourceContext#getRestLiAttachmentReader()}.
+   *
+   * @return true if there were attachments present and false if none were present.
+   */
+  boolean requestAttachmentsPresent();
+
+  /**
+   * Returns whether or not attachments are permissible to send back in the response to the client. This is based on
+   * whether or not the client specified they could handle attachments in the Accept-Type header of their request. Users
+   * of this API should first check this, and if this returns true, continue by using
+   * {@link ResourceContext#setResponseAttachments(com.linkedin.restli.common.attachments.RestLiStreamingAttachments)}.
+   *
+   * @return true if response attachments are permissible and false if they are not.
+   */
+  boolean responseAttachmentsSupported();
+
+  /**
+   * Get the {@link com.linkedin.restli.common.attachments.RestLiAttachmentReader} to walk through all possible attachments in the
+   * request. Will return a non-null value only if {@link ResourceContext#requestAttachmentsPresent()}
+   * returns true.
+   *
+   * @return the {@link com.linkedin.restli.common.attachments.RestLiAttachmentReader} to walk through all possible attachments
+   * in the request.
+   */
+  RestLiAttachmentReader getRestLiAttachmentReader();
+
+  /**
+   * Sets the {@link com.linkedin.restli.common.attachments.RestLiStreamingAttachments} to be attached and sent back in the response
+   * to the client's request. Note that this can only be used if {@link ResourceContext#responseAttachmentsSupported()}
+   * returns true. Failure to follow this will result in an  {@link java.lang.IllegalStateException}.
+   *
+   * @param responseAttachments the {@link com.linkedin.restli.common.attachments.RestLiStreamingAttachments} to send back in the response.
+   */
+  void setResponseAttachments(RestLiStreamingAttachments responseAttachments) throws IllegalStateException;
+
+  /**
+   * Get the {@link com.linkedin.restli.common.attachments.RestLiStreamingAttachments} which will be sent back in the response.
+   *
+   * @return the {@link com.linkedin.restli.common.attachments.RestLiStreamingAttachments}.
+   */
+  RestLiStreamingAttachments getResponseAttachments();
 }

@@ -16,6 +16,7 @@
 
 package com.linkedin.restli.server.filter;
 
+
 /**
  * A filter that processes incoming requests to RestLi resources.
  *
@@ -26,8 +27,9 @@ public interface RequestFilter
   /**
    * Request filter method to be invoked before the execution of the resource.
    *
-   * @param requestContext
-   *          Reference to {@link FilterRequestContext}.
+   * @param requestContext    Reference to {@link FilterRequestContext}.
+   * @param nextRequestFilter The next filter in the chain.  Concrete implementations should invoke {@link
+   *                          NextRequestFilter#onRequest to continue the filter chain.
    */
-  void onRequest(final FilterRequestContext requestContext);
+  void onRequest(final FilterRequestContext requestContext, final NextRequestFilter nextRequestFilter);
 }

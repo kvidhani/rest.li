@@ -27,6 +27,7 @@ import com.linkedin.restli.common.CollectionRequest;
 import com.linkedin.restli.common.KeyValueRecord;
 import com.linkedin.restli.common.ResourceMethod;
 import com.linkedin.restli.common.ResourceSpec;
+import com.linkedin.restli.common.attachments.RestLiStreamingAttachments;
 import com.linkedin.restli.common.TypeSpec;
 import com.linkedin.restli.common.UpdateStatus;
 import com.linkedin.restli.internal.client.BatchUpdateResponseDecoder;
@@ -57,7 +58,8 @@ public class BatchUpdateRequest<K, V extends RecordTemplate>
                      String baseUriTemplate,
                      Map<String, Object> pathKeys,
                      RestliRequestOptions requestOptions,
-                     Map<K, V> updateInputMap)
+                     Map<K, V> updateInputMap,
+                     RestLiStreamingAttachments streamingAttachments)
   {
     super(ResourceMethod.BATCH_UPDATE,
           entities,
@@ -71,7 +73,8 @@ public class BatchUpdateRequest<K, V extends RecordTemplate>
           queryParamClasses,
           baseUriTemplate,
           pathKeys,
-          requestOptions);
+          requestOptions,
+          streamingAttachments);
     _updateInputMap = Collections.unmodifiableMap(updateInputMap);
   }
 

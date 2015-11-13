@@ -193,6 +193,11 @@ public class RootBuilderWrapper<K, V extends RecordTemplate>
       return invoke(getMethod("setHeader", String.class, String.class), name, value);
     }
 
+    public MethodBuilderWrapper<K, V, R> streamingAttachments(RestLiStreamingAttachments streamingAttachments)
+    {
+      return invoke(getMethod("streamingAttachments", RestLiStreamingAttachments.class), streamingAttachments);
+    }
+
     public MethodBuilderWrapper<K, V, R> setParam(String name, Object value)
     {
       return invoke(getMethod("setParam", String.class, Object.class), name, value);

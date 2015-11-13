@@ -19,6 +19,7 @@ package com.linkedin.restli.client;
 
 import com.linkedin.data.template.RecordTemplate;
 import com.linkedin.restli.common.ResourceSpec;
+import com.linkedin.restli.common.attachments.RestLiStreamingAttachments;
 
 import java.util.Map;
 
@@ -45,6 +46,13 @@ public class UpdateRequestBuilder<K, V extends RecordTemplate> extends
   public UpdateRequestBuilder<K, V> input(V entity)
   {
     super.input(entity);
+    return this;
+  }
+
+  @Override
+  public UpdateRequestBuilder<K, V> streamingAttachments(RestLiStreamingAttachments streamingAttachments)
+  {
+    super.streamingAttachments(streamingAttachments);
     return this;
   }
 
@@ -116,6 +124,7 @@ public class UpdateRequestBuilder<K, V extends RecordTemplate> extends
                                 getBaseUriTemplate(),
                                 buildReadOnlyPathKeys(),
                                 getRequestOptions(),
-                                buildReadOnlyId());
+                                buildReadOnlyId(),
+                                getStreamingAttachments());
   }
 }

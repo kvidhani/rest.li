@@ -22,6 +22,7 @@ import com.linkedin.restli.common.BatchCreateIdResponse;
 import com.linkedin.restli.common.CollectionRequest;
 import com.linkedin.restli.common.ResourceMethod;
 import com.linkedin.restli.common.ResourceSpec;
+import com.linkedin.restli.common.attachments.RestLiStreamingAttachments;
 import com.linkedin.restli.internal.client.BatchCreateIdDecoder;
 
 import java.net.HttpCookie;
@@ -46,7 +47,8 @@ public class BatchCreateIdRequest<K,T extends RecordTemplate> extends Request<Ba
                        Map<String, Class<?>> queryParamClasses,
                        String baseUriTemplate,
                        Map<String, Object> pathKeys,
-                       RestliRequestOptions requestOptions)
+                       RestliRequestOptions requestOptions,
+                       RestLiStreamingAttachments streamingAttachments)
   {
     super(ResourceMethod.BATCH_CREATE,
           input,
@@ -59,6 +61,7 @@ public class BatchCreateIdRequest<K,T extends RecordTemplate> extends Request<Ba
           null,
           baseUriTemplate,
           pathKeys,
-          requestOptions);
+          requestOptions,
+          streamingAttachments);
   }
 }

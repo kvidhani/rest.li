@@ -24,6 +24,7 @@ package com.linkedin.restli.client;
 import com.linkedin.data.template.RecordTemplate;
 import com.linkedin.restli.common.ResourceMethod;
 import com.linkedin.restli.common.ResourceSpec;
+import com.linkedin.restli.common.attachments.RestLiStreamingAttachments;
 import com.linkedin.restli.internal.client.ActionResponseDecoder;
 
 import java.net.HttpCookie;
@@ -52,7 +53,8 @@ public class ActionRequest<T> extends Request<T>
                 String baseUriTemplate,
                 Map<String, Object> pathKeys,
                 RestliRequestOptions requestOptions,
-                Object id)
+                Object id,
+                RestLiStreamingAttachments streamingAttachments)
   {
     super(ResourceMethod.ACTION,
           input,
@@ -65,7 +67,8 @@ public class ActionRequest<T> extends Request<T>
           name,
           baseUriTemplate,
           pathKeys,
-          requestOptions);
+          requestOptions,
+          streamingAttachments);
     _id = id;
   }
 

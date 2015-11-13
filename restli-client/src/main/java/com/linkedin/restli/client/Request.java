@@ -24,6 +24,7 @@ import com.linkedin.restli.common.ResourceMethod;
 import com.linkedin.restli.common.ResourceProperties;
 import com.linkedin.restli.common.ResourceSpec;
 import com.linkedin.restli.common.RestConstants;
+import com.linkedin.restli.common.attachments.RestLiStreamingAttachments;
 import com.linkedin.restli.internal.client.RestResponseDecoder;
 import com.linkedin.restli.internal.common.ResourcePropertiesImpl;
 import com.linkedin.restli.internal.common.URIParamUtils;
@@ -48,19 +49,20 @@ public class Request<T>
 {
   private static final Pattern SLASH_PATTERN = Pattern.compile("/");
 
-  private final ResourceMethod         _method;
-  private final RecordTemplate         _inputRecord;
-  private final RestResponseDecoder<T> _decoder;
-  private final Map<String, String>    _headers;
-  private final List<HttpCookie>       _cookies;
-  private final ResourceSpec           _resourceSpec;
-  private final ResourceProperties     _resourceProperties;
-  private final Map<String, Object>    _queryParams;
-  private final Map<String, Class<?>>  _queryParamClasses; // Used for coercing query params. In case of collection or iterable, contains the type parameter class.
-  private final String                 _methodName; // needed to identify finders and actions. null for everything else
-  private final String                 _baseUriTemplate;
-  private final Map<String, Object>    _pathKeys;
-  private final RestliRequestOptions   _requestOptions;
+  private final ResourceMethod              _method;
+  private final RecordTemplate              _inputRecord;
+  private final RestResponseDecoder<T>      _decoder;
+  private final Map<String, String>         _headers;
+  private final List<HttpCookie>            _cookies;
+  private final ResourceSpec                _resourceSpec;
+  private final ResourceProperties          _resourceProperties;
+  private final Map<String, Object>         _queryParams;
+  private final Map<String, Class<?>>       _queryParamClasses; // Used for coercing query params. In case of collection or iterable, contains the type parameter class.
+  private final String                      _methodName; // needed to identify finders and actions. null for everything else
+  private final String                      _baseUriTemplate;
+  private final Map<String, Object>         _pathKeys;
+  private final RestliRequestOptions        _requestOptions;
+  private final RestLiStreamingAttachments  _streamingAttachments;
 
   Request(ResourceMethod method,
           RecordTemplate inputRecord,
@@ -73,7 +75,8 @@ public class Request<T>
           String methodName,
           String baseUriTemplate,
           Map<String, Object> pathKeys,
-          RestliRequestOptions requestOptions)
+          RestliRequestOptions requestOptions,
+          RestLiStreamingAttachments streamingAttachments)
   {
     _method = method;
     _inputRecord = inputRecord;
@@ -107,6 +110,7 @@ public class Request<T>
     }
 
     _requestOptions = (requestOptions == null) ? RestliRequestOptions.DEFAULT_OPTIONS : requestOptions;
+    _streamingAttachments = streamingAttachments;
   }
 
   /**
@@ -238,6 +242,11 @@ public class Request<T>
     return _requestOptions;
   }
 
+  public RestLiStreamingAttachments getStreamingAttachments()
+  {
+    return _streamingAttachments;
+  }
+
   /**
    * This method is to be exposed in the extending classes when appropriate
    */
@@ -340,6 +349,10 @@ public class Request<T>
     {
       return false;
     }
+    if (_streamingAttachments != null? !_streamingAttachments.equals(other._streamingAttachments) : other._streamingAttachments != null)
+    {
+      return false;
+    }
 
     return true;
   }
@@ -360,6 +373,7 @@ public class Request<T>
     hashCode = 31 * hashCode + (_queryParams != null ? _queryParams.hashCode() : 0);
     hashCode = 31 * hashCode + (_methodName != null ? _methodName.hashCode() : 0);
     hashCode = 31 * hashCode + (_requestOptions != null ? _requestOptions.hashCode() : 0);
+    hashCode = 31 * hashCode + (_streamingAttachments != null ? _streamingAttachments.hashCode() : 0);
     return hashCode;
   }
 

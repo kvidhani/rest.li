@@ -45,7 +45,9 @@ import com.linkedin.restli.examples.greetings.api.Greeting;
 import com.linkedin.restli.examples.greetings.client.GreetingsBuilders;
 import com.linkedin.restli.server.RestLiServiceException;
 import com.linkedin.restli.server.filter.FilterRequestContext;
+import com.linkedin.restli.server.filter.NextRequestFilter;
 import com.linkedin.restli.server.filter.RequestFilter;
+
 import io.netty.channel.nio.NioEventLoopGroup;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
@@ -83,7 +85,7 @@ public class TestResponseCompression extends RestLiIntegrationTest
     class TestHelperFilter implements RequestFilter
     {
       @Override
-      public void onRequest(FilterRequestContext requestContext)
+      public void onRequest(FilterRequestContext requestContext, NextRequestFilter nextRequestFilter)
       {
         Map<String, String> requestHeaders = requestContext.getRequestHeaders();
         if (requestHeaders.containsKey(EXPECTED_ACCEPT_ENCODING))
@@ -114,6 +116,7 @@ public class TestResponseCompression extends RestLiIntegrationTest
                 + ", but received " + requestHeaders.get(HttpConstants.HEADER_RESPONSE_COMPRESSION_THRESHOLD));
           }
         }
+        nextRequestFilter.onRequest(requestContext);
       }
     }
     // The default compression threshold is between tiny and huge threshold.

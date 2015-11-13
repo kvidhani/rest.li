@@ -28,6 +28,7 @@ import com.linkedin.restli.common.KeyValueRecord;
 import com.linkedin.restli.common.PatchRequest;
 import com.linkedin.restli.common.ResourceMethod;
 import com.linkedin.restli.common.ResourceSpec;
+import com.linkedin.restli.common.attachments.RestLiStreamingAttachments;
 import com.linkedin.restli.common.TypeSpec;
 import com.linkedin.restli.common.UpdateStatus;
 import com.linkedin.restli.internal.client.BatchUpdateResponseDecoder;
@@ -54,7 +55,8 @@ public class BatchPartialUpdateRequest<K, V extends RecordTemplate> extends
                             ResourceSpec resourceSpec,
                             String baseUriTemplate,
                             Map<String, Object> pathKeys,
-                            RestliRequestOptions requestOptions)
+                            RestliRequestOptions requestOptions,
+                            RestLiStreamingAttachments streamingAttachments)
   {
     super(ResourceMethod.BATCH_PARTIAL_UPDATE,
           entities,
@@ -68,6 +70,7 @@ public class BatchPartialUpdateRequest<K, V extends RecordTemplate> extends
           queryParamClasses,
           baseUriTemplate,
           pathKeys,
-          requestOptions);
+          requestOptions,
+          streamingAttachments);
   }
 }

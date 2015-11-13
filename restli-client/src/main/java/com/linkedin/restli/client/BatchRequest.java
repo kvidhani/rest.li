@@ -21,6 +21,7 @@ import com.linkedin.data.template.RecordTemplate;
 import com.linkedin.restli.common.ResourceMethod;
 import com.linkedin.restli.common.ResourceSpec;
 import com.linkedin.restli.common.RestConstants;
+import com.linkedin.restli.common.attachments.RestLiStreamingAttachments;
 import com.linkedin.restli.internal.client.RestResponseDecoder;
 
 import java.net.HttpCookie;
@@ -42,18 +43,20 @@ import java.util.Set;
 public class BatchRequest<T> extends Request<T>
 {
   BatchRequest(ResourceMethod method,
-                      RecordTemplate input,
-                      Map<String, String> headers,
-                      List<HttpCookie> cookies,
-                      RestResponseDecoder<T> decoder,
-                      ResourceSpec resourceSpec,
-                      Map<String, Object> queryParams,
-                      Map<String, Class<?>> queryParamClasses,
-                      String baseUriTemplate,
-                      Map<String, Object> pathKeys,
-                      RestliRequestOptions requestOptions)
+               RecordTemplate input,
+               Map<String, String> headers,
+               List<HttpCookie> cookies,
+               RestResponseDecoder<T> decoder,
+               ResourceSpec resourceSpec,
+               Map<String, Object> queryParams,
+               Map<String, Class<?>> queryParamClasses,
+               String baseUriTemplate,
+               Map<String, Object> pathKeys,
+               RestliRequestOptions requestOptions,
+               RestLiStreamingAttachments streamingAttachments)
   {
-    super(method, input, headers, cookies, decoder, resourceSpec, queryParams, queryParamClasses, null, baseUriTemplate, pathKeys, requestOptions);
+    super(method, input, headers, cookies, decoder, resourceSpec, queryParams, queryParamClasses, null,
+          baseUriTemplate, pathKeys, requestOptions, streamingAttachments);
   }
 
   /**

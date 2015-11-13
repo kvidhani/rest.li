@@ -25,6 +25,7 @@ import com.linkedin.restli.common.EmptyRecord;
 import com.linkedin.restli.common.PatchRequest;
 import com.linkedin.restli.common.ResourceMethod;
 import com.linkedin.restli.common.ResourceSpec;
+import com.linkedin.restli.common.attachments.RestLiStreamingAttachments;
 import com.linkedin.restli.internal.client.EmptyResponseDecoder;
 
 import java.net.HttpCookie;
@@ -51,7 +52,8 @@ public class PartialUpdateRequest<T>
                        String baseUriTemplate,
                        Map<String, Object> pathKeys,
                        RestliRequestOptions requestOptions,
-                       Object id)
+                       Object id,
+                       RestLiStreamingAttachments streamingAttachments)
   {
     super(ResourceMethod.PARTIAL_UPDATE,
           input,
@@ -64,7 +66,8 @@ public class PartialUpdateRequest<T>
           null,
           baseUriTemplate,
           pathKeys,
-          requestOptions);
+          requestOptions,
+          streamingAttachments);
     _id = id;
     validateKeyPresence(_id);
   }

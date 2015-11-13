@@ -25,6 +25,7 @@ import com.linkedin.data.template.RecordTemplate;
 import com.linkedin.restli.client.BatchCreateRequestBuilder;
 import com.linkedin.restli.client.RestliRequestOptions;
 import com.linkedin.restli.common.ResourceSpec;
+import com.linkedin.restli.common.attachments.RestLiStreamingAttachments;
 
 import java.util.List;
 
@@ -60,6 +61,13 @@ public abstract class BatchCreateRequestBuilderBase<
   public RB inputs(List<V> entities)
   {
     return (RB)super.inputs(entities);
+  }
+
+  @SuppressWarnings({"unchecked"})
+  @Override
+  public RB streamingAttachments(RestLiStreamingAttachments streamingAttachments)
+  {
+    return (RB) super.streamingAttachments(streamingAttachments);
   }
 
   @SuppressWarnings({"unchecked"})

@@ -25,6 +25,7 @@ import com.linkedin.data.template.RecordTemplate;
 import com.linkedin.restli.common.PatchRequest;
 import com.linkedin.restli.common.ResourceSpec;
 
+import com.linkedin.restli.common.attachments.RestLiStreamingAttachments;
 import java.util.Map;
 
 
@@ -56,6 +57,13 @@ public class PartialUpdateRequestBuilder<K, V extends RecordTemplate> extends
   public PartialUpdateRequestBuilder<K, V> input(PatchRequest<V> entity)
   {
     super.input(entity);
+    return this;
+  }
+
+  @Override
+  protected PartialUpdateRequestBuilder<K, V> streamingAttachments(RestLiStreamingAttachments streamingAttachments)
+  {
+    super.streamingAttachments(streamingAttachments);
     return this;
   }
 
@@ -127,6 +135,7 @@ public class PartialUpdateRequestBuilder<K, V extends RecordTemplate> extends
                                        getBaseUriTemplate(),
                                        buildReadOnlyPathKeys(),
                                        getRequestOptions(),
-                                       buildReadOnlyId());
+                                       buildReadOnlyId(),
+                                       getStreamingAttachments());
   }
 }
