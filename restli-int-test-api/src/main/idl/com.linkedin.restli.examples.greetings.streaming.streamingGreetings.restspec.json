@@ -1,0 +1,22 @@
+{
+  "name" : "streamingGreetings",
+  "namespace" : "com.linkedin.restli.examples.greetings.streaming",
+  "path" : "/streamingGreetings",
+  "schema" : "com.linkedin.restli.examples.greetings.api.Greeting",
+  "doc" : "generated from: com.linkedin.restli.examples.greetings.server.StreamingGreetings",
+  "collection" : {
+    "identifier" : {
+      "name" : "streamingGreetingsId",
+      "type" : "long"
+    },
+    "supports" : [ "create", "get" ],
+    "methods" : [ {
+      "method" : "create"
+    }, {
+      "method" : "get"
+    } ],
+    "entity" : {
+      "path" : "/streamingGreetings/{streamingGreetingsId}"
+    }
+  }
+}

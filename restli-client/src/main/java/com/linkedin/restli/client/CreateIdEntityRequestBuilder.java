@@ -20,6 +20,7 @@ import com.linkedin.data.schema.PathSpec;
 import com.linkedin.data.template.RecordTemplate;
 import com.linkedin.restli.common.ResourceSpec;
 import com.linkedin.restli.common.TypeSpec;
+import com.linkedin.restli.common.attachments.RestLiStreamingAttachments;
 import com.linkedin.restli.internal.client.IdEntityResponseDecoder;
 
 import java.util.Map;
@@ -41,6 +42,13 @@ public class CreateIdEntityRequestBuilder<K, V extends RecordTemplate> extends S
   public CreateIdEntityRequestBuilder<K, V> input(V entity)
   {
     super.input(entity);
+    return this;
+  }
+
+  @Override
+  public CreateIdEntityRequestBuilder<K, V> streamingAttachments(RestLiStreamingAttachments streamingAttachments)
+  {
+    super.streamingAttachments(streamingAttachments);
     return this;
   }
 
@@ -123,6 +131,7 @@ public class CreateIdEntityRequestBuilder<K, V extends RecordTemplate> extends S
                                            getQueryParamClasses(),
                                            getBaseUriTemplate(),
                                            buildReadOnlyPathKeys(),
-                                           getRequestOptions());
+                                           getRequestOptions(),
+                                           getStreamingAttachments());
   }
 }

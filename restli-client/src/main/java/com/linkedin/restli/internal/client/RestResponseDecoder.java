@@ -103,7 +103,7 @@ public abstract class RestResponseDecoder<T>
       {
         try
         {
-          responseCallback.onSuccess(createResponse(streamResponse.getHeaders(), streamResponse.getStatus(), result));
+          responseCallback.onSuccess(createResponse(streamResponse.getHeaders(), streamResponse.getStatus(), result, streamResponse.getCookies()));
         }
         catch (Exception exception)
         {
@@ -264,7 +264,7 @@ public abstract class RestResponseDecoder<T>
       try
       {
         _topLevelReaderCallback
-            .setResponse(createResponse(_streamResponse.getHeaders(), _streamResponse.getStatus(), _builder.build()));
+            .setResponse(createResponse(_streamResponse.getHeaders(), _streamResponse.getStatus(), _builder.build(), _streamResponse.getCookies()));
         //Note that we can't answer the callback of the client yet since we don't know if there are more parts.
       }
       catch (Exception exception)

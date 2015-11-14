@@ -127,6 +127,7 @@ public class CreateIdRequestBuilder<K, V extends RecordTemplate>
                                      getQueryParamClasses(),
                                      getBaseUriTemplate(),
                                      buildReadOnlyPathKeys(),
-                                     getRequestOptions());
+                                     getRequestOptions(),
+                                     getStreamingAttachments());
   }
 }

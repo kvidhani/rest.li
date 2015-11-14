@@ -912,7 +912,7 @@ public class RestClient
    * @param builder
    * @param protocolVersion
    */
-  private void addProtocolVersionHeader(RestRequestBuilder builder, ProtocolVersion protocolVersion)
+  private void addProtocolVersionHeader(MessageHeadersBuilder<?> builder, ProtocolVersion protocolVersion)
   {
     builder.setHeader(RestConstants.HEADER_RESTLI_PROTOCOL_VERSION, protocolVersion.toString());
   }

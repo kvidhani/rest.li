@@ -34,6 +34,7 @@ public abstract class SingleEntityRequestBuilder<K, V extends RecordTemplate, R 
   private V _input;
   private K _id;
   private Class<V> _valueClass;
+  private RestLiStreamingAttachments _streamingAttachments;
 
   public SingleEntityRequestBuilder(String baseUriTemplate,
                                     Class<V> valueClass,

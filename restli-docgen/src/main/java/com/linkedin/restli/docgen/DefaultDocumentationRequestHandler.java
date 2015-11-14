@@ -22,7 +22,7 @@ import com.linkedin.data.schema.resolver.ClassNameDataSchemaResolver;
 import com.linkedin.jersey.api.uri.UriBuilder;
 import com.linkedin.jersey.api.uri.UriComponent;
 import com.linkedin.jersey.core.util.MultivaluedMap;
-import com.linkedin.r2.message.rest.Request;
+import com.linkedin.r2.message.Request;
 import com.linkedin.r2.message.rest.RestResponse;
 import com.linkedin.r2.message.rest.RestResponseBuilder;
 import com.linkedin.restli.common.HttpMethod;

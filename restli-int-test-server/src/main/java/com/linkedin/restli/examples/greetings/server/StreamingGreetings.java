@@ -19,7 +19,7 @@ package com.linkedin.restli.examples.greetings.server;
 
 import com.linkedin.common.callback.Callback;
 import com.linkedin.data.ByteString;
-import com.linkedin.r2.message.streaming.ByteStringWriter;
+import com.linkedin.r2.message.stream.entitystream.ByteStringWriter;
 import com.linkedin.restli.common.HttpStatus;
 import com.linkedin.restli.common.attachments.RestLiAttachmentDataSource;
 import com.linkedin.restli.common.attachments.RestLiAttachmentReader;
@@ -32,7 +32,6 @@ import com.linkedin.restli.server.RestLiServiceException;
 import com.linkedin.restli.server.annotations.CallbackParam;
 import com.linkedin.restli.server.annotations.RestLiCollection;
 import com.linkedin.restli.server.resources.CollectionResourceAsyncTemplate;
-
 import java.io.ByteArrayOutputStream;
 
 
@@ -101,7 +100,7 @@ public class StreamingGreetings extends CollectionResourceAsyncTemplate<Long, Gr
     }
 
     @Override
-    public void onNewPart(RestLiAttachmentReader.SingleRestLiAttachmentReader singleRestLiAttachmentReader)
+    public void onNewAttachment(RestLiAttachmentReader.SingleRestLiAttachmentReader singleRestLiAttachmentReader)
     {
       final SingleGreetingBlobReader singleGreetingBlobReader = new SingleGreetingBlobReader(this,
                                                                                              singleRestLiAttachmentReader);

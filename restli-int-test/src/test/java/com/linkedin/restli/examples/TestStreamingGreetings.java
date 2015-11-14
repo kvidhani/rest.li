@@ -19,7 +19,7 @@ package com.linkedin.restli.examples;
 
 import com.linkedin.data.ByteString;
 import com.linkedin.r2.RemoteInvocationException;
-import com.linkedin.r2.message.streaming.ByteStringWriter;
+import com.linkedin.r2.message.stream.entitystream.ByteStringWriter;
 import com.linkedin.restli.client.CreateIdRequest;
 import com.linkedin.restli.client.CreateIdRequestBuilder;
 import com.linkedin.restli.client.ProtocolVersionOption;
@@ -39,12 +39,10 @@ import com.linkedin.restli.examples.greetings.api.Greeting;
 import com.linkedin.restli.examples.greetings.streaming.StreamingGreetingsBuilders;
 import com.linkedin.restli.server.RestLiServiceException;
 import com.linkedin.restli.test.util.RootBuilderWrapper;
-
 import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
-
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;

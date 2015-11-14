@@ -27,8 +27,8 @@ import com.linkedin.data.template.StringMap;
 import com.linkedin.parseq.Engine;
 import com.linkedin.parseq.Task;
 import com.linkedin.parseq.Tasks;
+import com.linkedin.r2.message.Request;
 import com.linkedin.r2.message.RequestContext;
-import com.linkedin.r2.message.rest.Request;
 import com.linkedin.r2.message.rest.RestRequest;
 import com.linkedin.r2.message.rest.RestRequestBuilder;
 import com.linkedin.r2.message.rest.RestResponse;
@@ -96,7 +96,7 @@ public class MultiplexedRequestHandlerImpl implements MultiplexedRequestHandler
   }
 
   @Override
-  public boolean isMultiplexedRequest(RestRequest request)
+  public boolean isMultiplexedRequest(Request request)
   {
     // we don't check the method here because we want to return 405 if it is anything but POST
     return MUX_URI_PATH.equals(request.getURI().getPath());
