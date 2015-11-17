@@ -703,7 +703,7 @@ public class TestRestClientRequestBuilder
     RestliRequestOptions requestOptions = RestliRequestOptions.DEFAULT_OPTIONS;
     if (!acceptContentTypePerClient)
     {
-      requestOptions = new RestliRequestOptions(ProtocolVersionOption.USE_LATEST_IF_AVAILABLE, null, null, contentType, acceptTypes);
+      requestOptions = new RestliRequestOptions(ProtocolVersionOption.USE_LATEST_IF_AVAILABLE, null, null, contentType, acceptTypes, false);
     }
     setCommonExpectations(mockRequest, method, mockResponseDecoder, requestOptions);
 

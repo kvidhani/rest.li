@@ -30,6 +30,7 @@ import com.linkedin.restli.common.EmptyRecord;
 import com.linkedin.restli.common.OptionsResponse;
 import com.linkedin.restli.common.PatchRequest;
 import com.linkedin.restli.common.UpdateStatus;
+import com.linkedin.restli.common.attachments.RestLiStreamingAttachments;
 import com.linkedin.restli.internal.tools.RestLiToolsUtils;
 
 import java.lang.reflect.InvocationTargetException;

@@ -118,18 +118,23 @@ public final class MultiPartMIMEWriter
       return this;
     }
 
+    //todo change java doc
     /**
      * Append a {@link com.linkedin.multipart.MultiPartMIMEReader} to be used as a data source
      * within the multipart mime envelope. All the individual parts from the {@link com.linkedin.multipart.MultiPartMIMEReader}
      * will be placed one by one into this new envelope with boundaries replaced.
      *
-     * @param multiPartMIMEReader
+     * @param multiPartMIMEPartIterator the {@link com.linkedin.multipart.MultiPartMIMEPartIterator} that will be used
+     *                                  to produce multiple parts. This will almost always be a
+     *                                  {@link com.linkedin.multipart.MultiPartMIMEReader}.
      * @return the builder to continue building.
      */
-    public Builder appendMultiPartDataSource(final MultiPartMIMEReader multiPartMIMEReader)
+    //public Builder appendMultiPartDataSource(final MultiPartMIMEReader multiPartMIMEReader)
+    public Builder appendDataSourcePartIterator(final MultiPartMIMEPartIterator multiPartMIMEPartIterator)
     {
+      //Create a
       final Writer multiPartMIMEReaderWriter =
-          new MultiPartMIMEChainReaderWriter(multiPartMIMEReader, _normalEncapsulationBoundary);
+          new MultiPartMIMEChainReaderWriter(multiPartMIMEPartIterator, _normalEncapsulationBoundary);
       _allDataSources.add(multiPartMIMEReaderWriter);
       return this;
     }
@@ -145,21 +150,6 @@ public final class MultiPartMIMEWriter
       for (final MultiPartMIMEDataSource dataSource : dataSources)
       {
         appendDataSource(dataSource);
-      }
-      return this;
-    }
-
-    /**
-     * Append multiple {@link com.linkedin.multipart.MultiPartMIMEReader}s into the multipart mime envelope.
-     *
-     * @param multiPartMIMEReaders
-     * @return the builder to continue building.
-     */
-    public Builder appendMultiPartDataSources(final List<MultiPartMIMEReader> multiPartMIMEReaders)
-    {
-      for (MultiPartMIMEReader multiPartMIMEReader : multiPartMIMEReaders)
-      {
-        appendMultiPartDataSource(multiPartMIMEReader);
       }
       return this;
     }

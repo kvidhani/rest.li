@@ -17,6 +17,7 @@
 package com.linkedin.restli.internal.server.filter;
 
 
+import com.linkedin.restli.common.attachments.RestLiStreamingAttachments;
 import com.linkedin.restli.server.RestLiResponseData;
 import com.linkedin.restli.server.filter.FilterRequestContext;
 import com.linkedin.restli.server.filter.FilterResponseContext;
@@ -53,6 +54,8 @@ public class TestRestLiResponseFilterChain
   @Mock
   private RestLiResponseFilterChainCallback _mockRestLiResponseFilterChainCallback;
   @Mock
+  private RestLiStreamingAttachments _mockRestLiStreamingAttachments;
+  @Mock
   private FilterRequestContext _mockFilterRequestContext;
   @Mock
   private FilterResponseContext _mockFilterResponseContext;
@@ -73,7 +76,8 @@ public class TestRestLiResponseFilterChain
   {
     _restLiRestLiResponseFilterChain = new RestLiResponseFilterChain(Arrays.asList(_mockFilter),
                                                                    _mockResponseFilterContextFactory,
-                                                                   _mockRestLiResponseFilterChainCallback);
+                                                                   _mockRestLiResponseFilterChainCallback,
+                                                                   _mockRestLiStreamingAttachments);
   }
 
   @AfterMethod
@@ -112,12 +116,13 @@ public class TestRestLiResponseFilterChain
     verify(_mockFilter).onResponse(_mockFilterRequestContext, _mockFilterResponseContext,
                                    _restLiRestLiResponseFilterChain);
     verify(_mockFilterResponseContext).getResponseData();
-    verify(_mockRestLiResponseFilterChainCallback).onCompletion(_restLiResponseData);
+    verify(_mockRestLiResponseFilterChainCallback).onCompletion(_restLiResponseData, _mockRestLiStreamingAttachments);
     verifyNoMoreInteractions(_mockFilter,
                              _mockFilterRequestContext,
                              _mockFilterResponseContext,
                              _mockResponseFilterContextFactory,
                              _mockRestLiResponseFilterChainCallback,
+                             _mockRestLiStreamingAttachments,
                              _restLiResponseData);
   }
 
@@ -135,13 +140,14 @@ public class TestRestLiResponseFilterChain
     verify(_mockFilter).onResponse(_mockFilterRequestContext, _mockFilterResponseContext,
                                    _restLiRestLiResponseFilterChain);
     verify(_mockFilterResponseContext).getResponseData();
-    verify(_mockRestLiResponseFilterChainCallback).onCompletion(_restLiResponseData);
+    verify(_mockRestLiResponseFilterChainCallback).onCompletion(_restLiResponseData, _mockRestLiStreamingAttachments);
     verify(_mockResponseFilterContextFactory).fromThrowable(e);
     verifyNoMoreInteractions(_mockFilter,
                              _mockFilterRequestContext,
                              _mockFilterResponseContext,
                              _mockResponseFilterContextFactory,
                              _mockRestLiResponseFilterChainCallback,
+                             _mockRestLiStreamingAttachments,
                              _restLiResponseData);
   }
 
@@ -150,18 +156,20 @@ public class TestRestLiResponseFilterChain
   {
     _restLiRestLiResponseFilterChain = new RestLiResponseFilterChain(new ArrayList<ResponseFilter>(),
                                                                    _mockResponseFilterContextFactory,
-                                                                   _mockRestLiResponseFilterChainCallback);
+                                                                   _mockRestLiResponseFilterChainCallback,
+                                                                   _mockRestLiStreamingAttachments);
     when(_mockFilterResponseContext.getResponseData()).thenReturn(_restLiResponseData);
 
     _restLiRestLiResponseFilterChain.onResponse(_mockFilterRequestContext, _mockFilterResponseContext);
 
     verify(_mockFilterResponseContext).getResponseData();
-    verify(_mockRestLiResponseFilterChainCallback).onCompletion(_restLiResponseData);
+    verify(_mockRestLiResponseFilterChainCallback).onCompletion(_restLiResponseData, _mockRestLiStreamingAttachments);
     verifyNoMoreInteractions(_mockFilter,
                              _mockFilterRequestContext,
                              _mockFilterResponseContext,
                              _mockResponseFilterContextFactory,
                              _mockRestLiResponseFilterChainCallback,
+                             _mockRestLiStreamingAttachments,
                              _restLiResponseData);
   }
 }

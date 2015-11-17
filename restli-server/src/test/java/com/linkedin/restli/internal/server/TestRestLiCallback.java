@@ -303,7 +303,7 @@ public class TestRestLiCallback
     when(_responseHandler.buildRestException(ex, partialResponse)).thenReturn(restException);
 
     // Invoke.
-    _noFilterRestLiCallback.onSuccess(result, executionReport);
+    _noFilterRestLiCallback.onSuccess(result, executionReport, null);
 
     // Verify.
     verify(_responseHandler).buildRestLiResponseData(_restRequest, _routingResult, result);
@@ -461,7 +461,7 @@ public class TestRestLiCallback
     }).when(_filter).onResponse(eq(_filterRequestContext), any(FilterResponseContext.class), any(NextResponseFilter.class));
 
     // Invoke.
-    _twoFilterRestLiCallback.onSuccess(entityFromApp, executionReport);
+    _twoFilterRestLiCallback.onSuccess(entityFromApp, executionReport, null);
 
     // Verify.
     verify(_responseHandler).buildRestLiResponseData(_restRequest, _routingResult, entityFromApp);
@@ -470,7 +470,7 @@ public class TestRestLiCallback
         exFromFilterCapture.capture(), anyMap(), anyList());
     verify(_responseHandler).buildPartialResponse(_routingResult, responseErrorData);
     verify(_responseHandler).buildResponse(_routingResult, partialFilterErrorResponse);
-    verify(_callback).onSuccess(restResponse, executionReport);
+    verify(_callback).onSuccess(restResponse, executionReport, null);
     verify(_restRequest, times(1)).getHeaders();
     verifyZeroInteractions(_routingResult);
     verifyNoMoreInteractions(_responseHandler, _callback);
@@ -544,7 +544,7 @@ public class TestRestLiCallback
     }).when(_filter).onResponse(eq(_filterRequestContext), any(FilterResponseContext.class), any(NextResponseFilter.class));
 
     // Invoke.
-    _twoFilterRestLiCallback.onSuccess(entityFromApp, executionReport);
+    _twoFilterRestLiCallback.onSuccess(entityFromApp, executionReport, null);
 
     // Verify.
     verify(_responseHandler).buildRestLiResponseData(_restRequest, _routingResult, entityFromApp);
@@ -606,7 +606,7 @@ public class TestRestLiCallback
         .onResponse(eq(_filterRequestContext), any(FilterResponseContext.class), any(NextResponseFilter.class));
 
     // Invoke.
-    _oneFilterRestLiCallback.onSuccess(entityFromApp, executionReport);
+    _oneFilterRestLiCallback.onSuccess(entityFromApp, executionReport, null);
 
     // Verify.
     verify(_responseHandler).buildRestLiResponseData(_restRequest, _routingResult, entityFromApp);
@@ -689,7 +689,7 @@ public class TestRestLiCallback
         .onResponse(eq(_filterRequestContext), any(FilterResponseContext.class), any(NextResponseFilter.class));
 
     // Invoke.
-    _twoFilterRestLiCallback.onSuccess(result, executionReport);
+    _twoFilterRestLiCallback.onSuccess(result, executionReport, null);
 
     // Verify.
     verify(_responseHandler).buildPartialResponse(_routingResult, filterResponseData);
@@ -902,7 +902,7 @@ public class TestRestLiCallback
         exCapture.capture(), anyMap(), anyList());
     verify(_responseHandler).buildPartialResponse(_routingResult, responseData);
     verify(_responseHandler).buildResponse(_routingResult, partialResponse);
-    verify(_callback).onSuccess(restResponse, executionReport);
+    verify(_callback).onSuccess(restResponse, executionReport, null);
     verify(_restRequest, times(1)).getHeaders();
     verifyZeroInteractions(_routingResult);
     verifyNoMoreInteractions(_restRequest, _responseHandler, _callback);
@@ -1178,7 +1178,7 @@ public class TestRestLiCallback
         wrappedExCapture.capture(), anyMap(), anyList());
     verify(_responseHandler).buildPartialResponse(_routingResult, responseFilterData);
     verify(_responseHandler).buildResponse(_routingResult, partialResponse);
-    verify(_callback).onSuccess(restResponse, executionReport);
+    verify(_callback).onSuccess(restResponse, executionReport, null);
     verify(_restRequest, times(2)).getHeaders();
     verifyZeroInteractions(_routingResult);
     verifyNoMoreInteractions(_restRequest, _responseHandler, _callback);

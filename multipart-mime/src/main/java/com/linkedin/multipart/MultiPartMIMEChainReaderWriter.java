@@ -23,21 +23,21 @@ import com.linkedin.r2.message.stream.entitystream.Writer;
 
 /**
  * The writer to consume the {@link com.linkedin.multipart.MultiPartMIMEReader} when
- * chaining the entire reader itself as a data source.
+ * chaining the entire reader itself as a non-nested data source. This will read each part from the
+ * {@link com.linkedin.multipart.MultiPartMIMEReader} and append that part serially when invoked by R2.
  *
  * @author Karim Vidhani
  */
 class MultiPartMIMEChainReaderWriter implements Writer
 {
-  private final MultiPartMIMEReader _multiPartMIMEReader;
+  private final MultiPartMIMEPartIterator _multiPartMIMEPartIterator;
   private final byte[] _normalEncapsulationBoundary;
   private WriteHandle _writeHandle;
   private MultiPartMIMEChainReaderCallback _multiPartMIMEChainReaderCallback = null;
 
-  MultiPartMIMEChainReaderWriter(final MultiPartMIMEReader multiPartMIMEReader,
-      final byte[] normalEncapsulationBoundary)
+  MultiPartMIMEChainReaderWriter(final MultiPartMIMEPartIterator multiPartMIMEPartIterator, final byte[] normalEncapsulationBoundary)
   {
-    _multiPartMIMEReader = multiPartMIMEReader;
+    _multiPartMIMEPartIterator = multiPartMIMEPartIterator;
     _normalEncapsulationBoundary = normalEncapsulationBoundary;
   }
 
@@ -47,6 +47,7 @@ class MultiPartMIMEChainReaderWriter implements Writer
     _writeHandle = wh;
   }
 
+  //todo resume here
   @Override
   public void onWritePossible()
   {
@@ -73,16 +74,18 @@ class MultiPartMIMEChainReaderWriter implements Writer
   @Override
   public void onAbort(Throwable e)
   {
-    //This will be invoked if R2 tells the composite writer to abort which will then tell this Writer to abort.
-    //In this case there is no way to notify the application developer that the MultiPartMIMEReader
-    //they provided as a data source has seen a problem.
-    //Therefore we will treat this scenario as if an exception occurred while reading.
+    //If this happens, this means that there was a call on
+    //{@link com.linkedin.r2.message.stream.entitystream.CompositeWriter.onAbort} which caused it to walk through
+    //each of its writers and call onAbort() on each one of them. This class happened to be one of those writers.
+    //
+    //In terms of the original call made to the CompositeWriter to abort, this could arise due to the following:
+    //1. This can be invoked by R2 if it tells the composite writer to abort.
+    //2. This can also be invoked if there is a functional need to abort all data sources.
 
-    //We need to have behavior similar to handleExceptions() so that everything is cancelled
-    //If there were potentially multiple chains across different servers, then all the readers
-    //in the chain need to be shut down.
-    //This is in contrast to the case where if one SinglePartReader was sent down as a data source. In that
-    //case we notify the custom client MultiPartMIMEReaderCallback and they can recover.
-    _multiPartMIMEReader.getR2MultiPartMIMEReader().handleExceptions(e);
+    //Regardless of how it was called we need to completely drain and drop all bytes to the ground. We can't
+    //leave these bytes in the MultiPartMIMEReader untouched.
+    //In this situation we need to abort and drain all the bytes.
+
+    _multiPartMIMEPartIterator.abandonAllParts();
   }
 }

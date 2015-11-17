@@ -20,7 +20,6 @@ package com.linkedin.multipart;
 import com.linkedin.data.ByteString;
 import com.linkedin.multipart.exceptions.MultiPartIllegalFormatException;
 import com.linkedin.multipart.exceptions.MultiPartReaderFinishedException;
-import com.linkedin.multipart.exceptions.MultiPartReaderNotInitializedException;
 import com.linkedin.multipart.exceptions.SinglePartBindException;
 import com.linkedin.multipart.exceptions.SinglePartFinishedException;
 import com.linkedin.multipart.exceptions.SinglePartNotInitializedException;
@@ -32,7 +31,6 @@ import com.linkedin.r2.message.stream.entitystream.ReadHandle;
 import com.linkedin.r2.message.stream.entitystream.Reader;
 import com.linkedin.r2.message.stream.entitystream.WriteHandle;
 import com.linkedin.r2.util.LinkedDeque;
-
 import java.nio.charset.Charset;
 import java.util.Collections;
 import java.util.List;
@@ -66,7 +64,7 @@ import java.util.concurrent.Callable;
  *
  * @author Karim Vidhani
  */
-public final class MultiPartMIMEReader
+public final class MultiPartMIMEReader implements MultiPartMIMEPartIterator
 {
   private final R2MultiPartMIMEReader _reader;
   private final EntityStream _entityStream;
@@ -1154,44 +1152,41 @@ public final class MultiPartMIMEReader
    *
    * @return true if the reader is completely finished.
    */
+  @Override
   public boolean haveAllPartsFinished()
   {
     return _multiPartReaderState == MultiPartReaderState.FINISHED;
   }
 
   /**
-   * Reads through and abandons the current new part and additionally the whole stream. This API can ONLY be used after
-   * registration using a {@link com.linkedin.multipart.MultiPartMIMEReaderCallback}
+   * Reads through and abandons the current new part (if applicable) and additionally the whole stream.
+   *
+   * This API can be used in only the following scenarios:
+   *
+   * 1. Without a registration using a {@link com.linkedin.multipart.MultiPartMIMEReaderCallback}. Abandonment will begin
+   * and since no callback is registered, there will be no notification when it is completed.
+   *
+   * 2. After registration using a {@link com.linkedin.multipart.MultiPartMIMEReaderCallback}
    * and after an invocation on {@link MultiPartMIMEReaderCallback#onNewPart(com.linkedin.multipart.MultiPartMIMEReader.SinglePartMIMEReader)}.
+   * Abandonment will begin and when it is complete, a call will be made to {@link MultiPartMIMEReaderCallback#onAbandoned()}.
    *
    * If this is called after registration and before an invocation on
    * {@link MultiPartMIMEReaderCallback#onNewPart(com.linkedin.multipart.MultiPartMIMEReader.SinglePartMIMEReader)},
    * then a {@link com.linkedin.multipart.exceptions.StreamBusyException} will be thrown.
    *
-   * The goal is for clients to at least see the first part before deciding to abandon all parts.
-   *
-   * As described, a valid {@link com.linkedin.multipart.MultiPartMIMEReaderCallback} is required to use this API.
-   * Failure to do so will result in a {@link com.linkedin.multipart.exceptions.MultiPartReaderNotInitializedException}.
-   *
-   * This can ONLY be called if there is no part being actively read, meaning that
+   * If this used after registration, then this can ONLY be called if there is no part being actively read, meaning that
    * the current {@link com.linkedin.multipart.MultiPartMIMEReader.SinglePartMIMEReader} has not been initialized
    * with a {@link com.linkedin.multipart.SinglePartMIMEReaderCallback}. If this is violated a
    * {@link com.linkedin.multipart.exceptions.StreamBusyException} will be thrown.
-   *
-   * Once the stream is finished being abandoned, a call will be made to {@link MultiPartMIMEReaderCallback#onAbandoned()}.
    *
    * If the stream is finished, subsequent calls will throw {@link com.linkedin.multipart.exceptions.MultiPartReaderFinishedException}.
    *
    * Since this is async and request queueing is not allowed, repetitive calls will result in
    * {@link com.linkedin.multipart.exceptions.StreamBusyException}.
    */
+  @Override
   public void abandonAllParts()
   {
-    if (_multiPartReaderState == MultiPartReaderState.CREATED)
-    {
-      throw new MultiPartReaderNotInitializedException("No callback registered with the reader. Unable to proceed.");
-    }
-
     //We are already done or almost done.
     if (_multiPartReaderState == MultiPartReaderState.FINISHED
         || _multiPartReaderState == MultiPartReaderState.READING_EPILOGUE)
@@ -1210,27 +1205,37 @@ public final class MultiPartMIMEReader
       throw new StreamBusyException("Reader already busy abandoning.");
     }
 
-    //At this point we know we are in READING_PARTS which is the desired state.
-
-    //We require that there exist a valid, non-null SinglePartMIMEReader before we continue since the contract is that
-    //the top level callback can only abandon upon witnessing onNewPart().
-
-    //Note that there is a small window of opportunity where a client registers the callback and invokes
-    //abandonAllParts() after the reader has read the preamble in but before the reader has invoked onNewPart().
-    //This can happen, but so can a client invoking us concurrently which is forbidden. Therefore we will not check
-    //for such a race.
-
-    //At this stage we know for a fact that onNewPart() has been invoked on the reader callback. Just make sure its
-    //at the beginning of a new part before we continue allowing the abandonment.
-    if (_currentSinglePartMIMEReader._singleReaderState != SingleReaderState.CREATED)
+    //At this point we know we are in CREATED or READING_PARTS which is the desired state.
+    if (_multiPartReaderState == MultiPartReaderState.CREATED)
     {
-      throw new StreamBusyException("Unable to abandon all parts due to current SinglePartMIMEReader in use.");
+      //No callback registered. Simply call cancel on the read handle and we are done.
+      _reader._rh.cancel();
+      _multiPartReaderState = MultiPartReaderState.FINISHED;
+      return;
     }
+    else
+    {
+      //We are in READING_PARTS. At this point we require that there exist a valid, non-null SinglePartMIMEReader before
+      //we continue since the contract is that the top level callback can only abandon upon witnessing onNewPart().
 
-    _currentSinglePartMIMEReader._singleReaderState = SingleReaderState.FINISHED;
-    _multiPartReaderState = MultiPartReaderState.ABANDONING;
+      //Note that there is a small window of opportunity where a client registers the callback and invokes
+      //abandonAllParts() after the reader has read the preamble in but before the reader has invoked onNewPart().
+      //At this point, _currentSinglePartMIMEReader may potentially be null.
+      //This can happen, but so can a client invoking us concurrently which is forbidden. Therefore we will not check
+      //for such a race.
 
-    _reader.processEventAndInvokeClient();
+      //As stated earlier, we know for a fact that onNewPart() has been invoked on the reader callback. Just make sure its
+      //at the beginning of a new part before we continue allowing the abandonment.
+      if (_currentSinglePartMIMEReader._singleReaderState != SingleReaderState.CREATED)
+      {
+        throw new StreamBusyException("Unable to abandon all parts due to current SinglePartMIMEReader in use.");
+      }
+
+      _currentSinglePartMIMEReader._singleReaderState = SingleReaderState.FINISHED;
+      _multiPartReaderState = MultiPartReaderState.ABANDONING;
+
+      _reader.processEventAndInvokeClient();
+    }
   }
 
   /**
@@ -1241,11 +1246,14 @@ public final class MultiPartMIMEReader
    * This can even be set if no parts in the stream have actually been consumed, i.e after the very first invocation of
    * {@link MultiPartMIMEReaderCallback#onNewPart(com.linkedin.multipart.MultiPartMIMEReader.SinglePartMIMEReader)}.
    *
+   * If this MultiPartMIMEReader is finished, then attempts to register a callback will throw
+   * {@link com.linkedin.multipart.exceptions.MultiPartReaderFinishedException}.
+   *
    * @param clientCallback the {@link com.linkedin.multipart.MultiPartMIMEReaderCallback} which will be invoked upon
    *                       to read this multipart mime body.
    */
+  @Override
   public void registerReaderCallback(final MultiPartMIMEReaderCallback clientCallback)
-      throws MultiPartReaderFinishedException, StreamBusyException
   {
     //First we throw exceptions for all _reader states where it is incorrect to transfer callbacks.
     //We have to handle all the individual incorrect states one by one so that we can that we can throw

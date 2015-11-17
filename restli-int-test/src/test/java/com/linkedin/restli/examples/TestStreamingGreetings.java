@@ -39,10 +39,12 @@ import com.linkedin.restli.examples.greetings.api.Greeting;
 import com.linkedin.restli.examples.greetings.streaming.StreamingGreetingsBuilders;
 import com.linkedin.restli.server.RestLiServiceException;
 import com.linkedin.restli.test.util.RootBuilderWrapper;
+
 import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
+
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
@@ -204,7 +206,7 @@ public class TestStreamingGreetings extends RestLiIntegrationTest
     }
 
     @Override
-    public void onNewPart(RestLiAttachmentReader.SingleRestLiAttachmentReader singleRestLiAttachmentReader)
+    public void onNewAttachment(RestLiAttachmentReader.SingleRestLiAttachmentReader singleRestLiAttachmentReader)
     {
       final SingleGreetingBlobReader singleGreetingBlobReader = new SingleGreetingBlobReader(this,
                                                                                              singleRestLiAttachmentReader);

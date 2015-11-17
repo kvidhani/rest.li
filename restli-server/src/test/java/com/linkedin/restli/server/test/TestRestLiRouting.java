@@ -2919,7 +2919,7 @@ public class TestRestLiRouting
       throws URISyntaxException
   {
     RestRequest request = createRequest(uri, httpMethod, version);
-    RoutingResult result = _router.process(request, new RequestContext());
+    RoutingResult result = _router.process(request, new RequestContext(), null);
     Set<?> batchKeys = result.getContext().getPathKeys().getBatchIds();
     assertEquals(batchKeys, expectedBatchKeys);
   }

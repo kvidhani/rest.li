@@ -26,12 +26,10 @@ import com.linkedin.r2.message.stream.StreamRequest;
 import com.linkedin.r2.message.stream.StreamResponse;
 import com.linkedin.r2.transport.common.RestRequestHandler;
 import com.linkedin.r2.transport.common.StreamRequestHandler;
-import com.linkedin.r2.transport.common.StreamRequestHandlerAdapter;
 import com.linkedin.r2.transport.common.bridge.common.TransportCallback;
 import com.linkedin.r2.transport.common.bridge.common.TransportResponseImpl;
 import com.linkedin.r2.transport.common.bridge.server.TransportCallbackAdapter;
 import com.linkedin.r2.transport.common.bridge.server.TransportDispatcher;
-
 import java.util.Map;
 
 /**
@@ -44,10 +42,17 @@ public class DelegatingTransportDispatcher implements TransportDispatcher
   private final StreamRequestHandler _streamHandler;
   private final RestRequestHandler _restHandler;
 
-  public DelegatingTransportDispatcher(final RestRequestHandler handler)
+  //HUGE TODO - change this
+  //public DelegatingTransportDispatcher(final RestRequestHandler handler)
+  //{
+  //  _streamHandler = new StreamRequestHandlerAdapter(handler);
+  //  _restHandler = handler;
+  // }
+
+  public DelegatingTransportDispatcher(final StreamRequestHandler handler)
   {
-    _streamHandler = new StreamRequestHandlerAdapter(handler);
-    _restHandler = handler;
+    _streamHandler = handler;
+    _restHandler = null;
   }
 
   @Override
