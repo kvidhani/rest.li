@@ -25,11 +25,11 @@ import java.util.Map;
 
 
 /**
- * A wrapper to enforce creating a proper multipart mime {@link com.linkedin.r2.message.rest.StreamResponse}
+ * A wrapper to enforce creating a proper multipart mime {@link com.linkedin.r2.message.stream.StreamResponse}
  *
  * @author Karim Vidhani
  */
-public final class MultiPartMIMEStreamResponseBuilder
+public final class MultiPartMIMEStreamResponseFactory
 {
   /**
    * Create a {@link com.linkedin.r2.message.stream.StreamResponse} using the specified parameters. This API should be used
@@ -58,7 +58,7 @@ public final class MultiPartMIMEStreamResponseBuilder
    * @return the newly created {@link com.linkedin.r2.message.stream.StreamResponse}.
    */
   public static StreamResponse generateMultiPartMIMEStreamResponse(final String mimeSubType, final MultiPartMIMEWriter writer,
-      final Map<String, String> contentTypeParameters)
+                                                                   final Map<String, String> contentTypeParameters)
   {
     return generateMultiPartMIMEStreamResponse(mimeSubType, writer, contentTypeParameters, new StreamResponseBuilder());
   }
@@ -78,7 +78,8 @@ public final class MultiPartMIMEStreamResponseBuilder
    * @return the newly created {@link com.linkedin.r2.message.stream.StreamResponse}.
    */
   public static StreamResponse generateMultiPartMIMEStreamResponse(final String mimeSubType, final MultiPartMIMEWriter writer,
-      final Map<String, String> contentTypeParameters, final StreamResponseBuilder streamResponseBuilder)
+                                                                   final Map<String, String> contentTypeParameters,
+                                                                   final StreamResponseBuilder streamResponseBuilder)
   {
     final String contentTypeHeader =
         MultiPartMIMEUtils.buildMIMEContentTypeHeader(mimeSubType.trim(), writer.getBoundary(), contentTypeParameters);
@@ -86,7 +87,7 @@ public final class MultiPartMIMEStreamResponseBuilder
     return streamResponseBuilder.build(writer.getEntityStream());
   }
 
-  private MultiPartMIMEStreamResponseBuilder()
+  private MultiPartMIMEStreamResponseFactory()
   {
   }
 }

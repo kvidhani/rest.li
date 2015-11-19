@@ -118,21 +118,20 @@ public final class MultiPartMIMEWriter
       return this;
     }
 
-    //todo change java doc
     /**
-     * Append a {@link com.linkedin.multipart.MultiPartMIMEReader} to be used as a data source
-     * within the multipart mime envelope. All the individual parts from the {@link com.linkedin.multipart.MultiPartMIMEReader}
+     * Append a {@link com.linkedin.multipart.MultiPartMIMEPartIterator} to be used as a non-nested data source
+     * within the multipart mime envelope. This will almost always be a {@link com.linkedin.multipart.MultiPartMIMEReader}.
+     *
+     * All the individual parts read using the {@link com.linkedin.multipart.MultiPartMIMEPartIterator}
      * will be placed one by one into this new envelope with boundaries replaced.
      *
      * @param multiPartMIMEPartIterator the {@link com.linkedin.multipart.MultiPartMIMEPartIterator} that will be used
-     *                                  to produce multiple parts. This will almost always be a
+     *                                  to produce multiple parts to append. This will almost always be a
      *                                  {@link com.linkedin.multipart.MultiPartMIMEReader}.
      * @return the builder to continue building.
      */
-    //public Builder appendMultiPartDataSource(final MultiPartMIMEReader multiPartMIMEReader)
     public Builder appendDataSourcePartIterator(final MultiPartMIMEPartIterator multiPartMIMEPartIterator)
     {
-      //Create a
       final Writer multiPartMIMEReaderWriter =
           new MultiPartMIMEChainReaderWriter(multiPartMIMEPartIterator, _normalEncapsulationBoundary);
       _allDataSources.add(multiPartMIMEReaderWriter);
@@ -195,6 +194,50 @@ public final class MultiPartMIMEWriter
     _entityStream = EntityStreams.newEntityStream(_writer);
   }
 
+  /**
+   * Abandons all data sources contained with this {@link com.linkedin.multipart.MultiPartMIMEWriter}. This is useful
+   * to invoke when many data sources have been collected and this {@link com.linkedin.multipart.MultiPartMIMEWriter} has
+   * been created, but an exception (or any other event) is observed and {@link com.linkedin.r2.message.stream.StreamRequest}
+   * or a {@link com.linkedin.r2.message.stream.StreamResponse} will no longer be sent. In such a case it is prudent to
+   * clean up all data sources.
+   *
+   * The abandon behavior can be different for each data source passed in.
+   *
+   * 1. If the data source passed in is a custom {@link com.linkedin.multipart.MultiPartMIMEDataSource}, then it will be
+   * invoked on {@link com.linkedin.r2.message.stream.entitystream.Writer#onAbort(java.lang.Throwable)}. At this point
+   * the custom data source can perform any cleanup necessary. Note that the custom {@link com.linkedin.multipart.MultiPartMIMEDataSource}
+   * will be able to see the Throwable that is passed into this method.
+   *
+   * 2. If the data source passed in is a {@link com.linkedin.multipart.MultiPartMIMEReader.SinglePartMIMEReader}, then
+   * all the bytes from the single part represented by this SinglePartMIMEReader will be read and dropped. Therefore the
+   * part will be abandoned. See {@link com.linkedin.multipart.MultiPartMIMEReader.SinglePartMIMEReader#abandonPart()}.
+   * In this case the Throwable that is passed into this method will not be used.
+   *
+   * 3. If the data source passed in is a {@link com.linkedin.multipart.MultiPartMIMEPartIterator}, then all parts
+   * represented by this MultiPartMIMEPartIterator will be read and abandoned. See {@link MultiPartMIMEPartIterator#abandonAllParts()}.
+   * In this case the Throwable that is passed into this method will not be used.
+   *
+   * @param throwable the Throwable that caused the abandonment to happen.
+   */
+  public void abandonDataSources(final Throwable throwable)
+  {
+    //Note that we can't simply do _writer.onAbort(throwable) since reading from this CompositeWriter may not have begun yet.
+    for (Writer writer : _allDataSources)
+    {
+      writer.onAbort(throwable);
+    }
+  }
+
+  /**
+   * This should never be used by external consumers.
+   *
+   * Returns the underlying {@link com.linkedin.r2.message.stream.entitystream.EntityStream} that will be used
+   * for the {@link com.linkedin.r2.message.stream.StreamRequest} or {@link com.linkedin.r2.message.stream.StreamResponse}.
+   *
+   * @return the {@link com.linkedin.r2.message.stream.entitystream.EntityStream} representing a Writer responsible
+   *         for writing the payload of a {@link com.linkedin.r2.message.stream.StreamRequest} or
+   *         {@link com.linkedin.r2.message.stream.StreamResponse}.
+   */
   public EntityStream getEntityStream()
   {
     return _entityStream;

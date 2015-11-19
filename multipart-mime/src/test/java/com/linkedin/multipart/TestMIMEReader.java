@@ -319,8 +319,7 @@ public class TestMIMEReader extends AbstractMIMEUnitTest
 
   //This test will verify, that once we are successfully finished, that if R2 gives us onError() we don't let the client know.
   @Test(dataProvider = "allTypesOfBodiesDataSource")
-  public void alreadyFinishedPreventErrorClient(final int chunkSize, final List<MimeBodyPart> bodyPartList)
-      throws Exception
+  public void alreadyFinishedPreventErrorClient(final int chunkSize, final List<MimeBodyPart> bodyPartList) throws Exception
   {
     testAllTypesOfBodiesDataSource(chunkSize, bodyPartList);
 
@@ -352,8 +351,7 @@ public class TestMIMEReader extends AbstractMIMEUnitTest
     {
     }
 
-    List<SinglePartMIMEReaderCallbackImpl> singlePartMIMEReaderCallbacks =
-        _testMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks;
+    List<SinglePartMIMEReaderCallbackImpl> singlePartMIMEReaderCallbacks = _testMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks;
     Assert.assertEquals(singlePartMIMEReaderCallbacks.size(), mimeMultipart.getCount());
     for (int i = 0; i < singlePartMIMEReaderCallbacks.size(); i++)
     {
@@ -409,7 +407,7 @@ public class TestMIMEReader extends AbstractMIMEUnitTest
     ByteString _finishedData = null;
 
     SinglePartMIMEReaderCallbackImpl(final MultiPartMIMEReaderCallback topLevelCallback,
-        final MultiPartMIMEReader.SinglePartMIMEReader singlePartMIMEReader)
+                                     final MultiPartMIMEReader.SinglePartMIMEReader singlePartMIMEReader)
     {
       _topLevelCallback = topLevelCallback;
       _singlePartMIMEReader = singlePartMIMEReader;
@@ -464,14 +462,12 @@ public class TestMIMEReader extends AbstractMIMEUnitTest
   private static class MultiPartMIMEReaderCallbackImpl implements MultiPartMIMEReaderCallback
   {
     final CountDownLatch _latch;
-    final List<SinglePartMIMEReaderCallbackImpl> _singlePartMIMEReaderCallbacks =
-        new ArrayList<SinglePartMIMEReaderCallbackImpl>();
+    final List<SinglePartMIMEReaderCallbackImpl> _singlePartMIMEReaderCallbacks = new ArrayList<SinglePartMIMEReaderCallbackImpl>();
 
     @Override
     public void onNewPart(MultiPartMIMEReader.SinglePartMIMEReader singleParMIMEReader)
     {
-      SinglePartMIMEReaderCallbackImpl singlePartMIMEReaderCallback =
-          new SinglePartMIMEReaderCallbackImpl(this, singleParMIMEReader);
+      SinglePartMIMEReaderCallbackImpl singlePartMIMEReaderCallback = new SinglePartMIMEReaderCallbackImpl(this, singleParMIMEReader);
       singleParMIMEReader.registerReaderCallback(singlePartMIMEReaderCallback);
       _singlePartMIMEReaderCallbacks.add(singlePartMIMEReaderCallback);
       singleParMIMEReader.requestPartData();

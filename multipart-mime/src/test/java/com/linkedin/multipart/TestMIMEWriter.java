@@ -36,6 +36,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+
 import javax.activation.DataSource;
 import javax.mail.BodyPart;
 import javax.mail.Header;
@@ -50,7 +51,7 @@ import org.testng.annotations.Test;
 
 /**
  * Using Javax.mail on the server side to verify the integrity of our RFC implementation of the
- * {@link com.linkedin.multipart.MultiPartMIMEWriter}. There is no way to use mockito to mock EntitStreams.newEntityStream()
+ * {@link com.linkedin.multipart.MultiPartMIMEWriter}. There is no way to use mockito to mock EntityStreams.newEntityStream()
  * Therefore we have no choice but to use R2's functionality here.
  *
  * @author Karim Vidhani
@@ -113,24 +114,24 @@ public class TestMIMEWriter extends AbstractMIMEUnitTest
 
     final MultiPartMIMEInputStream singleDataSource =
         new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(body.copyBytes()), _scheduledExecutorService,
-            headers).build();
+                                             headers).build();
 
     final MultiPartMIMEWriter multiPartMIMEWriter =
         new MultiPartMIMEWriter.Builder("preamble", "epilogue").appendDataSource(singleDataSource).build();
 
-    //final AtomicReference
     final FutureCallback<ByteString> futureCallback = new FutureCallback<ByteString>();
     final FullEntityReader fullEntityReader = new FullEntityReader(futureCallback);
     multiPartMIMEWriter.getEntityStream().setReader(fullEntityReader);
     futureCallback.get(TEST_TIMEOUT, TimeUnit.MILLISECONDS);
 
     final StreamRequest multiPartMIMEStreamRequest =
-        MultiPartMIMEStreamRequestBuilder.generateMultiPartMIMEStreamRequest(URI.create("localhost"), "mixed", multiPartMIMEWriter,
-            Collections.<String, String>emptyMap());
+        MultiPartMIMEStreamRequestFactory
+            .generateMultiPartMIMEStreamRequest(URI.create("localhost"), "mixed", multiPartMIMEWriter,
+                                                Collections.<String, String>emptyMap());
 
     JavaxMailMultiPartMIMEReader javaxMailMultiPartMIMEReader =
         new JavaxMailMultiPartMIMEReader(multiPartMIMEStreamRequest.getHeader(MultiPartMIMEUtils.CONTENT_TYPE_HEADER),
-            futureCallback.get());
+                                         futureCallback.get());
     javaxMailMultiPartMIMEReader.parseRequestIntoParts();
 
     List<MIMEDataPart> dataSourceList = javaxMailMultiPartMIMEReader._dataSourceList;
@@ -159,42 +160,42 @@ public class TestMIMEWriter extends AbstractMIMEUnitTest
     expectedParts.add(_bodyLessBody);
 
     final List<MultiPartMIMEDataSource> inputStreamDataSources = new ArrayList<MultiPartMIMEDataSource>();
-    inputStreamDataSources.add(
-        new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_normalBodyData), _scheduledExecutorService,
-            _normalBodyHeaders).build());
-    inputStreamDataSources.add(
-        new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_normalBodyData), _scheduledExecutorService,
-            _normalBodyHeaders).build());
-    inputStreamDataSources.add(
-        new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_headerLessBodyData), _scheduledExecutorService,
-            Collections.<String, String>emptyMap()).build());
-    inputStreamDataSources.add(
-        new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_normalBodyData), _scheduledExecutorService,
-            _normalBodyHeaders).build());
-    inputStreamDataSources.add(
-        new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(new byte[0]), _scheduledExecutorService,
-            _bodyLessHeaders).build());
-    inputStreamDataSources.add(
-        new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(new byte[0]), _scheduledExecutorService,
-            Collections.<String, String>emptyMap()).build());
-    inputStreamDataSources.add(
-        new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(new byte[0]), _scheduledExecutorService,
-            Collections.<String, String>emptyMap()).build());
-    inputStreamDataSources.add(
-        new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_headerLessBodyData), _scheduledExecutorService,
-            Collections.<String, String>emptyMap()).build());
-    inputStreamDataSources.add(
-        new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_headerLessBodyData), _scheduledExecutorService,
-            Collections.<String, String>emptyMap()).build());
-    inputStreamDataSources.add(
-        new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_headerLessBodyData), _scheduledExecutorService,
-            Collections.<String, String>emptyMap()).build());
-    inputStreamDataSources.add(
-        new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_normalBodyData), _scheduledExecutorService,
-            _normalBodyHeaders).build());
-    inputStreamDataSources.add(
-        new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(new byte[0]), _scheduledExecutorService,
-            _bodyLessHeaders).build());
+    inputStreamDataSources.add(new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_normalBodyData),
+                                                                    _scheduledExecutorService,
+                                                                    _normalBodyHeaders).build());
+    inputStreamDataSources.add(new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_normalBodyData),
+                                                                    _scheduledExecutorService,
+                                                                    _normalBodyHeaders).build());
+    inputStreamDataSources.add(new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_headerLessBodyData),
+                                                                    _scheduledExecutorService,
+                                                                    Collections.<String, String>emptyMap()).build());
+    inputStreamDataSources.add(new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_normalBodyData),
+                                                                    _scheduledExecutorService,
+                                                                    _normalBodyHeaders).build());
+    inputStreamDataSources.add(new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(new byte[0]),
+                                                                    _scheduledExecutorService,
+                                                                    _bodyLessHeaders).build());
+    inputStreamDataSources.add(new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(new byte[0]),
+                                                                    _scheduledExecutorService,
+                                                                    Collections.<String, String>emptyMap()).build());
+    inputStreamDataSources.add(new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(new byte[0]),
+                                                                    _scheduledExecutorService,
+                                                                    Collections.<String, String>emptyMap()).build());
+    inputStreamDataSources.add(new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_headerLessBodyData),
+                                                                    _scheduledExecutorService,
+                                                                    Collections.<String, String>emptyMap()).build());
+    inputStreamDataSources.add(new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_headerLessBodyData),
+                                                                    _scheduledExecutorService,
+                                                                    Collections.<String, String>emptyMap()).build());
+    inputStreamDataSources.add(new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_headerLessBodyData),
+                                                                    _scheduledExecutorService,
+                                                                    Collections.<String, String>emptyMap()).build());
+    inputStreamDataSources.add(new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_normalBodyData),
+                                                                    _scheduledExecutorService,
+                                                                    _normalBodyHeaders).build());
+    inputStreamDataSources.add(new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(new byte[0]),
+                                                                    _scheduledExecutorService,
+                                                                    _bodyLessHeaders).build());
 
     final MultiPartMIMEWriter multiPartMIMEWriter =
         new MultiPartMIMEWriter.Builder("preamble", "epilogue").appendDataSources(inputStreamDataSources).build();
@@ -205,12 +206,13 @@ public class TestMIMEWriter extends AbstractMIMEUnitTest
     futureCallback.get(TEST_TIMEOUT, TimeUnit.MILLISECONDS);
 
     final StreamRequest multiPartMIMEStreamRequest =
-        MultiPartMIMEStreamRequestBuilder.generateMultiPartMIMEStreamRequest(URI.create("localhost"), "mixed", multiPartMIMEWriter,
-            Collections.<String, String>emptyMap());
+        MultiPartMIMEStreamRequestFactory
+            .generateMultiPartMIMEStreamRequest(URI.create("localhost"), "mixed", multiPartMIMEWriter,
+                                                Collections.<String, String>emptyMap());
 
     JavaxMailMultiPartMIMEReader javaxMailMultiPartMIMEReader =
         new JavaxMailMultiPartMIMEReader(multiPartMIMEStreamRequest.getHeader(MultiPartMIMEUtils.CONTENT_TYPE_HEADER),
-            futureCallback.get());
+                                         futureCallback.get());
     javaxMailMultiPartMIMEReader.parseRequestIntoParts();
 
     List<MIMEDataPart> dataSourceList = javaxMailMultiPartMIMEReader._dataSourceList;

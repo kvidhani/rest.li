@@ -51,8 +51,7 @@ public class TestMIMEChainingSinglePart extends AbstractMIMEUnitTest
   @Test(dataProvider = "chunkSizes")
   public void testSinglePartDataSource(final int chunkSize) throws Exception
   {
-    final List<MultiPartMIMEDataSource> dataSources =
-        generateInputStreamDataSources(chunkSize, _scheduledExecutorService);
+    final List<MultiPartMIMEDataSource> dataSources = generateInputStreamDataSources(chunkSize, _scheduledExecutorService);
 
     final MultiPartMIMEWriter writer = new MultiPartMIMEWriter.Builder().appendDataSources(dataSources).build();
 
@@ -70,8 +69,7 @@ public class TestMIMEChainingSinglePart extends AbstractMIMEUnitTest
     //Server side start
     MultiPartMIMEReader reader = MultiPartMIMEReader.createAndAcquireStream(streamRequest);
     final CountDownLatch latch = new CountDownLatch(1);
-    ServerMultiPartMIMEReaderSinglePartSender _serverSender =
-        new ServerMultiPartMIMEReaderSinglePartSender(latch, callback);
+    ServerMultiPartMIMEReaderSinglePartSender _serverSender = new ServerMultiPartMIMEReaderSinglePartSender(latch, callback);
     reader.registerReaderCallback(_serverSender);
 
     latch.await(TEST_TIMEOUT, TimeUnit.MILLISECONDS);
@@ -160,14 +158,12 @@ public class TestMIMEChainingSinglePart extends AbstractMIMEUnitTest
 
   private static class ClientMultiPartMIMEReaderReceiver implements MultiPartMIMEReaderCallback
   {
-    final List<ClientSinglePartMIMEReaderReceiver> _singlePartMIMEReaderCallbacks =
-        new ArrayList<ClientSinglePartMIMEReaderReceiver>();
+    final List<ClientSinglePartMIMEReaderReceiver> _singlePartMIMEReaderCallbacks = new ArrayList<ClientSinglePartMIMEReaderReceiver>();
 
     @Override
     public void onNewPart(MultiPartMIMEReader.SinglePartMIMEReader singleParMIMEReader)
     {
-      ClientSinglePartMIMEReaderReceiver singlePartMIMEReaderCallback =
-          new ClientSinglePartMIMEReaderReceiver(singleParMIMEReader);
+      ClientSinglePartMIMEReaderReceiver singlePartMIMEReaderCallback = new ClientSinglePartMIMEReaderReceiver(singleParMIMEReader);
       singleParMIMEReader.registerReaderCallback(singlePartMIMEReaderCallback);
       _singlePartMIMEReaderCallbacks.add(singlePartMIMEReaderCallback);
       singleParMIMEReader.requestPartData();
@@ -257,8 +253,7 @@ public class TestMIMEChainingSinglePart extends AbstractMIMEUnitTest
       if (!_firstPartEchoed)
       {
         _firstPartEchoed = true;
-        final MultiPartMIMEWriter writer =
-            new MultiPartMIMEWriter.Builder().appendDataSource(singleParMIMEReader).build();
+        final MultiPartMIMEWriter writer = new MultiPartMIMEWriter.Builder().appendDataSource(singleParMIMEReader).build();
 
         final StreamResponse streamResponse = mock(StreamResponse.class);
         when(streamResponse.getEntityStream()).thenReturn(writer.getEntityStream());

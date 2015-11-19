@@ -64,7 +64,9 @@ final class SinglePartMIMEChainReaderCallback implements SinglePartMIMEReaderCal
   @Override
   public void onAbandoned()
   {
-    //This can be ignored. A request to abandon is never performed during chaining.
+    //This can happen if the SinglePartMIMEReader this callback was registered with was used as a data source and it was
+    //told to abandon.
+    //We don't need to take any action here.
   }
 
   @Override

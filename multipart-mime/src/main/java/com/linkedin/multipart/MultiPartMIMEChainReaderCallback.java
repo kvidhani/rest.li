@@ -69,10 +69,11 @@ final class MultiPartMIMEChainReaderCallback implements MultiPartMIMEReaderCallb
   }
 
   @Override
-  public void onAbandoned() throws UnsupportedOperationException
+  public void onAbandoned()
   {
-    //Should never happen. The writer who is consuming this MultiPartMIMEReader as a data source should never
-    //abandon data.
+    //This can happen if the MultiPartMIMEReader this callback was registered with was used as a data source and it was
+    //told to abandon.
+    //We don't need to take any action here.
   }
 
   @Override

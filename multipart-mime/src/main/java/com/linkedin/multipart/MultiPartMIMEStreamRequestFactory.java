@@ -30,7 +30,7 @@ import java.util.Map;
  *
  * @author Karim Vidhani
  */
-public final class MultiPartMIMEStreamRequestBuilder
+public final class MultiPartMIMEStreamRequestFactory
 {
   /**
    * Create a {@link com.linkedin.r2.message.stream.StreamRequest} using the specified parameters. This API should be used
@@ -43,7 +43,8 @@ public final class MultiPartMIMEStreamRequestBuilder
    * @param writer the {@link com.linkedin.multipart.MultiPartMIMEWriter} to use for the payload of the request.
    * @return the newly created {@link com.linkedin.r2.message.stream.StreamRequest}.
    */
-  public static StreamRequest generateMultiPartMIMEStreamRequest(final URI uri, final String mimeSubType, final MultiPartMIMEWriter writer)
+  public static StreamRequest generateMultiPartMIMEStreamRequest(final URI uri, final String mimeSubType,
+                                                                 final MultiPartMIMEWriter writer)
   {
     return generateMultiPartMIMEStreamRequest(mimeSubType, writer, Collections.<String, String>emptyMap(), new StreamRequestBuilder(uri));
   }
@@ -60,8 +61,9 @@ public final class MultiPartMIMEStreamRequestBuilder
    * @param contentTypeParameters any additional parameters needed when constructing the Content-Type header.
    * @return the newly created {@link com.linkedin.r2.message.stream.StreamRequest}.
    */
-  public static StreamRequest generateMultiPartMIMEStreamRequest(final URI uri, final String mimeSubType, final MultiPartMIMEWriter writer,
-      final Map<String, String> contentTypeParameters)
+  public static StreamRequest generateMultiPartMIMEStreamRequest(final URI uri, final String mimeSubType,
+                                                                 final MultiPartMIMEWriter writer,
+                                                                 final Map<String, String> contentTypeParameters)
   {
     return generateMultiPartMIMEStreamRequest(mimeSubType, writer, contentTypeParameters, new StreamRequestBuilder(uri));
   }
@@ -80,8 +82,10 @@ public final class MultiPartMIMEStreamRequestBuilder
    *                             construct the final {@link com.linkedin.r2.message.stream.StreamRequest}.
    * @return the newly created {@link com.linkedin.r2.message.stream.StreamRequest}.
    */
-  public static StreamRequest generateMultiPartMIMEStreamRequest(final String mimeSubType, final MultiPartMIMEWriter writer,
-      final Map<String, String> contentTypeParameters, final StreamRequestBuilder streamRequestBuilder)
+  public static StreamRequest generateMultiPartMIMEStreamRequest(final String mimeSubType,
+                                                                 final MultiPartMIMEWriter writer,
+                                                                 final Map<String, String> contentTypeParameters,
+                                                                 final StreamRequestBuilder streamRequestBuilder)
   {
     final String contentTypeHeader =
         MultiPartMIMEUtils.buildMIMEContentTypeHeader(mimeSubType.trim(), writer.getBoundary(), contentTypeParameters);
@@ -89,7 +93,7 @@ public final class MultiPartMIMEStreamRequestBuilder
     return streamRequestBuilder.build(writer.getEntityStream());
   }
 
-  private MultiPartMIMEStreamRequestBuilder()
+  private MultiPartMIMEStreamRequestFactory()
   {
   }
 }

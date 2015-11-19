@@ -85,8 +85,7 @@ public class TestMIMEReaderR2Error extends AbstractMIMEUnitTest
 
     Assert.assertEquals(_currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.size(), 2);
     Assert.assertNull(_currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.get(0)._streamError);
-    Assert.assertTrue(_currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks
-        .get(1)._streamError instanceof NullPointerException);
+    Assert.assertTrue(_currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.get(1)._streamError instanceof NullPointerException);
 
     try
     {
@@ -101,7 +100,7 @@ public class TestMIMEReaderR2Error extends AbstractMIMEUnitTest
 
   ///////////////////////////////////////////////////////////////////////////////////////
   private CountDownLatch executeRequestPartialReadWithException(final ByteString requestPayload, final int chunkSize,
-      final String contentTypeHeader) throws Exception
+                                                                final String contentTypeHeader) throws Exception
   {
     mockR2AndWrite(requestPayload, chunkSize, contentTypeHeader);
     final CountDownLatch latch = new CountDownLatch(1);
@@ -121,7 +120,7 @@ public class TestMIMEReaderR2Error extends AbstractMIMEUnitTest
     final boolean _partiallyRead;
 
     SinglePartMIMEReaderCallbackImpl(final MultiPartMIMEReader.SinglePartMIMEReader singlePartMIMEReader,
-        final CountDownLatch countDownLatch, final boolean partiallyRead)
+                                     final CountDownLatch countDownLatch, final boolean partiallyRead)
     {
       _singlePartMIMEReader = singlePartMIMEReader;
       _countDownLatch = countDownLatch;
@@ -162,8 +161,7 @@ public class TestMIMEReaderR2Error extends AbstractMIMEUnitTest
 
   private class MultiPartMIMEReaderCallbackImpl implements MultiPartMIMEReaderCallback
   {
-    final List<SinglePartMIMEReaderCallbackImpl> _singlePartMIMEReaderCallbacks =
-        new ArrayList<SinglePartMIMEReaderCallbackImpl>();
+    final List<SinglePartMIMEReaderCallbackImpl> _singlePartMIMEReaderCallbacks = new ArrayList<SinglePartMIMEReaderCallbackImpl>();
     Throwable _streamError = null;
     final CountDownLatch _latch;
 

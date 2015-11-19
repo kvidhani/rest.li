@@ -41,6 +41,7 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import static com.linkedin.multipart.utils.MIMETestUtils.*;
+
 import static org.mockito.Matchers.isA;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -56,6 +57,41 @@ public class TestMIMEReaderAbandon extends AbstractMIMEUnitTest
 {
   MultiPartMIMEAbandonReaderCallbackImpl _currentMultiPartMIMEReaderCallback;
   MimeMultipart _currentMimeMultipartBody;
+
+  //This test will perform an abandon without registering a callback. It functions different then other abandon tests
+  //located in this class in terms of setup, assertions and verifies.
+  @Test
+  public void testAbandonAllWithoutCallbackRegistered() throws Exception
+  {
+    mockR2AndWrite(ByteString.copy("Some multipart mime payload. It doesn't need to be pretty".getBytes()),
+                   1, "multipart/mixed; boundary=----abcdefghijk");
+
+    MultiPartMIMEReader reader = MultiPartMIMEReader.createAndAcquireStream(streamRequest);
+
+    try
+    {
+      reader.abandonAllParts(); //The first should succeed.
+      reader.abandonAllParts(); //The second should fail.
+      Assert.fail();
+    }
+    catch (MultiPartReaderFinishedException multiPartReaderFinishedException)
+    {
+    }
+
+    Assert.assertTrue(reader.haveAllPartsFinished());
+
+    //mock verifies
+    verify(readHandle, times(1)).cancel();
+    verify(streamRequest, times(1)).getEntityStream();
+    verify(streamRequest, times(1)).getHeader(HEADER_CONTENT_TYPE);
+    verify(entityStream, times(1)).setReader(isA(MultiPartMIMEReader.R2MultiPartMIMEReader.class));
+
+    verifyNoMoreInteractions(streamRequest);
+    verifyNoMoreInteractions(entityStream);
+    verifyNoMoreInteractions(readHandle);
+  }
+
+  ///////////////////////////////////////////////////////////////////////////////////////
 
   @DataProvider(name = "allTypesOfBodiesDataSource")
   public Object[][] allTypesOfBodiesDataSource() throws Exception
@@ -81,12 +117,9 @@ public class TestMIMEReaderAbandon extends AbstractMIMEUnitTest
         };
   }
 
-  ///////////////////////////////////////////////////////////////////////////////////////
-
   @Test(dataProvider = "allTypesOfBodiesDataSource")
   public void testSingleAllNoCallback(final int chunkSize, final List<MimeBodyPart> bodyPartList) throws Exception
   {
-    //Execute the request and verify the correct header came back to ensure the server took the proper abandon actions.
     executeRequestWithAbandonStrategy(chunkSize, bodyPartList, SINGLE_ALL_NO_CALLBACK, "onFinished");
 
     //Single part abandons all individually but doesn't use a callback:
@@ -96,12 +129,11 @@ public class TestMIMEReaderAbandon extends AbstractMIMEUnitTest
   }
 
   @Test(dataProvider = "allTypesOfBodiesDataSource")
-  public void testAbandonAll(final int chunkSize, final List<MimeBodyPart> bodyPartList) throws Exception
+  public void testAbandonAllWithCallbackRegistered(final int chunkSize, final List<MimeBodyPart> bodyPartList) throws Exception
   {
-    //Execute the request and verify the correct header came back to ensure the server took the proper abandon actions.
-    executeRequestWithAbandonStrategy(chunkSize, bodyPartList, TOP_ALL, "onAbandoned");
+    executeRequestWithAbandonStrategy(chunkSize, bodyPartList, TOP_ALL_WITH_CALLBACK, "onAbandoned");
 
-    //Top level abandons all
+    //Top level abandons all after registering a callback and being invoked for the first time on onNewPart().
     List<SinglePartMIMEAbandonReaderCallbackImpl> singlePartMIMEReaderCallbacks =
         _currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks;
     Assert.assertEquals(singlePartMIMEReaderCallbacks.size(), 0);
@@ -330,7 +362,7 @@ public class TestMIMEReaderAbandon extends AbstractMIMEUnitTest
   ///////////////////////////////////////////////////////////////////////////////////////
 
   private void executeRequestWithAbandonStrategy(final int chunkSize, final List<MimeBodyPart> bodyPartList,
-      final String abandonStrategy, final String serverHeaderPrefix) throws Exception
+                                                 final String abandonStrategy, final String serverHeaderPrefix) throws Exception
   {
     MimeMultipart multiPartMimeBody = new MimeMultipart();
 
@@ -354,8 +386,7 @@ public class TestMIMEReaderAbandon extends AbstractMIMEUnitTest
 
     latch.await(TEST_TIMEOUT, TimeUnit.MILLISECONDS);
 
-    Assert.assertEquals(_currentMultiPartMIMEReaderCallback._responseHeaders.get(ABANDON_HEADER),
-        serverHeaderPrefix + abandonStrategy);
+    Assert.assertEquals(_currentMultiPartMIMEReaderCallback._responseHeaders.get(ABANDON_HEADER), serverHeaderPrefix + abandonStrategy);
 
     try
     {
@@ -448,16 +479,19 @@ public class TestMIMEReaderAbandon extends AbstractMIMEUnitTest
         singlePartMIMEReader.abandonPart();
         return;
       }
-      if (_abandonValue.equalsIgnoreCase(TOP_ALL))
+
+      if (_abandonValue.equalsIgnoreCase(TOP_ALL_WITH_CALLBACK))
       {
         _reader.abandonAllParts();
         return;
       }
+
       if (_abandonValue.equalsIgnoreCase(SINGLE_PARTIAL_TOP_REMAINING) && _singlePartMIMEReaderCallbacks.size() == 6)
       {
         _reader.abandonAllParts();
         return;
       }
+
       if (_abandonValue.equalsIgnoreCase(SINGLE_ALTERNATE_TOP_REMAINING) && _singlePartMIMEReaderCallbacks.size() == 6)
       {
         _reader.abandonAllParts();
@@ -477,8 +511,7 @@ public class TestMIMEReaderAbandon extends AbstractMIMEUnitTest
         return;
       }
 
-      if (_abandonValue.equalsIgnoreCase(SINGLE_ALTERNATE) || _abandonValue
-          .equalsIgnoreCase(SINGLE_ALTERNATE_TOP_REMAINING))
+      if (_abandonValue.equalsIgnoreCase(SINGLE_ALTERNATE) || _abandonValue.equalsIgnoreCase(SINGLE_ALTERNATE_TOP_REMAINING))
       {
         if (SinglePartMIMEAbandonReaderCallbackImpl.partCounter % 2 == 1)
         {
@@ -514,7 +547,7 @@ public class TestMIMEReaderAbandon extends AbstractMIMEUnitTest
     }
 
     MultiPartMIMEAbandonReaderCallbackImpl(final CountDownLatch latch, final String abandonValue,
-        final MultiPartMIMEReader reader)
+                                           final MultiPartMIMEReader reader)
     {
       _latch = latch;
       _abandonValue = abandonValue;

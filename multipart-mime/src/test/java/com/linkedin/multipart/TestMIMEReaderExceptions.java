@@ -93,8 +93,7 @@ public class TestMIMEReaderExceptions extends AbstractMIMEUnitTest
     }
     catch (MultiPartIllegalFormatException illegalMimeFormatException)
     {
-      Assert.assertEquals(illegalMimeFormatException.getMessage(),
-          "Malformed multipart mime request. No Content-Type header in this request");
+      Assert.assertEquals(illegalMimeFormatException.getMessage(), "Malformed multipart mime request. No Content-Type header in this request");
 
       verify(streamRequest, times(1)).getHeader(MultiPartMIMEUtils.CONTENT_TYPE_HEADER);
     }
@@ -110,13 +109,12 @@ public class TestMIMEReaderExceptions extends AbstractMIMEUnitTest
       when(streamRequest.getHeader(MultiPartMIMEUtils.CONTENT_TYPE_HEADER)).thenReturn("Some erroneous content type");
 
       MultiPartMIMEReader.createAndAcquireStream(streamRequest);
-      ;
+
       Assert.fail();
     }
     catch (MultiPartIllegalFormatException illegalMimeFormatException)
     {
-      Assert.assertEquals(illegalMimeFormatException.getMessage(),
-          "Malformed multipart mime request. Not a valid multipart mime header.");
+      Assert.assertEquals(illegalMimeFormatException.getMessage(), "Malformed multipart mime request. Not a valid multipart mime header.");
       verify(streamRequest, times(1)).getHeader(MultiPartMIMEUtils.CONTENT_TYPE_HEADER);
     }
   }
@@ -125,9 +123,9 @@ public class TestMIMEReaderExceptions extends AbstractMIMEUnitTest
   public void payloadMissingBoundary(final int chunkSize) throws Exception
   {
     MimeMultipart multiPartMimeBody = new MimeMultipart();
-    executeRequestWithDesiredException(
-        ByteString.copy("This body has no boundary and is therefore not a valid multipart mime request".getBytes()),
-        chunkSize, multiPartMimeBody.getContentType(), "Malformed multipart mime request. No boundary found!");
+    executeRequestWithDesiredException(ByteString.copy("This body has no boundary and is therefore not a valid multipart mime request".getBytes()),
+                                       chunkSize, multiPartMimeBody.getContentType(),
+                                       "Malformed multipart mime request. No boundary found!");
 
     //No single part readers should have been created.
     Assert.assertEquals(_currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.size(), 0);
@@ -156,7 +154,7 @@ public class TestMIMEReaderExceptions extends AbstractMIMEUnitTest
 
     final ByteString requestPayload = ByteString.copy(trimmedMimePayload);
     executeRequestWithDesiredException(requestPayload, chunkSize, multiPartMimeBody.getContentType(),
-        "Malformed multipart mime request. Finishing boundary missing!");
+                                       "Malformed multipart mime request. Finishing boundary missing!");
 
     List<SinglePartMIMEExceptionReaderCallbackImpl> singlePartMIMEReaderCallbacks =
         _currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks;
@@ -197,8 +195,7 @@ public class TestMIMEReaderExceptions extends AbstractMIMEUnitTest
     SinglePartMIMEExceptionReaderCallbackImpl singlePartMIMEExceptionReaderCallback =
         singlePartMIMEReaderCallbacks.get(singlePartMIMEReaderCallbacks.size() - 1);
     Assert.assertNull(singlePartMIMEExceptionReaderCallback._finishedData);
-    Assert
-        .assertTrue(singlePartMIMEExceptionReaderCallback._streamError instanceof MultiPartIllegalFormatException);
+    Assert.assertTrue(singlePartMIMEExceptionReaderCallback._streamError instanceof MultiPartIllegalFormatException);
 
     try
     {
@@ -244,7 +241,8 @@ public class TestMIMEReaderExceptions extends AbstractMIMEUnitTest
 
     final ByteString requestPayload = ByteString.copy(trimmedMimePayload);
     executeRequestWithDesiredException(requestPayload, chunkSize, multiPartMimeBody.getContentType(),
-        "Malformed multipart mime request. Premature termination of multipart mime body due to a boundary without a subsequent consecutive CRLF.");
+                                       "Malformed multipart mime request. Premature termination of multipart "
+                                           + "mime body due to a boundary without a subsequent consecutive CRLF.");
 
     //In this case we want all the parts to still make it over
     List<SinglePartMIMEExceptionReaderCallbackImpl> singlePartMIMEReaderCallbacks =
@@ -286,7 +284,6 @@ public class TestMIMEReaderExceptions extends AbstractMIMEUnitTest
 
   @Test(dataProvider = "multiplePartsDataSource")
   public void prematureHeaderTermination(final int chunkSize, final List<MimeBodyPart> bodyPartList) throws Exception
-
   {
     //Use Javax to create a multipart payload. Then we just modify the location of the consecutive CRLFs.
     MimeMultipart multiPartMimeBody = new MimeMultipart();
@@ -314,7 +311,7 @@ public class TestMIMEReaderExceptions extends AbstractMIMEUnitTest
 
     final ByteString requestPayload = ByteString.copy(mimePayload);
     executeRequestWithDesiredException(requestPayload, chunkSize, multiPartMimeBody.getContentType(),
-        "Malformed multipart mime request. Premature termination of headers within a part.");
+                                       "Malformed multipart mime request. Premature termination of headers within a part.");
 
     //No single part readers should have been created.
     Assert.assertEquals(_currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.size(), 0);
@@ -351,7 +348,7 @@ public class TestMIMEReaderExceptions extends AbstractMIMEUnitTest
 
     final ByteString requestPayload = ByteString.copy(mimePayload);
     executeRequestWithDesiredException(requestPayload, chunkSize, multiPartMimeBody.getContentType(),
-        "Malformed multipart mime request. Headers are improperly constructed.");
+                                       "Malformed multipart mime request. Headers are improperly constructed.");
 
     //No single part readers should have been created.
     Assert.assertEquals(_currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.size(), 0);
@@ -387,7 +384,7 @@ public class TestMIMEReaderExceptions extends AbstractMIMEUnitTest
 
     final ByteString requestPayload = ByteString.copy(mimePayload);
     executeRequestWithDesiredException(requestPayload, chunkSize, multiPartMimeBody.getContentType(),
-        "Malformed multipart mime request. Individual headers are improperly formatted.");
+                                       "Malformed multipart mime request. Individual headers are improperly formatted.");
 
     //No single part readers should have been created.
     Assert.assertEquals(_currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.size(), 0);
@@ -411,7 +408,7 @@ public class TestMIMEReaderExceptions extends AbstractMIMEUnitTest
 
   ///////////////////////////////////////////////////////////////////////////////////////
   private void executeRequestWithDesiredException(final ByteString requestPayload, final int chunkSize,
-      final String contentTypeHeader, final String desiredExceptionMessage) throws Exception
+                                                  final String contentTypeHeader, final String desiredExceptionMessage) throws Exception
   {
     mockR2AndWrite(requestPayload, chunkSize, contentTypeHeader);
     final CountDownLatch latch = new CountDownLatch(1);
@@ -503,8 +500,7 @@ public class TestMIMEReaderExceptions extends AbstractMIMEUnitTest
   {
     final CountDownLatch _latch;
     final MultiPartMIMEReader _reader;
-    final List<SinglePartMIMEExceptionReaderCallbackImpl> _singlePartMIMEReaderCallbacks =
-        new ArrayList<SinglePartMIMEExceptionReaderCallbackImpl>();
+    final List<SinglePartMIMEExceptionReaderCallbackImpl> _singlePartMIMEReaderCallbacks = new ArrayList<SinglePartMIMEExceptionReaderCallbackImpl>();
     Throwable _streamError = null;
 
     @Override

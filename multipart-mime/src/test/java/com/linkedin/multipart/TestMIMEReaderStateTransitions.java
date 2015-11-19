@@ -17,12 +17,11 @@
 package com.linkedin.multipart;
 
 
+import com.linkedin.multipart.exceptions.MultiPartReaderFinishedException;
 import com.linkedin.multipart.exceptions.SinglePartBindException;
 import com.linkedin.multipart.exceptions.SinglePartFinishedException;
 import com.linkedin.multipart.exceptions.SinglePartNotInitializedException;
-import com.linkedin.multipart.exceptions.MultiPartReaderNotInitializedException;
 import com.linkedin.multipart.exceptions.StreamBusyException;
-import com.linkedin.multipart.exceptions.MultiPartReaderFinishedException;
 import com.linkedin.r2.message.stream.StreamRequest;
 import com.linkedin.r2.message.stream.entitystream.EntityStream;
 
@@ -49,8 +48,7 @@ public class TestMIMEReaderStateTransitions
     final EntityStream entityStream = mock(EntityStream.class);
     final StreamRequest streamRequest = mock(StreamRequest.class);
     when(streamRequest.getEntityStream()).thenReturn(entityStream);
-    when(streamRequest.getHeader(MultiPartMIMEUtils.CONTENT_TYPE_HEADER))
-        .thenReturn("multipart/mixed; boundary=\"--123\"");
+    when(streamRequest.getHeader(MultiPartMIMEUtils.CONTENT_TYPE_HEADER)).thenReturn("multipart/mixed; boundary=\"--123\"");
     MultiPartMIMEReader reader = MultiPartMIMEReader.createAndAcquireStream(streamRequest);
 
     //Test each possible exception:
@@ -95,10 +93,8 @@ public class TestMIMEReaderStateTransitions
     }
 
     reader.setState(MultiPartMIMEReader.MultiPartReaderState.READING_PARTS); //This is a desired top level reader state
-    final MultiPartMIMEReader.SinglePartMIMEReader singlePartMIMEReader =
-        reader.new SinglePartMIMEReader(Collections.<String, String>emptyMap());
-    singlePartMIMEReader
-        .setState(MultiPartMIMEReader.SingleReaderState.REQUESTED_DATA); //This is a undesired single part state
+    final MultiPartMIMEReader.SinglePartMIMEReader singlePartMIMEReader = reader.new SinglePartMIMEReader(Collections.<String, String>emptyMap());
+    singlePartMIMEReader.setState(MultiPartMIMEReader.SingleReaderState.REQUESTED_DATA); //This is a undesired single part state
     reader.setCurrentSinglePartMIMEReader(singlePartMIMEReader);
     try
     {
@@ -116,22 +112,11 @@ public class TestMIMEReaderStateTransitions
     final EntityStream entityStream = mock(EntityStream.class);
     final StreamRequest streamRequest = mock(StreamRequest.class);
     when(streamRequest.getEntityStream()).thenReturn(entityStream);
-    when(streamRequest.getHeader(MultiPartMIMEUtils.CONTENT_TYPE_HEADER))
-        .thenReturn("multipart/mixed; boundary=\"--123\"");
+    when(streamRequest.getHeader(MultiPartMIMEUtils.CONTENT_TYPE_HEADER)).thenReturn("multipart/mixed; boundary=\"--123\"");
 
     MultiPartMIMEReader reader = MultiPartMIMEReader.createAndAcquireStream(streamRequest);
 
     //Test each possible exception:
-    reader.setState(MultiPartMIMEReader.MultiPartReaderState.CREATED);
-    try
-    {
-      reader.abandonAllParts();
-      Assert.fail();
-    }
-    catch (MultiPartReaderNotInitializedException multiPartReaderNotInitializedException)
-    {
-    }
-
     reader.setState(MultiPartMIMEReader.MultiPartReaderState.FINISHED);
     try
     {
@@ -172,12 +157,9 @@ public class TestMIMEReaderStateTransitions
     {
     }
 
-    reader
-        .setState(MultiPartMIMEReader.MultiPartReaderState.READING_PARTS); //This is the desired top level reader state
-    final MultiPartMIMEReader.SinglePartMIMEReader singlePartMIMEReader =
-        reader.new SinglePartMIMEReader(Collections.<String, String>emptyMap());
-    singlePartMIMEReader
-        .setState(MultiPartMIMEReader.SingleReaderState.REQUESTED_DATA); //This is a undesired single part state
+    reader.setState(MultiPartMIMEReader.MultiPartReaderState.READING_PARTS); //This is the desired top level reader state
+    final MultiPartMIMEReader.SinglePartMIMEReader singlePartMIMEReader = reader.new SinglePartMIMEReader(Collections.<String, String>emptyMap());
+    singlePartMIMEReader.setState(MultiPartMIMEReader.SingleReaderState.REQUESTED_DATA); //This is a undesired single part state
     reader.setCurrentSinglePartMIMEReader(singlePartMIMEReader);
     try
     {
@@ -199,15 +181,13 @@ public class TestMIMEReaderStateTransitions
 
     final StreamRequest streamRequest = mock(StreamRequest.class);
     when(streamRequest.getEntityStream()).thenReturn(entityStream);
-    when(streamRequest.getHeader(MultiPartMIMEUtils.CONTENT_TYPE_HEADER))
-        .thenReturn("multipart/mixed; boundary=\"--123\"");
+    when(streamRequest.getHeader(MultiPartMIMEUtils.CONTENT_TYPE_HEADER)).thenReturn("multipart/mixed; boundary=\"--123\"");
 
     MultiPartMIMEReader reader = MultiPartMIMEReader.createAndAcquireStream(streamRequest);
 
     final MultiPartMIMEReader.SinglePartMIMEReader singlePartMIMEReader =
         reader.new SinglePartMIMEReader(Collections.<String, String>emptyMap());
-    singlePartMIMEReader
-        .setState(MultiPartMIMEReader.SingleReaderState.REQUESTED_DATA); //This is a undesired single part state
+    singlePartMIMEReader.setState(MultiPartMIMEReader.SingleReaderState.REQUESTED_DATA); //This is a undesired single part state
     try
     {
       singlePartMIMEReader.registerReaderCallback(null);
@@ -228,8 +208,7 @@ public class TestMIMEReaderStateTransitions
     final EntityStream entityStream = mock(EntityStream.class);
     final StreamRequest streamRequest = mock(StreamRequest.class);
     when(streamRequest.getEntityStream()).thenReturn(entityStream);
-    when(streamRequest.getHeader(MultiPartMIMEUtils.CONTENT_TYPE_HEADER))
-        .thenReturn("multipart/mixed; boundary=\"--123\"");
+    when(streamRequest.getHeader(MultiPartMIMEUtils.CONTENT_TYPE_HEADER)).thenReturn("multipart/mixed; boundary=\"--123\"");
 
     MultiPartMIMEReader reader = MultiPartMIMEReader.createAndAcquireStream(streamRequest);
 
@@ -273,12 +252,10 @@ public class TestMIMEReaderStateTransitions
     final EntityStream entityStream = mock(EntityStream.class);
     final StreamRequest streamRequest = mock(StreamRequest.class);
     when(streamRequest.getEntityStream()).thenReturn(entityStream);
-    when(streamRequest.getHeader(MultiPartMIMEUtils.CONTENT_TYPE_HEADER))
-        .thenReturn("multipart/mixed; boundary=\"--123\"");
+    when(streamRequest.getHeader(MultiPartMIMEUtils.CONTENT_TYPE_HEADER)).thenReturn("multipart/mixed; boundary=\"--123\"");
     MultiPartMIMEReader reader = MultiPartMIMEReader.createAndAcquireStream(streamRequest);
 
-    final MultiPartMIMEReader.SinglePartMIMEReader singlePartMIMEReader =
-        reader.new SinglePartMIMEReader(Collections.<String, String>emptyMap());
+    final MultiPartMIMEReader.SinglePartMIMEReader singlePartMIMEReader = reader.new SinglePartMIMEReader(Collections.<String, String>emptyMap());
 
     singlePartMIMEReader.setState(MultiPartMIMEReader.SingleReaderState.CREATED);
     try

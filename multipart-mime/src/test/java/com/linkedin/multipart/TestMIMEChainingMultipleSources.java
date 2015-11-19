@@ -41,6 +41,7 @@ import com.linkedin.r2.transport.common.bridge.server.TransportDispatcherBuilder
 import com.linkedin.r2.transport.http.client.HttpClientFactory;
 import com.linkedin.r2.transport.http.server.HttpServer;
 import com.linkedin.r2.transport.http.server.HttpServerFactory;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -51,6 +52,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+
 import org.testng.Assert;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
@@ -132,8 +134,8 @@ public class TestMIMEChainingMultipleSources extends AbstractMIMEUnitTest
     }
 
     @Override
-    public void handleRequest(StreamRequest request, RequestContext requestContext,
-        final Callback<StreamResponse> callback)
+    public void handleRequest(final StreamRequest request, RequestContext requestContext,
+                              final Callback<StreamResponse> callback)
     {
       try
       {
@@ -146,8 +148,7 @@ public class TestMIMEChainingMultipleSources extends AbstractMIMEUnitTest
 
         final EntityStream emptyBody = EntityStreams.newEntityStream(new ByteStringWriter(ByteString.empty()));
         final StreamRequest simplePost =
-            new StreamRequestBuilder(Bootstrap.createHttpsURI(PORT_SERVER_B, SERVER_B_URI)).setMethod("POST")
-                .build(emptyBody);
+            new StreamRequestBuilder(Bootstrap.createHttpsURI(PORT_SERVER_B, SERVER_B_URI)).setMethod("POST").build(emptyBody);
 
         //In this callback, when we get the response from server 2, we will create the compound writer
         Callback<StreamResponse> responseCallback = generateServerAResponseCallback(request, callback);
@@ -164,7 +165,7 @@ public class TestMIMEChainingMultipleSources extends AbstractMIMEUnitTest
   }
 
   private Callback<StreamResponse> generateServerAResponseCallback(final StreamRequest incomingRequest,
-      final Callback<StreamResponse> incomingRequestCallback)
+                                                                   final Callback<StreamResponse> incomingRequestCallback)
   {
     return new Callback<StreamResponse>()
     {
@@ -253,10 +254,10 @@ public class TestMIMEChainingMultipleSources extends AbstractMIMEUnitTest
 
         final MultiPartMIMEWriter writer =
             new MultiPartMIMEWriter.Builder().appendDataSource(singleParMIMEReader).appendDataSource(localInputStream)
-                .appendMultiPartDataSource(incomingRequestReader).build();
+                .appendDataSourcePartIterator(incomingRequestReader).build();
 
         final StreamResponse streamResponse =
-            MultiPartMIMEStreamResponseBuilder.generateMultiPartMIMEStreamResponse("mixed", writer, Collections.<String, String>emptyMap());
+            MultiPartMIMEStreamResponseFactory.generateMultiPartMIMEStreamResponse("mixed", writer, Collections.<String, String>emptyMap());
         _incomingRequestCallback.onSuccess(streamResponse);
       }
       else
@@ -330,7 +331,7 @@ public class TestMIMEChainingMultipleSources extends AbstractMIMEUnitTest
         final MultiPartMIMEWriter writer = new MultiPartMIMEWriter.Builder().appendDataSources(dataSources).build();
 
         final StreamResponse streamResponse =
-            MultiPartMIMEStreamResponseBuilder.generateMultiPartMIMEStreamResponse("mixed", writer, Collections.<String, String>emptyMap());
+            MultiPartMIMEStreamResponseFactory.generateMultiPartMIMEStreamResponse("mixed", writer, Collections.<String, String>emptyMap());
         callback.onSuccess(streamResponse);
       }
       catch (MultiPartIllegalFormatException illegalMimeFormatException)
@@ -354,14 +355,13 @@ public class TestMIMEChainingMultipleSources extends AbstractMIMEUnitTest
   {
     _chunkSize = chunkSize;
 
-    final List<MultiPartMIMEDataSource> dataSources =
-        generateInputStreamDataSources(chunkSize, _scheduledExecutorService);
+    final List<MultiPartMIMEDataSource> dataSources = generateInputStreamDataSources(chunkSize, _scheduledExecutorService);
 
     final MultiPartMIMEWriter writer = new MultiPartMIMEWriter.Builder().appendDataSources(dataSources).build();
 
     final StreamRequest streamRequest =
-        MultiPartMIMEStreamRequestBuilder.generateMultiPartMIMEStreamRequest(Bootstrap.createHttpsURI(PORT_SERVER_A, SERVER_A_URI),
-            "mixed", writer, Collections.<String, String>emptyMap());
+        MultiPartMIMEStreamRequestFactory.generateMultiPartMIMEStreamRequest(Bootstrap.createHttpsURI(PORT_SERVER_A, SERVER_A_URI),
+                                                                             "mixed", writer, Collections.<String, String>emptyMap());
 
     ClientMultiPartReceiver clientReceiver = new ClientMultiPartReceiver();
     Callback<StreamResponse> callback = generateSuccessChainCallback(clientReceiver);
@@ -388,8 +388,7 @@ public class TestMIMEChainingMultipleSources extends AbstractMIMEUnitTest
     Assert.assertEquals(clientSinglePartCallbacks.get(5)._headers, _bodyD.getPartHeaders());
 
     //Verify Server A
-    List<ServerASinglePartCallback> serverASinglePartCallbacks =
-        _serverAMultiPartCallback._singlePartMIMEReaderCallbacks;
+    List<ServerASinglePartCallback> serverASinglePartCallbacks = _serverAMultiPartCallback._singlePartMIMEReaderCallbacks;
     Assert.assertEquals(serverASinglePartCallbacks.size(), 3);
     Assert.assertEquals(serverASinglePartCallbacks.get(0)._finishedData, _body2.getPartData());
     Assert.assertEquals(serverASinglePartCallbacks.get(0)._headers, _body2.getPartHeaders());

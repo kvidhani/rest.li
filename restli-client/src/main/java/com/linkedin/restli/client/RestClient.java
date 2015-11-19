@@ -26,7 +26,7 @@ import com.linkedin.data.DataMap;
 import com.linkedin.data.codec.JacksonDataCodec;
 import com.linkedin.data.codec.PsonDataCodec;
 import com.linkedin.data.template.RecordTemplate;
-import com.linkedin.multipart.MultiPartMIMEStreamRequestBuilder;
+import com.linkedin.multipart.MultiPartMIMEStreamRequestFactory;
 import com.linkedin.multipart.MultiPartMIMEWriter;
 import com.linkedin.r2.filter.R2Constants;
 import com.linkedin.r2.message.MessageHeadersBuilder;
@@ -894,7 +894,7 @@ public class RestClient
           AttachmentUtilities.createMultiPartMIMEWriter(firstPartWriter, type.getHeaderKey(), streamingAttachments);
 
       final StreamRequest streamRequest =
-          MultiPartMIMEStreamRequestBuilder
+          MultiPartMIMEStreamRequestFactory
               .generateMultiPartMIMEStreamRequest(AttachmentUtilities.RESTLI_MULTIPART_SUBTYPE, multiPartMIMEWriter,
                                                   Collections.<String, String>emptyMap(), requestBuilder);
       return streamRequest;

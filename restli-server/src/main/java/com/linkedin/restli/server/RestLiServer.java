@@ -22,7 +22,7 @@ import com.linkedin.data.ByteString;
 import com.linkedin.jersey.api.uri.UriBuilder;
 import com.linkedin.multipart.MultiPartMIMEReader;
 import com.linkedin.multipart.MultiPartMIMEReaderCallback;
-import com.linkedin.multipart.MultiPartMIMEStreamResponseBuilder;
+import com.linkedin.multipart.MultiPartMIMEStreamResponseFactory;
 import com.linkedin.multipart.MultiPartMIMEWriter;
 import com.linkedin.multipart.SinglePartMIMEReaderCallback;
 import com.linkedin.multipart.exceptions.MultiPartIllegalFormatException;
@@ -792,7 +792,7 @@ public class RestLiServer extends BaseRestServer
                                        attachments);
 
         final StreamResponse streamResponse =
-            MultiPartMIMEStreamResponseBuilder
+            MultiPartMIMEStreamResponseFactory
                 .generateMultiPartMIMEStreamResponse(AttachmentUtilities.RESTLI_MULTIPART_SUBTYPE, multiPartMIMEWriter);
         _streamResponseCallback.onSuccess(streamResponse);
       }

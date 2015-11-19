@@ -26,8 +26,7 @@ import org.testng.Assert;
 
 
 /**
- * Writes bytes out from a {@link com.linkedin.data.ByteString} based on customizable
- * chunk sizes.
+ * Writes bytes out from a {@link com.linkedin.data.ByteString} based on customizable chunk sizes.
  *
  * @author Karim Vidhani
  */

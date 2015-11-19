@@ -78,7 +78,7 @@ public class TestMIMEReaderClientCallbackExceptions extends AbstractMIMEUnitTest
 
   @Test(dataProvider = "allTypesOfBodiesDataSource")
   public void testMultiPartMIMEReaderCallbackExceptionOnNewPart(final int chunkSize,
-      final List<MimeBodyPart> bodyPartList) throws Exception
+                                                                final List<MimeBodyPart> bodyPartList) throws Exception
   {
     MimeMultipart multiPartMimeBody = new MimeMultipart();
 
@@ -114,7 +114,7 @@ public class TestMIMEReaderClientCallbackExceptions extends AbstractMIMEUnitTest
 
   @Test(dataProvider = "allTypesOfBodiesDataSource")
   public void testMultiPartMIMEReaderCallbackExceptionOnFinished(final int chunkSize,
-      final List<MimeBodyPart> bodyPartList) throws Exception
+                                                                 final List<MimeBodyPart> bodyPartList) throws Exception
   {
     MimeMultipart multiPartMimeBody = new MimeMultipart();
 
@@ -169,7 +169,7 @@ public class TestMIMEReaderClientCallbackExceptions extends AbstractMIMEUnitTest
 
   @Test(dataProvider = "allTypesOfBodiesDataSource")
   public void testMultiPartMIMEReaderCallbackExceptionOnAbandoned(final int chunkSize,
-      final List<MimeBodyPart> bodyPartList) throws Exception
+                                                                  final List<MimeBodyPart> bodyPartList) throws Exception
   {
     MimeMultipart multiPartMimeBody = new MimeMultipart();
 
@@ -209,7 +209,7 @@ public class TestMIMEReaderClientCallbackExceptions extends AbstractMIMEUnitTest
   //These tests all verify the resilience of the single part mime reader when single part mime reader client callbacks throw runtime exceptions
   @Test(dataProvider = "allTypesOfBodiesDataSource")
   public void testSinglePartMIMEReaderCallbackExceptionOnPartDataAvailable(final int chunkSize,
-      final List<MimeBodyPart> bodyPartList) throws Exception
+                                                                           final List<MimeBodyPart> bodyPartList) throws Exception
   {
     MimeMultipart multiPartMimeBody = new MimeMultipart();
 
@@ -224,8 +224,7 @@ public class TestMIMEReaderClientCallbackExceptions extends AbstractMIMEUnitTest
     final ByteString requestPayload = ByteString.copy(byteArrayOutputStream.toByteArray());
 
     SinglePartMIMEExceptionReaderCallbackImpl.throwOnPartDataAvailable = true;
-    CountDownLatch countDownLatch =
-        executeRequestPartialReadWithException(requestPayload, chunkSize, multiPartMimeBody.getContentType());
+    CountDownLatch countDownLatch = executeRequestPartialReadWithException(requestPayload, chunkSize, multiPartMimeBody.getContentType());
 
     countDownLatch.await(TEST_TIMEOUT, TimeUnit.MILLISECONDS);
 
@@ -242,8 +241,7 @@ public class TestMIMEReaderClientCallbackExceptions extends AbstractMIMEUnitTest
     }
 
     Assert.assertEquals(_currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.size(), 1);
-    Assert.assertTrue(_currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks
-        .get(0)._streamError instanceof NullPointerException);
+    Assert.assertTrue(_currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.get(0)._streamError instanceof NullPointerException);
     try
     {
       _currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.get(0)._singlePartMIMEReader.requestPartData();
@@ -257,7 +255,7 @@ public class TestMIMEReaderClientCallbackExceptions extends AbstractMIMEUnitTest
 
   @Test(dataProvider = "allTypesOfBodiesDataSource")
   public void testSinglePartMIMEReaderCallbackExceptionOnFinished(final int chunkSize,
-      final List<MimeBodyPart> bodyPartList) throws Exception
+                                                                  final List<MimeBodyPart> bodyPartList) throws Exception
   {
     MimeMultipart multiPartMimeBody = new MimeMultipart();
 
@@ -272,8 +270,7 @@ public class TestMIMEReaderClientCallbackExceptions extends AbstractMIMEUnitTest
     final ByteString requestPayload = ByteString.copy(byteArrayOutputStream.toByteArray());
 
     SinglePartMIMEExceptionReaderCallbackImpl.throwOnFinished = true;
-    CountDownLatch countDownLatch =
-        executeRequestPartialReadWithException(requestPayload, chunkSize, multiPartMimeBody.getContentType());
+    CountDownLatch countDownLatch = executeRequestPartialReadWithException(requestPayload, chunkSize, multiPartMimeBody.getContentType());
 
     countDownLatch.await(TEST_TIMEOUT, TimeUnit.MILLISECONDS);
 
@@ -290,8 +287,7 @@ public class TestMIMEReaderClientCallbackExceptions extends AbstractMIMEUnitTest
     }
 
     Assert.assertEquals(_currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.size(), 1);
-    Assert.assertTrue(_currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks
-        .get(0)._streamError instanceof NullPointerException);
+    Assert.assertTrue(_currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.get(0)._streamError instanceof NullPointerException);
     try
     {
       _currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.get(0)._singlePartMIMEReader.requestPartData();
@@ -305,7 +301,7 @@ public class TestMIMEReaderClientCallbackExceptions extends AbstractMIMEUnitTest
 
   @Test(dataProvider = "allTypesOfBodiesDataSource")
   public void testSinglePartMIMEReaderCallbackExceptionOnAbandoned(final int chunkSize,
-      final List<MimeBodyPart> bodyPartList) throws Exception
+                                                                   final List<MimeBodyPart> bodyPartList) throws Exception
   {
     MimeMultipart multiPartMimeBody = new MimeMultipart();
 
@@ -320,8 +316,7 @@ public class TestMIMEReaderClientCallbackExceptions extends AbstractMIMEUnitTest
     final ByteString requestPayload = ByteString.copy(byteArrayOutputStream.toByteArray());
 
     SinglePartMIMEExceptionReaderCallbackImpl.throwOnAbandoned = true;
-    CountDownLatch countDownLatch =
-        executeRequestPartialReadWithException(requestPayload, chunkSize, multiPartMimeBody.getContentType());
+    CountDownLatch countDownLatch = executeRequestPartialReadWithException(requestPayload, chunkSize, multiPartMimeBody.getContentType());
 
     countDownLatch.await(TEST_TIMEOUT, TimeUnit.MILLISECONDS);
 
@@ -337,8 +332,7 @@ public class TestMIMEReaderClientCallbackExceptions extends AbstractMIMEUnitTest
       //pass
     }
     Assert.assertEquals(_currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.size(), 1);
-    Assert.assertTrue(_currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks
-        .get(0)._streamError instanceof NullPointerException);
+    Assert.assertTrue(_currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.get(0)._streamError instanceof NullPointerException);
     try
     {
       _currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.get(0)._singlePartMIMEReader.requestPartData();
@@ -352,7 +346,7 @@ public class TestMIMEReaderClientCallbackExceptions extends AbstractMIMEUnitTest
 
   ///////////////////////////////////////////////////////////////////////////////////////
   private CountDownLatch executeRequestPartialReadWithException(final ByteString requestPayload, final int chunkSize,
-      final String contentTypeHeader) throws Exception
+                                                                final String contentTypeHeader) throws Exception
   {
     mockR2AndWrite(requestPayload, chunkSize, contentTypeHeader);
     final CountDownLatch latch = new CountDownLatch(1);
@@ -382,7 +376,7 @@ public class TestMIMEReaderClientCallbackExceptions extends AbstractMIMEUnitTest
     }
 
     SinglePartMIMEExceptionReaderCallbackImpl(final MultiPartMIMEReader.SinglePartMIMEReader singlePartMIMEReader,
-        final CountDownLatch countDownLatch)
+                                              final CountDownLatch countDownLatch)
     {
       _singlePartMIMEReader = singlePartMIMEReader;
       _countDownLatch = countDownLatch;
@@ -431,8 +425,7 @@ public class TestMIMEReaderClientCallbackExceptions extends AbstractMIMEUnitTest
 
   private static class MultiPartMIMEExceptionReaderCallbackImpl implements MultiPartMIMEReaderCallback
   {
-    final List<SinglePartMIMEExceptionReaderCallbackImpl> _singlePartMIMEReaderCallbacks =
-        new ArrayList<SinglePartMIMEExceptionReaderCallbackImpl>();
+    final List<SinglePartMIMEExceptionReaderCallbackImpl> _singlePartMIMEReaderCallbacks = new ArrayList<SinglePartMIMEExceptionReaderCallbackImpl>();
     Throwable _streamError = null;
     final CountDownLatch _latch;
     final MultiPartMIMEReader _reader;

@@ -38,6 +38,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import static org.mockito.Matchers.isA;
 import static org.mockito.Mockito.*;
 
 
@@ -131,8 +132,7 @@ public class TestMIMEInputStream extends AbstractMIMEUnitTest
     private int _readCount = 0;
     private final IOException _throwable;
 
-    private ExceptionThrowingByteArrayInputStream(final byte[] bytes, final int permissibleReads,
-        final IOException throwable)
+    private ExceptionThrowingByteArrayInputStream(final byte[] bytes, final int permissibleReads, final IOException throwable)
     {
       super(bytes);
       _permissibleReads = permissibleReads;
@@ -184,13 +184,13 @@ public class TestMIMEInputStream extends AbstractMIMEUnitTest
 
   @Test(dataProvider = "singleOnWritePossibleDataSources")
   public void testSingleOnWritePossibleDataSources(final byte[] inputData, final StrictByteArrayInputStream inputStream,
-      final int writesRemainingPerOnWritePossibles, final int expectedTotalWrites)
+                                                   final int writesRemainingPerOnWritePossibles, final int expectedTotalWrites)
   {
     //Setup:
     final WriteHandle writeHandle = Mockito.mock(WriteHandle.class);
     final MultiPartMIMEInputStream multiPartMIMEInputStream =
         new MultiPartMIMEInputStream.Builder(inputStream, _scheduledExecutorService,
-            Collections.<String, String>emptyMap()).withWriteChunkSize(TEST_CHUNK_SIZE).build();
+                                             Collections.<String, String>emptyMap()).withWriteChunkSize(TEST_CHUNK_SIZE).build();
 
     //Simulate a write handle that offers decreasing writeHandle.remaining()
     final Integer[] remainingWriteHandleCount = simulateDecreasingWriteHandleCount(writesRemainingPerOnWritePossibles);
@@ -233,8 +233,7 @@ public class TestMIMEInputStream extends AbstractMIMEUnitTest
 
     ///////////////////////////////////
     //Assert
-    Assert.assertEquals(byteArrayOutputStream.toByteArray(), inputData,
-        "All data from the input stream should have successfully been transferred");
+    Assert.assertEquals(byteArrayOutputStream.toByteArray(), inputData, "All data from the input stream should have successfully been transferred");
     Assert.assertEquals(inputStream.isClosed(), true);
 
     //Mock verifies:
@@ -282,16 +281,15 @@ public class TestMIMEInputStream extends AbstractMIMEUnitTest
   }
 
   @Test(dataProvider = "multipleOnWritePossibleDataSources")
-  public void testMultipleOnWritePossibleDataSources(final byte[] inputData,
-      final StrictByteArrayInputStream inputStream, final int onWritePossibles,
-      final int writesRemainingPerOnWritePossible, final int expectedTotalWrites,
-      final int expectedWriteHandleRemainingCalls)
+  public void testMultipleOnWritePossibleDataSources(final byte[] inputData, final StrictByteArrayInputStream inputStream,
+                                                     final int onWritePossibles, final int writesRemainingPerOnWritePossible,
+                                                     final int expectedTotalWrites, final int expectedWriteHandleRemainingCalls)
   {
     //Setup:
     final WriteHandle writeHandle = Mockito.mock(WriteHandle.class);
     final MultiPartMIMEInputStream multiPartMIMEInputStream =
         new MultiPartMIMEInputStream.Builder(inputStream, _scheduledExecutorService,
-            Collections.<String, String>emptyMap()).withWriteChunkSize(TEST_CHUNK_SIZE).build();
+                                             Collections.<String, String>emptyMap()).withWriteChunkSize(TEST_CHUNK_SIZE).build();
 
     //We want to simulate a decreasing return from writeHandle.remaining().
     //Note that the 0 is added on later so we stop at 1:
@@ -321,8 +319,7 @@ public class TestMIMEInputStream extends AbstractMIMEUnitTest
 
       //Mockito does not mention that chaining requires keeping the references and only allows one append at a time.
       //A painful lesson that I had to learn so I will leave a comment here for future people.
-      writeHandleOngoingStubbing =
-          writeHandleOngoingStubbing.thenReturn(writesRemainingPerOnWritePossible, remainingWriteHandleCount);
+      writeHandleOngoingStubbing = writeHandleOngoingStubbing.thenReturn(writesRemainingPerOnWritePossible, remainingWriteHandleCount);
 
       writeHandleOngoingStubbing = writeHandleOngoingStubbing.thenAnswer(new Answer<Integer>()
       {
@@ -383,7 +380,7 @@ public class TestMIMEInputStream extends AbstractMIMEUnitTest
     ///////////////////////////////////
     //Assert
     Assert.assertEquals(byteArrayOutputStream.toByteArray(), inputData,
-        "All data from the input stream should have successfully been transferred");
+                        "All data from the input stream should have successfully been transferred");
     Assert.assertEquals(inputStream.isClosed(), true);
 
     //Mock verifies:
@@ -435,7 +432,8 @@ public class TestMIMEInputStream extends AbstractMIMEUnitTest
     final WriteHandle writeHandle = Mockito.mock(WriteHandle.class);
     final MultiPartMIMEInputStream multiPartMIMEInputStream =
         new MultiPartMIMEInputStream.Builder(slowByteArrayInputStream, _scheduledExecutorService,
-            Collections.<String, String>emptyMap()).withWriteChunkSize(TEST_CHUNK_SIZE).withMaximumBlockingTime(45)
+                                             Collections.<String, String>emptyMap()).withWriteChunkSize(TEST_CHUNK_SIZE)
+            .withMaximumBlockingTime(45)
             .build();
 
     //Doesn't matter what we return here as long as its constant and above 0.
@@ -479,7 +477,7 @@ public class TestMIMEInputStream extends AbstractMIMEUnitTest
     ///////////////////////////////////
     //Assert
     Assert.assertEquals(byteArrayOutputStream.toByteArray(), expectedDataWritten,
-        "Partial data should have been transferred in the case of a timeout");
+                        "Partial data should have been transferred in the case of a timeout");
     Assert.assertEquals(slowByteArrayInputStream.isClosed(), true);
 
     //Mock verifies:
@@ -516,11 +514,13 @@ public class TestMIMEInputStream extends AbstractMIMEUnitTest
     //TEST_CHUNK_SIZE * 5 writes should be how much data was copied over
     final byte[] largeInputDataPartial = Arrays.copyOf(largeInputData, TEST_CHUNK_SIZE * 5);
 
-    return new Object[][]{
-        //Timeout on first read. Nothing should have been read. One call on writeHandle.remaining() should have been seen.
-        {exceptionFirst, 0, 1, new byte[0]},
-        //Timeout on the 6th read. We should expect 5 writes. Six calls on writeHandle.remaining() should have been seen.
-        {exceptionSubsequently, 5, 6, largeInputDataPartial}};
+    return new Object[][]
+        {
+            //Timeout on first read. Nothing should have been read. One call on writeHandle.remaining() should have been seen.
+            {exceptionFirst, 0, 1, new byte[0]},
+            //Timeout on the 6th read. We should expect 5 writes. Six calls on writeHandle.remaining() should have been seen.
+            {exceptionSubsequently, 5, 6, largeInputDataPartial}
+        };
   }
 
   @Test(dataProvider = "exceptionDataSources")
@@ -532,7 +532,7 @@ public class TestMIMEInputStream extends AbstractMIMEUnitTest
     final WriteHandle writeHandle = Mockito.mock(WriteHandle.class);
     final MultiPartMIMEInputStream multiPartMIMEInputStream =
         new MultiPartMIMEInputStream.Builder(exceptionThrowingByteArrayInputStream, _scheduledExecutorService,
-            Collections.<String, String>emptyMap()).withWriteChunkSize(TEST_CHUNK_SIZE).build();
+                                             Collections.<String, String>emptyMap()).withWriteChunkSize(TEST_CHUNK_SIZE).build();
 
     //Doesn't matter what we return here as long as its constant and above 0.
     when(writeHandle.remaining()).thenReturn(500);
@@ -619,31 +619,32 @@ public class TestMIMEInputStream extends AbstractMIMEUnitTest
     }
     final byte[] lessThenOneChunk = lessThenOneChunkBuilder.toString().getBytes();
 
-    return new Object[][]{
-        //One onWritePossible() providing 4 writes on the writeHandle which results in 3 expected writes.
-        //We need the 4th write on the writeHandle since we coincidentally have modulo 0 chunk sizes.
-        //The first three writes on the write handles write each chunk and the 4th is needed to realize
-        //we just reached the end (-1 returned).
-        {multipleEvenlyDivisibleChunks, new StrictByteArrayInputStream(multipleEvenlyDivisibleChunks), 4, 4, 3},
-        //One OnWritePossible() providing 1 write on the writeHandle, which results in 1 expected write.
-        {lessThenOneChunk, new StrictByteArrayInputStream(lessThenOneChunk), 1, 1, 1},
+    return new Object[][]
+        {
+            //One onWritePossible() providing 4 writes on the writeHandle which results in 3 expected writes.
+            //We need the 4th write on the writeHandle since we coincidentally have modulo 0 chunk sizes.
+            //The first three writes on the write handles write each chunk and the 4th is needed to realize
+            //we just reached the end (-1 returned).
+            {multipleEvenlyDivisibleChunks, new StrictByteArrayInputStream(multipleEvenlyDivisibleChunks), 4, 4, 3},
+            //One OnWritePossible() providing 1 write on the writeHandle, which results in 1 expected write.
+            {lessThenOneChunk, new StrictByteArrayInputStream(lessThenOneChunk), 1, 1, 1},
 
-        //Also verify that extra writes handles available do no harm:
-        {multipleEvenlyDivisibleChunks, new StrictByteArrayInputStream(
-            multipleEvenlyDivisibleChunks), 10, 4, 3}, {lessThenOneChunk, new StrictByteArrayInputStream(
-        lessThenOneChunk), 10, 1, 1},};
+            //Also verify that extra writes handles available do no harm:
+            {multipleEvenlyDivisibleChunks, new StrictByteArrayInputStream(multipleEvenlyDivisibleChunks), 10, 4, 3},
+            {lessThenOneChunk, new StrictByteArrayInputStream(lessThenOneChunk), 10, 1, 1}
+        };
   }
 
   @Test(dataProvider = "differentDataSourceSizes")
   public void testDifferentDataSourceSizes(final byte[] inputData, final StrictByteArrayInputStream inputStream,
-      final int writesRemainingPerOnWritePossibles, final int expectedWriteHandleRemaining,
-      final int expectedTotalWrites)
+                                           final int writesRemainingPerOnWritePossibles, final int expectedWriteHandleRemaining,
+                                           final int expectedTotalWrites)
   {
     //Setup:
     final WriteHandle writeHandle = Mockito.mock(WriteHandle.class);
     final MultiPartMIMEInputStream multiPartMIMEInputStream =
         new MultiPartMIMEInputStream.Builder(inputStream, _scheduledExecutorService,
-            Collections.<String, String>emptyMap()).withWriteChunkSize(TEST_CHUNK_SIZE).build();
+                                             Collections.<String, String>emptyMap()).withWriteChunkSize(TEST_CHUNK_SIZE).build();
 
     //Simulate a write handle that offers decreasing writeHandle.remaining()
     final Integer[] remainingWriteHandleCount = simulateDecreasingWriteHandleCount(writesRemainingPerOnWritePossibles);
@@ -716,7 +717,7 @@ public class TestMIMEInputStream extends AbstractMIMEUnitTest
     final WriteHandle writeHandle = Mockito.mock(WriteHandle.class);
     final MultiPartMIMEInputStream multiPartMIMEInputStream =
         new MultiPartMIMEInputStream.Builder(spyInputStream, _scheduledExecutorService,
-            Collections.<String, String>emptyMap()).withWriteChunkSize(TEST_CHUNK_SIZE).build();
+                                             Collections.<String, String>emptyMap()).withWriteChunkSize(TEST_CHUNK_SIZE).build();
 
     //Setup for the close on the input stream.
     //The close must happen for the test to finish.
@@ -782,7 +783,7 @@ public class TestMIMEInputStream extends AbstractMIMEUnitTest
     final WriteHandle writeHandle = Mockito.mock(WriteHandle.class);
     final MultiPartMIMEInputStream multiPartMIMEInputStream =
         new MultiPartMIMEInputStream.Builder(spyInputStream, _scheduledExecutorService,
-            Collections.<String, String>emptyMap()).withWriteChunkSize(TEST_CHUNK_SIZE).build();
+                                             Collections.<String, String>emptyMap()).withWriteChunkSize(TEST_CHUNK_SIZE).build();
 
     //By the time the first onWritePossible() completes, half the data should be transferred
     //Then the abort task will run.

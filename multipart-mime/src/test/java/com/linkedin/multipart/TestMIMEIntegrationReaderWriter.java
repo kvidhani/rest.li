@@ -153,13 +153,11 @@ public class TestMIMEIntegrationReaderWriter extends AbstractMIMEIntegrationStre
   @Test(dataProvider = "eachSingleBodyDataSource")
   public void testEachSingleBodyDataSource(final int chunkSize, final MIMEDataPart bodyPart) throws Exception
   {
-
     final MultiPartMIMEInputStream inputStreamDataSource =
         new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(bodyPart.getPartData().copyBytes()),
-            scheduledExecutorService, bodyPart.getPartHeaders()).withWriteChunkSize(chunkSize).build();
+                                             scheduledExecutorService, bodyPart.getPartHeaders()).withWriteChunkSize(chunkSize).build();
 
-    final MultiPartMIMEWriter writer =
-        new MultiPartMIMEWriter.Builder("some preamble", "").appendDataSource(inputStreamDataSource).build();
+    final MultiPartMIMEWriter writer = new MultiPartMIMEWriter.Builder("some preamble", "").appendDataSource(inputStreamDataSource).build();
 
     executeRequestAndAssert(writer, ImmutableList.of(bodyPart));
   }
@@ -168,18 +166,16 @@ public class TestMIMEIntegrationReaderWriter extends AbstractMIMEIntegrationStre
   public void testEachSingleBodyDataSourceMultipleTimes(final int chunkSize, final MIMEDataPart bodyPart)
       throws Exception
   {
-
     final List<MultiPartMIMEDataSource> dataSources = new ArrayList<MultiPartMIMEDataSource>();
     for (int i = 0; i < 4; i++)
     {
       final MultiPartMIMEInputStream inputStreamDataSource =
           new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(bodyPart.getPartData().copyBytes()),
-              scheduledExecutorService, bodyPart.getPartHeaders()).withWriteChunkSize(chunkSize).build();
+                                               scheduledExecutorService, bodyPart.getPartHeaders()).withWriteChunkSize(chunkSize).build();
       dataSources.add(inputStreamDataSource);
     }
 
-    final MultiPartMIMEWriter writer =
-        new MultiPartMIMEWriter.Builder("some preamble", "").appendDataSources(dataSources).build();
+    final MultiPartMIMEWriter writer = new MultiPartMIMEWriter.Builder("some preamble", "").appendDataSources(dataSources).build();
 
     executeRequestAndAssert(writer, ImmutableList.of(bodyPart, bodyPart, bodyPart, bodyPart));
   }
@@ -200,20 +196,20 @@ public class TestMIMEIntegrationReaderWriter extends AbstractMIMEIntegrationStre
   {
     final MultiPartMIMEInputStream normalBodyInputStream =
         new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_normalBody.getPartData().copyBytes()),
-            scheduledExecutorService, _normalBody.getPartHeaders()).withWriteChunkSize(chunkSize).build();
+                                             scheduledExecutorService, _normalBody.getPartHeaders()).withWriteChunkSize(chunkSize).build();
 
     final MultiPartMIMEInputStream headerLessBodyInputStream =
         new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_headerLessBody.getPartData().copyBytes()),
-            scheduledExecutorService, _headerLessBody.getPartHeaders()).withWriteChunkSize(chunkSize).build();
+                                             scheduledExecutorService, _headerLessBody.getPartHeaders()).withWriteChunkSize(chunkSize).build();
 
     //Copying over empty ByteString, but let's keep things consistent.
     final MultiPartMIMEInputStream bodyLessBodyInputStream =
         new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_bodyLessBody.getPartData().copyBytes()),
-            scheduledExecutorService, _bodyLessBody.getPartHeaders()).withWriteChunkSize(chunkSize).build();
+                                             scheduledExecutorService, _bodyLessBody.getPartHeaders()).withWriteChunkSize(chunkSize).build();
 
     final MultiPartMIMEInputStream purelyEmptyBodyInputStream =
         new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_purelyEmptyBody.getPartData().copyBytes()),
-            scheduledExecutorService, _purelyEmptyBody.getPartHeaders()).withWriteChunkSize(chunkSize).build();
+                                             scheduledExecutorService, _purelyEmptyBody.getPartHeaders()).withWriteChunkSize(chunkSize).build();
 
     final MultiPartMIMEWriter writer =
         new MultiPartMIMEWriter.Builder("some preamble", "").appendDataSource(normalBodyInputStream)
@@ -227,7 +223,6 @@ public class TestMIMEIntegrationReaderWriter extends AbstractMIMEIntegrationStre
   public void testEmptyEnvelope() throws Exception
   {
     //Javax mail does not support this, hence we can only test this using our writer
-
     final MultiPartMIMEWriter writer = new MultiPartMIMEWriter.Builder("some preamble", "").build();
 
     executeRequestAndAssert(writer, Collections.<MIMEDataPart>emptyList());
@@ -238,8 +233,8 @@ public class TestMIMEIntegrationReaderWriter extends AbstractMIMEIntegrationStre
       throws Exception
   {
     final StreamRequest streamRequest =
-        MultiPartMIMEStreamRequestBuilder.generateMultiPartMIMEStreamRequest(Bootstrap.createHttpURI(PORT, SERVER_URI),
-            "mixed", requestWriter, Collections.<String, String>emptyMap());
+        MultiPartMIMEStreamRequestFactory.generateMultiPartMIMEStreamRequest(Bootstrap.createHttpURI(PORT, SERVER_URI),
+                                                                             "mixed", requestWriter, Collections.<String, String>emptyMap());
 
     final AtomicInteger status = new AtomicInteger(-1);
     final CountDownLatch latch = new CountDownLatch(1);
@@ -273,7 +268,7 @@ public class TestMIMEIntegrationReaderWriter extends AbstractMIMEIntegrationStre
     static int partCounter = 0;
 
     SinglePartMIMEReaderCallbackImpl(final MultiPartMIMEReaderCallback topLevelCallback,
-        final MultiPartMIMEReader.SinglePartMIMEReader singlePartMIMEReader)
+                                     final MultiPartMIMEReader.SinglePartMIMEReader singlePartMIMEReader)
     {
       _topLevelCallback = topLevelCallback;
       _singlePartMIMEReader = singlePartMIMEReader;
@@ -325,8 +320,7 @@ public class TestMIMEIntegrationReaderWriter extends AbstractMIMEIntegrationStre
     @Override
     public void onNewPart(MultiPartMIMEReader.SinglePartMIMEReader singleParMIMEReader)
     {
-      SinglePartMIMEReaderCallbackImpl singlePartMIMEReaderCallback =
-          new SinglePartMIMEReaderCallbackImpl(this, singleParMIMEReader);
+      SinglePartMIMEReaderCallbackImpl singlePartMIMEReaderCallback = new SinglePartMIMEReaderCallbackImpl(this, singleParMIMEReader);
       singleParMIMEReader.registerReaderCallback(singlePartMIMEReaderCallback);
       _singlePartMIMEReaderCallbacks.add(singlePartMIMEReaderCallback);
       singleParMIMEReader.requestPartData();

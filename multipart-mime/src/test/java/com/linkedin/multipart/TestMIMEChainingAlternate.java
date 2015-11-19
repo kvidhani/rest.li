@@ -56,8 +56,7 @@ public class TestMIMEChainingAlternate extends AbstractMIMEUnitTest
   @Test(dataProvider = "chunkSizes")
   public void testAlternateSinglePartDataSource(final int chunkSize) throws Exception
   {
-    final List<MultiPartMIMEDataSource> dataSources =
-        generateInputStreamDataSources(chunkSize, _scheduledExecutorService);
+    final List<MultiPartMIMEDataSource> dataSources = generateInputStreamDataSources(chunkSize, _scheduledExecutorService);
 
     final MultiPartMIMEWriter writer = new MultiPartMIMEWriter.Builder().appendDataSources(dataSources).build();
 
@@ -276,8 +275,7 @@ public class TestMIMEChainingAlternate extends AbstractMIMEUnitTest
       }
       else if (_currentPart == 3)
       {
-        final MultiPartMIMEWriter writer =
-            new MultiPartMIMEWriter.Builder().appendDataSource(singleParMIMEReader).build();
+        final MultiPartMIMEWriter writer = new MultiPartMIMEWriter.Builder().appendDataSource(singleParMIMEReader).build();
 
         final StreamResponse streamResponse = mock(StreamResponse.class);
         when(streamResponse.getEntityStream()).thenReturn(writer.getEntityStream());

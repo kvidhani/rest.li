@@ -18,16 +18,14 @@ package com.linkedin.multipart.utils;
 
 
 import com.linkedin.data.ByteString;
+import com.linkedin.multipart.MultiPartMIMEDataSource;
+import com.linkedin.multipart.MultiPartMIMEInputStream;
 
 import com.google.common.collect.ImmutableMap;
 
 import javax.mail.internet.ContentType;
 import javax.mail.internet.MimeBodyPart;
 import javax.mail.internet.ParameterList;
-
-import com.linkedin.multipart.MultiPartMIMEDataSource;
-import com.linkedin.multipart.MultiPartMIMEInputStream;
-import junit.framework.Assert;
 
 import java.io.ByteArrayInputStream;
 import java.util.ArrayList;
@@ -36,6 +34,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 
+import junit.framework.Assert;
 
 /**
  * Shared data sources and utilities for tests.
@@ -45,23 +44,34 @@ import java.util.concurrent.ExecutorService;
 public final class MIMETestUtils
 {
   public static final String HEADER_CONTENT_TYPE = "Content-Type";
-  public static final String _textPlainType = "text/plain";
-  public static final String _binaryType = "application/octet-stream";
+  public static final String TEXT_PLAIN_CONTENT_TYPE = "text/plain";
+  public static final String BINARY_CONTENT_TYPE = "application/octet-stream";
 
   //For the abandoning tests:
   public static final String ABANDON_HEADER = "AbandonMe";
+
   //Header values for different server side behavior:
+
+  //Top level abandon all after registering a callback with the MultiPartMIMEReader. This abandon call will happen
+  //upon the first invocation on onNewPart():
+  public static final String TOP_ALL_WITH_CALLBACK = "TOP_ALL_WITH_CALLBACK";
+
+  //Top level abandon without registering a callback with the MultipartMIMEReader:
+  public static final String TOP_ALL_NO_CALLBACK = "TOP_ALL_NO_CALLBACK";
+
   //Single part abandons all individually but doesn't use a callback:
   public static final String SINGLE_ALL_NO_CALLBACK = "SINGLE_ALL_NO_CALLBACK";
-  //Top level abandons all without ever registering a reader with the SinglePartMIMEReader:
-  public static final String TOP_ALL = "TOP_ALL";
+
   //Single part abandons the first 6 (using registered callbacks) and then the top level abandons all of remaining:
   public static final String SINGLE_PARTIAL_TOP_REMAINING = "SINGLE_PARTIAL_TOP_REMAINING";
+
   //Single part alternates between consumption and abandoning the first 6 parts (using registered callbacks), then top
   //level abandons all of remaining. This means that parts 0, 2, 4 will be consumed and parts 1, 3, 5 will be abandoned.
   public static final String SINGLE_ALTERNATE_TOP_REMAINING = "SINGLE_ALTERNATE_TOP_REMAINING";
+
   //Single part abandons all individually (using registered callbacks):
   public static final String SINGLE_ALL = "SINGLE_ALL";
+
   //Single part alternates between consumption and abandoning all the way through (using registered callbacks):
   public static final String SINGLE_ALTERNATE = "SINGLE_ALTERNATE";
 
@@ -152,7 +162,7 @@ public final class MIMETestUtils
       {
         final String body = "1";
         final MimeBodyPart dataPart = new MimeBodyPart();
-        final ContentType contentType = new ContentType(_textPlainType);
+        final ContentType contentType = new ContentType(TEXT_PLAIN_CONTENT_TYPE);
         dataPart.setContent(body, contentType.getBaseType());
         _tinyDataSource = dataPart;
       }
@@ -161,7 +171,7 @@ public final class MIMETestUtils
       {
         final String body = "A small body";
         final MimeBodyPart dataPart = new MimeBodyPart();
-        final ContentType contentType = new ContentType(_textPlainType);
+        final ContentType contentType = new ContentType(TEXT_PLAIN_CONTENT_TYPE);
         dataPart.setContent(body, contentType.getBaseType());
         dataPart.setHeader(HEADER_CONTENT_TYPE, contentType.toString());
         dataPart.setHeader("SomeCustomHeader", "SomeCustomValue");
@@ -174,7 +184,7 @@ public final class MIMETestUtils
             "Has at possim tritani laoreet, vis te meis verear. Vel no vero quando oblique, eu blandit placerat nec, vide facilisi recusabo nec te. Veri labitur sensibus eum id. Quo omnis "
                 + "putant erroribus ad, nonumes copiosae percipit in qui, id cibo meis clita pri. An brute mundi quaerendum duo, eu aliquip facilisis sea, eruditi invidunt dissentiunt eos ea.";
         final MimeBodyPart dataPart = new MimeBodyPart();
-        final ContentType contentType = new ContentType(_textPlainType);
+        final ContentType contentType = new ContentType(TEXT_PLAIN_CONTENT_TYPE);
         dataPart.setContent(body, contentType.getBaseType());
         //Modify the content type header to use folding. We will also use multiple headers that use folding to verify
         //the integrity of the reader. Note that the Content-Type header uses parameters which are key/value pairs
@@ -204,7 +214,7 @@ public final class MIMETestUtils
       {
         final String body = "A body without any headers.";
         final MimeBodyPart dataPart = new MimeBodyPart();
-        final ContentType contentType = new ContentType(_textPlainType);
+        final ContentType contentType = new ContentType(TEXT_PLAIN_CONTENT_TYPE);
         dataPart.setContent(body, contentType.getBaseType());
         _headerLessBody = dataPart;
       }
@@ -232,7 +242,7 @@ public final class MIMETestUtils
           body[i] = (byte) i;
         }
         final MimeBodyPart dataPart = new MimeBodyPart();
-        final ContentType contentType = new ContentType(_binaryType);
+        final ContentType contentType = new ContentType(BINARY_CONTENT_TYPE);
         dataPart.setContent(body, contentType.getBaseType());
         dataPart.setHeader(HEADER_CONTENT_TYPE, contentType.toString());
         _bytesBody = dataPart;
@@ -241,7 +251,7 @@ public final class MIMETestUtils
       //Purely empty body. This has no body or headers.
       {
         final MimeBodyPart dataPart = new MimeBodyPart();
-        final ContentType contentType = new ContentType(_textPlainType);
+        final ContentType contentType = new ContentType(TEXT_PLAIN_CONTENT_TYPE);
         dataPart.setContent("", contentType.getBaseType()); //Mail requires content so we do a bit of a hack here.
         _purelyEmptyBody = dataPart;
       }

@@ -46,9 +46,12 @@ public interface MultiPartMIMEPartIterator
   public void abandonAllParts();
 
   /**
-   * Register to read using this MultiPartMIMEReader. This can ONLY be called if there is no part being actively
-   * read; meaning that the current {@link com.linkedin.multipart.MultiPartMIMEReader.SinglePartMIMEReader}
-   * has not had a callback registered with it. Violation of this will throw a {@link com.linkedin.multipart.exceptions.StreamBusyException}.
+   * Register to read using this MultiPartMIMEReader. Upon registration, at some point in the future, an invocation will be
+   * made on {@link MultiPartMIMEReaderCallback#onNewPart(com.linkedin.multipart.MultiPartMIMEReader.SinglePartMIMEReader)}.
+   *
+   * This can ONLY be called if there is no part being actively read; meaning that the current
+   * {@link com.linkedin.multipart.MultiPartMIMEReader.SinglePartMIMEReader} has not had a callback registered with it.
+   * Violation of this will throw a {@link com.linkedin.multipart.exceptions.StreamBusyException}.
    *
    * This can even be set if no parts in the stream have actually been consumed, i.e after the very first invocation of
    * {@link MultiPartMIMEReaderCallback#onNewPart(com.linkedin.multipart.MultiPartMIMEReader.SinglePartMIMEReader)}.
@@ -56,9 +59,8 @@ public interface MultiPartMIMEPartIterator
    * If this MultiPartMIMEReader is finished, then attempts to register a callback will throw
    * {@link com.linkedin.multipart.exceptions.MultiPartReaderFinishedException}.
    *
-   * @param clientCallback the {@link com.linkedin.multipart.MultiPartMIMEReaderCallback} which will be invoked upon
+   * @param clientCallback the {@link com.linkedin.multipart.MultiPartMIMEReaderCallback} which will be invoked
    *                       to read this multipart mime body.
    */
   public void registerReaderCallback(final MultiPartMIMEReaderCallback clientCallback);
-
 }
