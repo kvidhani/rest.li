@@ -22,6 +22,8 @@ import com.linkedin.common.callback.FutureCallback;
 import com.linkedin.common.util.None;
 import com.linkedin.data.ByteString;
 import com.linkedin.multipart.exceptions.MultiPartIllegalFormatException;
+import com.linkedin.multipart.utils.MIMETestUtils;
+import com.linkedin.r2.filter.R2Constants;
 import com.linkedin.r2.message.RequestContext;
 import com.linkedin.r2.message.rest.RestException;
 import com.linkedin.r2.message.rest.RestStatus;
@@ -43,19 +45,22 @@ import com.linkedin.r2.transport.http.server.HttpServer;
 import com.linkedin.r2.transport.http.server.HttpServerFactory;
 
 import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import org.testng.Assert;
+import org.testng.annotations.AfterClass;
 import org.testng.annotations.AfterMethod;
+import org.testng.annotations.BeforeClass;
 import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import static com.linkedin.multipart.utils.MIMETestUtils.*;
@@ -67,12 +72,13 @@ import static com.linkedin.multipart.utils.MIMETestUtils.*;
  *
  * @author Karim Vidhani
  */
-public class TestMIMEChainingMultipleSources extends AbstractMIMEUnitTest
+public class TestMIMEChainingMultipleSources
 {
   private static final int PORT_SERVER_A = 8450;
   private static final int PORT_SERVER_B = 8451;
   private static final URI SERVER_A_URI = URI.create("/serverA");
   private static final URI SERVER_B_URI = URI.create("/serverB");
+  private static final int TEST_TIMEOUT = 30000;
   private TransportClientFactory _clientFactory;
   private HttpServer _server_A;
   private HttpServer _server_B;
@@ -81,6 +87,19 @@ public class TestMIMEChainingMultipleSources extends AbstractMIMEUnitTest
   private CountDownLatch _latch;
   private ServerAMultiPartCallback _serverAMultiPartCallback;
   private int _chunkSize;
+  private ScheduledExecutorService _scheduledExecutorService;
+
+  @BeforeClass
+  public void threadPoolSetup()
+  {
+    _scheduledExecutorService = Executors.newScheduledThreadPool(30);
+  }
+
+  @AfterClass
+  public void threadPoolTearDown()
+  {
+    _scheduledExecutorService.shutdownNow();
+  }
 
   @BeforeMethod
   public void setup() throws IOException
@@ -127,6 +146,15 @@ public class TestMIMEChainingMultipleSources extends AbstractMIMEUnitTest
     _server_B.waitForStop();
   }
 
+  @DataProvider(name = "chunkSizes")
+  public Object[][] chunkSizes() throws Exception
+  {
+    return new Object[][]
+        {
+            {1}, {R2Constants.DEFAULT_DATA_CHUNK_SIZE}
+        };
+  }
+
   private class ServerARequestHandler implements StreamRequestHandler
   {
     ServerARequestHandler()
@@ -150,7 +178,7 @@ public class TestMIMEChainingMultipleSources extends AbstractMIMEUnitTest
         final StreamRequest simplePost =
             new StreamRequestBuilder(Bootstrap.createHttpsURI(PORT_SERVER_B, SERVER_B_URI)).setMethod("POST").build(emptyBody);
 
-        //In this callback, when we get the response from server 2, we will create the compound writer
+        //In this callback, when we get the response from Server B, we will create the compound writer
         Callback<StreamResponse> responseCallback = generateServerAResponseCallback(request, callback);
 
         //Send the request to Server A
@@ -185,62 +213,27 @@ public class TestMIMEChainingMultipleSources extends AbstractMIMEUnitTest
     };
   }
 
-  private class ServerASinglePartCallback implements SinglePartMIMEReaderCallback
-  {
-    final MultiPartMIMEReader.SinglePartMIMEReader _singlePartMIMEReader;
-    final ByteArrayOutputStream _byteArrayOutputStream = new ByteArrayOutputStream();
-    Map<String, String> _headers;
-    ByteString _finishedData = null;
-
-    ServerASinglePartCallback(final MultiPartMIMEReader.SinglePartMIMEReader singlePartMIMEReader)
-    {
-      _singlePartMIMEReader = singlePartMIMEReader;
-      _headers = singlePartMIMEReader.dataSourceHeaders();
-    }
-
-    @Override
-    public void onPartDataAvailable(ByteString partData)
-    {
-      try
-      {
-        _byteArrayOutputStream.write(partData.copyBytes());
-      }
-      catch (IOException ioException)
-      {
-        onStreamError(ioException);
-      }
-      _singlePartMIMEReader.requestPartData();
-    }
-
-    @Override
-    public void onFinished()
-    {
-      _finishedData = ByteString.copy(_byteArrayOutputStream.toByteArray());
-    }
-
-    //Delegate to the top level for now for these two
-    @Override
-    public void onAbandoned()
-    {
-      Assert.fail();
-    }
-
-    @Override
-    public void onStreamError(Throwable throwable)
-    {
-      Assert.fail();
-    }
-  }
-
   private class ServerAMultiPartCallback implements MultiPartMIMEReaderCallback
   {
     final Callback<StreamResponse> _incomingRequestCallback;
     final StreamRequest _incomingRequest;
     boolean _firstPartConsumed = false;
-    final List<ServerASinglePartCallback> _singlePartMIMEReaderCallbacks = new ArrayList<ServerASinglePartCallback>();
+    final List<MIMETestUtils.SinglePartMIMEFullReaderCallback> _singlePartMIMEReaderCallbacks =
+        new ArrayList<MIMETestUtils.SinglePartMIMEFullReaderCallback>();
+
+    ServerAMultiPartCallback(final StreamRequest incomingRequest, final Callback<StreamResponse> callback)
+    {
+      _incomingRequest = incomingRequest;
+      _incomingRequestCallback = callback;
+    }
+
+    public List<SinglePartMIMEFullReaderCallback> getSinglePartMIMEReaderCallbacks()
+    {
+      return _singlePartMIMEReaderCallbacks;
+    }
 
     @Override
-    public void onNewPart(MultiPartMIMEReader.SinglePartMIMEReader singleParMIMEReader)
+    public void onNewPart(MultiPartMIMEReader.SinglePartMIMEReader singlePartMIMEReader)
     {
       if (!_firstPartConsumed)
       {
@@ -253,7 +246,7 @@ public class TestMIMEChainingMultipleSources extends AbstractMIMEUnitTest
                 _scheduledExecutorService, _body5.getPartHeaders()).withWriteChunkSize(_chunkSize).build();
 
         final MultiPartMIMEWriter writer =
-            new MultiPartMIMEWriter.Builder().appendDataSource(singleParMIMEReader).appendDataSource(localInputStream)
+            new MultiPartMIMEWriter.Builder().appendDataSource(singlePartMIMEReader).appendDataSource(localInputStream)
                 .appendDataSourcePartIterator(incomingRequestReader).build();
 
         final StreamResponse streamResponse =
@@ -262,10 +255,11 @@ public class TestMIMEChainingMultipleSources extends AbstractMIMEUnitTest
       }
       else
       {
-        ServerASinglePartCallback singlePartMIMEReaderCallback = new ServerASinglePartCallback(singleParMIMEReader);
-        singleParMIMEReader.registerReaderCallback(singlePartMIMEReaderCallback);
+        MIMETestUtils.SinglePartMIMEFullReaderCallback singlePartMIMEReaderCallback =
+            new MIMETestUtils.SinglePartMIMEFullReaderCallback(singlePartMIMEReader);
+        singlePartMIMEReader.registerReaderCallback(singlePartMIMEReaderCallback);
         _singlePartMIMEReaderCallbacks.add(singlePartMIMEReaderCallback);
-        singleParMIMEReader.requestPartData();
+        singlePartMIMEReader.requestPartData();
       }
     }
 
@@ -285,12 +279,6 @@ public class TestMIMEChainingMultipleSources extends AbstractMIMEUnitTest
     public void onStreamError(Throwable throwable)
     {
       Assert.fail();
-    }
-
-    ServerAMultiPartCallback(final StreamRequest incomingRequest, final Callback<StreamResponse> callback)
-    {
-      _incomingRequest = incomingRequest;
-      _incomingRequestCallback = callback;
     }
   }
 
@@ -344,12 +332,12 @@ public class TestMIMEChainingMultipleSources extends AbstractMIMEUnitTest
 
   //Test breakdown:
   //1. Main thread sends mime request
-  //2. Server 1 sends a simple POST request to server 2
-  //3. Server 2 sends back a mime response to server 1
-  //4. Server 1 takes the original incoming request from the main thread + a local input
-  //stream + the first part from the incoming mime response from server 2.
+  //2. Server A sends a simple POST request to Server B
+  //3. Server B sends back a mime response to Server A
+  //4. Server A takes the original incoming request from the main thread + a local input
+  //stream + the first part from the incoming mime response from Server B.
   //5. Main thread then gets all of this and stores it.
-  //6. Server 1 then drains and stores the rest of the parts from server 2's response.
+  //6. Server A then drains and stores the rest of the parts from Server B's response.
   @Test(dataProvider = "chunkSizes")
   public void testSinglePartDataSource(final int chunkSize) throws Exception
   {
@@ -372,30 +360,30 @@ public class TestMIMEChainingMultipleSources extends AbstractMIMEUnitTest
     _latch.await(TEST_TIMEOUT, TimeUnit.MILLISECONDS);
 
     //Verify client
-    List<ClientSinglePartReceiver> clientSinglePartCallbacks = clientReceiver._singlePartMIMEReaderCallbacks;
-    Assert.assertEquals(clientReceiver._singlePartMIMEReaderCallbacks.size(), 6);
-    Assert.assertEquals(clientSinglePartCallbacks.get(0)._finishedData, _body1.getPartData());
-    Assert.assertEquals(clientSinglePartCallbacks.get(0)._headers, _body1.getPartHeaders());
-    Assert.assertEquals(clientSinglePartCallbacks.get(1)._finishedData, _body5.getPartData());
-    Assert.assertEquals(clientSinglePartCallbacks.get(1)._headers, _body5.getPartHeaders());
-    Assert.assertEquals(clientSinglePartCallbacks.get(2)._finishedData, _bodyA.getPartData());
-    Assert.assertEquals(clientSinglePartCallbacks.get(2)._headers, _bodyA.getPartHeaders());
-    Assert.assertEquals(clientSinglePartCallbacks.get(3)._finishedData, _bodyB.getPartData());
-    Assert.assertEquals(clientSinglePartCallbacks.get(3)._headers, _bodyB.getPartHeaders());
-    Assert.assertEquals(clientSinglePartCallbacks.get(4)._finishedData, _bodyC.getPartData());
-    Assert.assertEquals(clientSinglePartCallbacks.get(4)._headers, _bodyC.getPartHeaders());
-    Assert.assertEquals(clientSinglePartCallbacks.get(5)._finishedData, _bodyD.getPartData());
-    Assert.assertEquals(clientSinglePartCallbacks.get(5)._headers, _bodyD.getPartHeaders());
+    List<MIMETestUtils.SinglePartMIMEFullReaderCallback> clientSinglePartCallbacks = clientReceiver.getSinglePartMIMEReaderCallbacks();
+    Assert.assertEquals(clientReceiver.getSinglePartMIMEReaderCallbacks().size(), 6);
+    Assert.assertEquals(clientSinglePartCallbacks.get(0).getFinishedData(), _body1.getPartData());
+    Assert.assertEquals(clientSinglePartCallbacks.get(0).getHeaders(), _body1.getPartHeaders());
+    Assert.assertEquals(clientSinglePartCallbacks.get(1).getFinishedData(), _body5.getPartData());
+    Assert.assertEquals(clientSinglePartCallbacks.get(1).getHeaders(), _body5.getPartHeaders());
+    Assert.assertEquals(clientSinglePartCallbacks.get(2).getFinishedData(), _bodyA.getPartData());
+    Assert.assertEquals(clientSinglePartCallbacks.get(2).getHeaders(), _bodyA.getPartHeaders());
+    Assert.assertEquals(clientSinglePartCallbacks.get(3).getFinishedData(), _bodyB.getPartData());
+    Assert.assertEquals(clientSinglePartCallbacks.get(3).getHeaders(), _bodyB.getPartHeaders());
+    Assert.assertEquals(clientSinglePartCallbacks.get(4).getFinishedData(), _bodyC.getPartData());
+    Assert.assertEquals(clientSinglePartCallbacks.get(4).getHeaders(), _bodyC.getPartHeaders());
+    Assert.assertEquals(clientSinglePartCallbacks.get(5).getFinishedData(), _bodyD.getPartData());
+    Assert.assertEquals(clientSinglePartCallbacks.get(5).getHeaders(), _bodyD.getPartHeaders());
 
     //Verify Server A
-    List<ServerASinglePartCallback> serverASinglePartCallbacks = _serverAMultiPartCallback._singlePartMIMEReaderCallbacks;
+    List<MIMETestUtils.SinglePartMIMEFullReaderCallback> serverASinglePartCallbacks = _serverAMultiPartCallback.getSinglePartMIMEReaderCallbacks();
     Assert.assertEquals(serverASinglePartCallbacks.size(), 3);
-    Assert.assertEquals(serverASinglePartCallbacks.get(0)._finishedData, _body2.getPartData());
-    Assert.assertEquals(serverASinglePartCallbacks.get(0)._headers, _body2.getPartHeaders());
-    Assert.assertEquals(serverASinglePartCallbacks.get(1)._finishedData, _body3.getPartData());
-    Assert.assertEquals(serverASinglePartCallbacks.get(1)._headers, _body3.getPartHeaders());
-    Assert.assertEquals(serverASinglePartCallbacks.get(2)._finishedData, _body4.getPartData());
-    Assert.assertEquals(serverASinglePartCallbacks.get(2)._headers, _body4.getPartHeaders());
+    Assert.assertEquals(serverASinglePartCallbacks.get(0).getFinishedData(), _body2.getPartData());
+    Assert.assertEquals(serverASinglePartCallbacks.get(0).getHeaders(), _body2.getPartHeaders());
+    Assert.assertEquals(serverASinglePartCallbacks.get(1).getFinishedData(), _body3.getPartData());
+    Assert.assertEquals(serverASinglePartCallbacks.get(1).getHeaders(), _body3.getPartHeaders());
+    Assert.assertEquals(serverASinglePartCallbacks.get(2).getFinishedData(), _body4.getPartData());
+    Assert.assertEquals(serverASinglePartCallbacks.get(2).getHeaders(), _body4.getPartHeaders());
   }
 
   private Callback<StreamResponse> generateSuccessChainCallback(final ClientMultiPartReceiver receiver)
@@ -417,61 +405,28 @@ public class TestMIMEChainingMultipleSources extends AbstractMIMEUnitTest
     };
   }
 
-  //Client callbacks:
-  private class ClientSinglePartReceiver implements SinglePartMIMEReaderCallback
-  {
-    final MultiPartMIMEReader.SinglePartMIMEReader _singlePartMIMEReader;
-    final ByteArrayOutputStream _byteArrayOutputStream = new ByteArrayOutputStream();
-    Map<String, String> _headers;
-    ByteString _finishedData = null;
-
-    ClientSinglePartReceiver(final MultiPartMIMEReader.SinglePartMIMEReader singlePartMIMEReader)
-    {
-      _singlePartMIMEReader = singlePartMIMEReader;
-      _headers = singlePartMIMEReader.dataSourceHeaders();
-    }
-
-    @Override
-    public void onPartDataAvailable(ByteString partData)
-    {
-      try
-      {
-        _byteArrayOutputStream.write(partData.copyBytes());
-      }
-      catch (IOException ioException)
-      {
-        onStreamError(ioException);
-      }
-      _singlePartMIMEReader.requestPartData();
-    }
-
-    @Override
-    public void onFinished()
-    {
-      _finishedData = ByteString.copy(_byteArrayOutputStream.toByteArray());
-    }
-
-    @Override
-    public void onAbandoned()
-    {
-      Assert.fail();
-    }
-
-    @Override
-    public void onStreamError(Throwable throwable)
-    {
-      Assert.fail();
-    }
-  }
-
+  //Client callback:
+  //Note that we can't use the top level Multipart mime reader callback from MimeTestUtils here because we need
+  //count down the latch upon finishing.
   private class ClientMultiPartReceiver implements MultiPartMIMEReaderCallback
   {
-    final List<ClientSinglePartReceiver> _singlePartMIMEReaderCallbacks = new ArrayList<ClientSinglePartReceiver>();
+    final List<MIMETestUtils.SinglePartMIMEFullReaderCallback> _singlePartMIMEReaderCallbacks =
+        new ArrayList<MIMETestUtils.SinglePartMIMEFullReaderCallback>();
+
+    ClientMultiPartReceiver()
+    {
+    }
+
+    public List<SinglePartMIMEFullReaderCallback> getSinglePartMIMEReaderCallbacks()
+    {
+      return _singlePartMIMEReaderCallbacks;
+    }
 
     @Override
     public void onNewPart(MultiPartMIMEReader.SinglePartMIMEReader singleParMIMEReader)
     {
-      ClientSinglePartReceiver singlePartMIMEReaderCallback = new ClientSinglePartReceiver(singleParMIMEReader);
+      MIMETestUtils.SinglePartMIMEFullReaderCallback singlePartMIMEReaderCallback =
+          new MIMETestUtils.SinglePartMIMEFullReaderCallback(singleParMIMEReader);
       singleParMIMEReader.registerReaderCallback(singlePartMIMEReaderCallback);
       _singlePartMIMEReaderCallbacks.add(singlePartMIMEReaderCallback);
       singleParMIMEReader.requestPartData();
@@ -480,7 +435,6 @@ public class TestMIMEChainingMultipleSources extends AbstractMIMEUnitTest
     @Override
     public void onFinished()
     {
-      //We don't have to do anything here.
       _latch.countDown();
     }
 
@@ -494,10 +448,6 @@ public class TestMIMEChainingMultipleSources extends AbstractMIMEUnitTest
     public void onStreamError(Throwable throwable)
     {
       Assert.fail();
-    }
-
-    ClientMultiPartReceiver()
-    {
     }
   }
 }

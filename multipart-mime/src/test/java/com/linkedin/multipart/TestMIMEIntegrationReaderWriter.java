@@ -229,6 +229,10 @@ public class TestMIMEIntegrationReaderWriter extends AbstractMIMEIntegrationStre
   }
 
   ///////////////////////////////////////////////////////////////////////////////////////
+
+  //This method will execute a StreamRequest using a payload comprised of the provided MultiPartMIMEWriter. The request
+  //makes its way to a server which will read all the parts one by one and store them in a list. Subsequently,
+  //an assertion is performed to make sure that each part was read and saved properly on the server.
   private void executeRequestAndAssert(final MultiPartMIMEWriter requestWriter, final List<MIMEDataPart> expectedParts)
       throws Exception
   {
@@ -244,7 +248,8 @@ public class TestMIMEIntegrationReaderWriter extends AbstractMIMEIntegrationStre
     Assert.assertEquals(status.get(), RestStatus.OK);
 
     List<SinglePartMIMEReaderCallbackImpl> singlePartMIMEReaderCallbacks =
-        _mimeServerRequestHandler._testMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks;
+        _mimeServerRequestHandler.getTestMultiPartMIMEReaderCallback().getSinglePartMIMEReaderCallbacks();
+        _mimeServerRequestHandler.getTestMultiPartMIMEReaderCallback().getSinglePartMIMEReaderCallbacks();
     Assert.assertEquals(singlePartMIMEReaderCallbacks.size(), expectedParts.size());
     for (int i = 0; i < singlePartMIMEReaderCallbacks.size(); i++)
     {
@@ -253,8 +258,8 @@ public class TestMIMEIntegrationReaderWriter extends AbstractMIMEIntegrationStre
       //Expected
       final MIMEDataPart currentExpectedPart = expectedParts.get(i);
 
-      Assert.assertEquals(currentCallback._headers, currentExpectedPart.getPartHeaders());
-      Assert.assertEquals(currentCallback._finishedData, currentExpectedPart.getPartData());
+      Assert.assertEquals(currentCallback.getHeaders(), currentExpectedPart.getPartHeaders());
+      Assert.assertEquals(currentCallback.getFinishedData(), currentExpectedPart.getPartData());
     }
   }
 
@@ -273,6 +278,16 @@ public class TestMIMEIntegrationReaderWriter extends AbstractMIMEIntegrationStre
       _topLevelCallback = topLevelCallback;
       _singlePartMIMEReader = singlePartMIMEReader;
       _headers = singlePartMIMEReader.dataSourceHeaders();
+    }
+
+    public Map<String, String> getHeaders()
+    {
+      return _headers;
+    }
+
+    public ByteString getFinishedData()
+    {
+      return _finishedData;
     }
 
     @Override
@@ -317,13 +332,23 @@ public class TestMIMEIntegrationReaderWriter extends AbstractMIMEIntegrationStre
     final Callback<StreamResponse> _r2callback;
     final List<SinglePartMIMEReaderCallbackImpl> _singlePartMIMEReaderCallbacks = new ArrayList<SinglePartMIMEReaderCallbackImpl>();
 
-    @Override
-    public void onNewPart(MultiPartMIMEReader.SinglePartMIMEReader singleParMIMEReader)
+    MultiPartMIMEReaderCallbackImpl(final Callback<StreamResponse> r2callback)
     {
-      SinglePartMIMEReaderCallbackImpl singlePartMIMEReaderCallback = new SinglePartMIMEReaderCallbackImpl(this, singleParMIMEReader);
-      singleParMIMEReader.registerReaderCallback(singlePartMIMEReaderCallback);
+      _r2callback = r2callback;
+    }
+
+    public List<SinglePartMIMEReaderCallbackImpl> getSinglePartMIMEReaderCallbacks()
+    {
+      return _singlePartMIMEReaderCallbacks;
+    }
+
+    @Override
+    public void onNewPart(MultiPartMIMEReader.SinglePartMIMEReader singlePartMIMEReader)
+    {
+      SinglePartMIMEReaderCallbackImpl singlePartMIMEReaderCallback = new SinglePartMIMEReaderCallbackImpl(this, singlePartMIMEReader);
+      singlePartMIMEReader.registerReaderCallback(singlePartMIMEReaderCallback);
       _singlePartMIMEReaderCallbacks.add(singlePartMIMEReaderCallback);
-      singleParMIMEReader.requestPartData();
+      singlePartMIMEReader.requestPartData();
     }
 
     @Override
@@ -346,11 +371,6 @@ public class TestMIMEIntegrationReaderWriter extends AbstractMIMEIntegrationStre
       RestException restException = new RestException(RestStatus.responseForError(400, throwable));
       _r2callback.onError(restException);
     }
-
-    MultiPartMIMEReaderCallbackImpl(final Callback<StreamResponse> r2callback)
-    {
-      _r2callback = r2callback;
-    }
   }
 
   private static class MimeServerRequestHandler implements StreamRequestHandler
@@ -359,6 +379,11 @@ public class TestMIMEIntegrationReaderWriter extends AbstractMIMEIntegrationStre
 
     MimeServerRequestHandler()
     {
+    }
+
+    public MultiPartMIMEReaderCallbackImpl getTestMultiPartMIMEReaderCallback()
+    {
+      return _testMultiPartMIMEReaderCallback;
     }
 
     @Override

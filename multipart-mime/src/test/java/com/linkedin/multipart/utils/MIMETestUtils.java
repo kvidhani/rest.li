@@ -20,21 +20,27 @@ package com.linkedin.multipart.utils;
 import com.linkedin.data.ByteString;
 import com.linkedin.multipart.MultiPartMIMEDataSource;
 import com.linkedin.multipart.MultiPartMIMEInputStream;
+import com.linkedin.multipart.MultiPartMIMEReader;
+import com.linkedin.multipart.MultiPartMIMEReaderCallback;
+import com.linkedin.multipart.SinglePartMIMEReaderCallback;
 
 import com.google.common.collect.ImmutableMap;
 
-import javax.mail.internet.ContentType;
-import javax.mail.internet.MimeBodyPart;
-import javax.mail.internet.ParameterList;
-
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 
-import junit.framework.Assert;
+import javax.mail.internet.ContentType;
+import javax.mail.internet.MimeBodyPart;
+import javax.mail.internet.ParameterList;
+
+import org.testng.Assert;
+
 
 /**
  * Shared data sources and utilities for tests.
@@ -115,6 +121,32 @@ public final class MIMETestUtils
     Assert.assertEquals(javaxMailPayloadBytes[javaxMailPayloadBytes.length - 2], 13);
     Assert.assertEquals(javaxMailPayloadBytes[javaxMailPayloadBytes.length - 1], 10);
     return javaxMailPayload.copySlice(0, javaxMailPayload.length() - 2);
+  }
+
+  public static List<Integer> generatePrimeNumbers(final int limit)
+  {
+    final List<Integer> primeNumberList = new ArrayList<Integer>();
+    for (int i = 1; i < limit; i++)
+    {
+      boolean isPrimeNumber = true;
+
+      //Check to see if the number is prime
+      for (int j = 2; j < i; j++)
+      {
+        if (i % j == 0)
+        {
+          isPrimeNumber = false;
+          break;
+        }
+      }
+
+      if (isPrimeNumber)
+      {
+        primeNumberList.add(i);
+      }
+    }
+
+    return primeNumberList;
   }
 
   static
@@ -264,7 +296,7 @@ public final class MIMETestUtils
 
   //The chaining tests will use these:
   public static List<MultiPartMIMEDataSource> generateInputStreamDataSources(final int chunkSize,
-      final ExecutorService executorService)
+                                                                             final ExecutorService executorService)
   {
     final MultiPartMIMEInputStream bodyADataSource =
         new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_bodyA.getPartData().copyBytes()),
@@ -289,5 +321,109 @@ public final class MIMETestUtils
     dataSources.add(bodyDDataSource);
 
     return dataSources;
+  }
+
+  //These are general purpose callbacks that simply read bytes and store them in memory:
+  public static class SinglePartMIMEFullReaderCallback implements SinglePartMIMEReaderCallback
+  {
+    final MultiPartMIMEReader.SinglePartMIMEReader _singlePartMIMEReader;
+    final ByteArrayOutputStream _byteArrayOutputStream = new ByteArrayOutputStream();
+    Map<String, String> _headers;
+    ByteString _finishedData = null;
+
+    public SinglePartMIMEFullReaderCallback(final MultiPartMIMEReader.SinglePartMIMEReader singlePartMIMEReader)
+    {
+      _singlePartMIMEReader = singlePartMIMEReader;
+      _headers = singlePartMIMEReader.dataSourceHeaders();
+    }
+
+    public MultiPartMIMEReader.SinglePartMIMEReader getSinglePartMIMEReader()
+    {
+      return _singlePartMIMEReader;
+    }
+
+    public Map<String, String> getHeaders()
+    {
+      return _headers;
+    }
+
+    public ByteString getFinishedData()
+    {
+      return _finishedData;
+    }
+
+    @Override
+    public void onPartDataAvailable(ByteString partData)
+    {
+      try
+      {
+        _byteArrayOutputStream.write(partData.copyBytes());
+      }
+      catch (IOException ioException)
+      {
+        onStreamError(ioException);
+      }
+      _singlePartMIMEReader.requestPartData();
+    }
+
+    @Override
+    public void onFinished()
+    {
+      _finishedData = ByteString.copy(_byteArrayOutputStream.toByteArray());
+    }
+
+    @Override
+    public void onAbandoned()
+    {
+      Assert.fail();
+    }
+
+    @Override
+    public void onStreamError(Throwable throwable)
+    {
+      Assert.fail();
+    }
+  }
+
+  public static class MultiPartMIMEFullReaderCallback implements MultiPartMIMEReaderCallback
+  {
+    final List<SinglePartMIMEFullReaderCallback> _singlePartMIMEReaderCallbacks =
+        new ArrayList<SinglePartMIMEFullReaderCallback>();
+
+    public MultiPartMIMEFullReaderCallback()
+    {
+    }
+
+    public List<SinglePartMIMEFullReaderCallback> getSinglePartMIMEReaderCallbacks()
+    {
+      return _singlePartMIMEReaderCallbacks;
+    }
+
+    @Override
+    public void onNewPart(MultiPartMIMEReader.SinglePartMIMEReader singlePartMIMEReader)
+    {
+      SinglePartMIMEFullReaderCallback singlePartMIMEReaderCallback = new SinglePartMIMEFullReaderCallback(singlePartMIMEReader);
+      singlePartMIMEReader.registerReaderCallback(singlePartMIMEReaderCallback);
+      _singlePartMIMEReaderCallbacks.add(singlePartMIMEReaderCallback);
+      singlePartMIMEReader.requestPartData();
+    }
+
+    @Override
+    public void onFinished()
+    {
+      //We don't have to do anything here.
+    }
+
+    @Override
+    public void onAbandoned()
+    {
+      Assert.fail();
+    }
+
+    @Override
+    public void onStreamError(Throwable throwable)
+    {
+      Assert.fail();
+    }
   }
 }

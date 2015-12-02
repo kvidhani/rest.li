@@ -48,12 +48,12 @@ import static org.mockito.Mockito.when;
  */
 public abstract class AbstractMIMEUnitTest
 {
-  protected static ScheduledExecutorService _scheduledExecutorService;
-  protected static int TEST_TIMEOUT = 30000;
+  protected ScheduledExecutorService _scheduledExecutorService;
+  protected int TEST_TIMEOUT = 30000;
   //The following are mock objects used when we test the reader using a mocked version of R2.
-  protected EntityStream entityStream;
-  protected ReadHandle readHandle;
-  protected StreamRequest streamRequest;
+  protected EntityStream _entityStream;
+  protected ReadHandle _readHandle;
+  protected StreamRequest _streamRequest;
 
   @BeforeClass
   public void threadPoolSetup()
@@ -69,7 +69,6 @@ public abstract class AbstractMIMEUnitTest
     TEST_TIMEOUT = 30000; //In case a subclass changed this
   }
 
-  //This is used by a lot of tests so we place it here.
   @DataProvider(name = "chunkSizes")
   public Object[][] chunkSizes() throws Exception
   {
@@ -82,9 +81,9 @@ public abstract class AbstractMIMEUnitTest
   //This is used when we need to mock out R2 and write a payload for our reader to read
   protected void mockR2AndWrite(final ByteString payload, final int chunkSize, final String contentType)
   {
-    entityStream = mock(EntityStream.class);
-    readHandle = mock(ReadHandle.class);
-    streamRequest = mock(StreamRequest.class);
+    _entityStream = mock(EntityStream.class);
+    _readHandle = mock(ReadHandle.class);
+    _streamRequest = mock(StreamRequest.class);
 
     //We have to use the AtomicReference holder technique to modify the current remaining buffer since the inner class
     //in doAnswer() can only access final variables.
@@ -131,10 +130,10 @@ public abstract class AbstractMIMEUnitTest
 
         return null;
       }
-    }).when(readHandle).request(isA(Integer.class));
+    }).when(_readHandle).request(isA(Integer.class));
 
     //We need a final version of the read handle since its passed to an inner class below.
-    final ReadHandle readHandleRef = readHandle;
+    final ReadHandle readHandleRef = _readHandle;
     doAnswer(new Answer<Object>()
     {
       @Override
@@ -147,11 +146,11 @@ public abstract class AbstractMIMEUnitTest
         reader.onInit(readHandleRef);
         return null;
       }
-    }).when(entityStream).setReader(isA(MultiPartMIMEReader.R2MultiPartMIMEReader.class));
+    }).when(_entityStream).setReader(isA(MultiPartMIMEReader.R2MultiPartMIMEReader.class));
 
-    when(streamRequest.getEntityStream()).thenReturn(entityStream);
+    when(_streamRequest.getEntityStream()).thenReturn(_entityStream);
     final String contentTypeHeader =
         contentType + ";somecustomparameter=somecustomvalue" + ";anothercustomparameter=anothercustomvalue";
-    when(streamRequest.getHeader(MultiPartMIMEUtils.CONTENT_TYPE_HEADER)).thenReturn(contentTypeHeader);
+    when(_streamRequest.getHeader(MultiPartMIMEUtils.CONTENT_TYPE_HEADER)).thenReturn(contentTypeHeader);
   }
 }

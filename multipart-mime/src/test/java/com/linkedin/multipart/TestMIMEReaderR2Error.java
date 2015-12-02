@@ -44,7 +44,7 @@ public class TestMIMEReaderR2Error extends AbstractMIMEUnitTest
   MultiPartMIMEReader _reader;
   MultiPartMIMEReaderCallbackImpl _currentMultiPartMIMEReaderCallback;
 
-  //This test will verify that, in the middle of middle of normal processing, we are able to handle R2
+  //This test will verify that, in the middle of normal processing, we are able to handle R2
   //errors gracefully. We simulate a pause in the middle of normal processing by counting down the latch
   //in the callbacks in the middle of the 2nd part.
   @Test
@@ -94,7 +94,7 @@ public class TestMIMEReaderR2Error extends AbstractMIMEUnitTest
     }
     catch (SinglePartFinishedException singlePartFinishedException)
     {
-      //
+      //pass
     }
   }
 
@@ -105,7 +105,7 @@ public class TestMIMEReaderR2Error extends AbstractMIMEUnitTest
     mockR2AndWrite(requestPayload, chunkSize, contentTypeHeader);
     final CountDownLatch latch = new CountDownLatch(1);
 
-    _reader = MultiPartMIMEReader.createAndAcquireStream(streamRequest);
+    _reader = MultiPartMIMEReader.createAndAcquireStream(_streamRequest);
     _currentMultiPartMIMEReaderCallback = new MultiPartMIMEReaderCallbackImpl(latch);
     _reader.registerReaderCallback(_currentMultiPartMIMEReaderCallback);
 
@@ -165,6 +165,11 @@ public class TestMIMEReaderR2Error extends AbstractMIMEUnitTest
     Throwable _streamError = null;
     final CountDownLatch _latch;
 
+    MultiPartMIMEReaderCallbackImpl(final CountDownLatch latch)
+    {
+      _latch = latch;
+    }
+
     @Override
     public void onNewPart(MultiPartMIMEReader.SinglePartMIMEReader singlePartMIMEReader)
     {
@@ -200,11 +205,6 @@ public class TestMIMEReaderR2Error extends AbstractMIMEUnitTest
     public void onStreamError(Throwable throwable)
     {
       _streamError = throwable;
-    }
-
-    MultiPartMIMEReaderCallbackImpl(final CountDownLatch latch)
-    {
-      _latch = latch;
     }
   }
 }

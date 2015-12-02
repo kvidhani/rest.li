@@ -29,10 +29,10 @@ public interface MultiPartMIMEReaderCallback
    * Invoked (at some time in the future) upon a registration with a {@link com.linkedin.multipart.MultiPartMIMEReader}.
    * Also invoked when previous parts are finished and new parts are available.
    *
-   * @param singleParMIMEReader the {@link com.linkedin.multipart.MultiPartMIMEReader.SinglePartMIMEReader}
+   * @param singlePartMIMEReader the {@link com.linkedin.multipart.MultiPartMIMEReader.SinglePartMIMEReader}
    *                            which can be used to walk through this part.
    */
-  public void onNewPart(MultiPartMIMEReader.SinglePartMIMEReader singleParMIMEReader);
+  public void onNewPart(MultiPartMIMEReader.SinglePartMIMEReader singlePartMIMEReader);
 
   /**
    * Invoked when this reader is finished and the multipart mime envelope has been completely read.

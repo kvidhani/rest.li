@@ -900,8 +900,7 @@ public class MultiPartMIMEReader implements MultiPartMIMEPartIterator
         final ByteString leadingBytes = headerBytes.slice(0, MultiPartMIMEUtils.CRLF_BYTES.length);
         if (!leadingBytes.equals(MultiPartMIMEUtils.BYTE_STRING_CRLF_BYTES))
         {
-          handleExceptions(new MultiPartIllegalFormatException(
-              "Malformed multipart mime request. Headers are improperly constructed."));
+          handleExceptions(new MultiPartIllegalFormatException("Malformed multipart mime request. Headers are improperly constructed."));
           return null; //Unusable state, so return.
         }
 

@@ -631,7 +631,7 @@ public class RestLiServer extends BaseRestServer
     }
 
     @Override
-    public void onNewPart(MultiPartMIMEReader.SinglePartMIMEReader singleParMIMEReader)
+    public void onNewPart(MultiPartMIMEReader.SinglePartMIMEReader singlePartMIMEReader)
     {
       if (_requestPayload == null)
       {
@@ -639,7 +639,7 @@ public class RestLiServer extends BaseRestServer
         //At this point in time the Content-Type is still multipart/related for the artificially created RestRequest.
         //Therefore care must be taken to make sure that we propagate the Content-Type from the first part as the Content-Type
         //of the artificially created RestRequest.
-        final Map<String, String> singlePartHeaders = singleParMIMEReader.dataSourceHeaders(); //Case-insensitive map already.
+        final Map<String, String> singlePartHeaders = singlePartMIMEReader.dataSourceHeaders(); //Case-insensitive map already.
         final String contentTypeString = singlePartHeaders.get(RestConstants.HEADER_CONTENT_TYPE);
         if (contentTypeString == null)
         {
@@ -667,9 +667,9 @@ public class RestLiServer extends BaseRestServer
         }
 
         _restRequestBuilder.setHeader(RestConstants.HEADER_CONTENT_TYPE, contentTypeString);
-        FirstPartReaderCallback firstPartReaderCallback = new FirstPartReaderCallback(this, singleParMIMEReader);
-        singleParMIMEReader.registerReaderCallback(firstPartReaderCallback);
-        singleParMIMEReader.requestPartData();
+        FirstPartReaderCallback firstPartReaderCallback = new FirstPartReaderCallback(this, singlePartMIMEReader);
+        singlePartMIMEReader.registerReaderCallback(firstPartReaderCallback);
+        singlePartMIMEReader.requestPartData();
       }
       else
       {

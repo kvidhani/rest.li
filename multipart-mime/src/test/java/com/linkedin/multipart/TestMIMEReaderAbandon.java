@@ -66,7 +66,7 @@ public class TestMIMEReaderAbandon extends AbstractMIMEUnitTest
     mockR2AndWrite(ByteString.copy("Some multipart mime payload. It doesn't need to be pretty".getBytes()),
                    1, "multipart/mixed; boundary=----abcdefghijk");
 
-    MultiPartMIMEReader reader = MultiPartMIMEReader.createAndAcquireStream(streamRequest);
+    MultiPartMIMEReader reader = MultiPartMIMEReader.createAndAcquireStream(_streamRequest);
 
     try
     {
@@ -81,14 +81,14 @@ public class TestMIMEReaderAbandon extends AbstractMIMEUnitTest
     Assert.assertTrue(reader.haveAllPartsFinished());
 
     //mock verifies
-    verify(readHandle, times(1)).cancel();
-    verify(streamRequest, times(1)).getEntityStream();
-    verify(streamRequest, times(1)).getHeader(HEADER_CONTENT_TYPE);
-    verify(entityStream, times(1)).setReader(isA(MultiPartMIMEReader.R2MultiPartMIMEReader.class));
+    verify(_readHandle, times(1)).cancel();
+    verify(_streamRequest, times(1)).getEntityStream();
+    verify(_streamRequest, times(1)).getHeader(HEADER_CONTENT_TYPE);
+    verify(_entityStream, times(1)).setReader(isA(MultiPartMIMEReader.R2MultiPartMIMEReader.class));
 
-    verifyNoMoreInteractions(streamRequest);
-    verifyNoMoreInteractions(entityStream);
-    verifyNoMoreInteractions(readHandle);
+    verifyNoMoreInteractions(_streamRequest);
+    verifyNoMoreInteractions(_entityStream);
+    verifyNoMoreInteractions(_readHandle);
   }
 
   ///////////////////////////////////////////////////////////////////////////////////////
@@ -124,7 +124,7 @@ public class TestMIMEReaderAbandon extends AbstractMIMEUnitTest
 
     //Single part abandons all individually but doesn't use a callback:
     List<SinglePartMIMEAbandonReaderCallbackImpl> singlePartMIMEReaderCallbacks =
-        _currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks;
+        _currentMultiPartMIMEReaderCallback.getSinglePartMIMEReaderCallbacks();
     Assert.assertEquals(singlePartMIMEReaderCallbacks.size(), 0);
   }
 
@@ -135,7 +135,7 @@ public class TestMIMEReaderAbandon extends AbstractMIMEUnitTest
 
     //Top level abandons all after registering a callback and being invoked for the first time on onNewPart().
     List<SinglePartMIMEAbandonReaderCallbackImpl> singlePartMIMEReaderCallbacks =
-        _currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks;
+        _currentMultiPartMIMEReaderCallback.getSinglePartMIMEReaderCallbacks();
     Assert.assertEquals(singlePartMIMEReaderCallbacks.size(), 0);
   }
 
@@ -148,7 +148,7 @@ public class TestMIMEReaderAbandon extends AbstractMIMEUnitTest
 
     //Single part abandons the first 6 then the top level abandons all of remaining
     List<SinglePartMIMEAbandonReaderCallbackImpl> singlePartMIMEReaderCallbacks =
-        _currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks;
+        _currentMultiPartMIMEReaderCallback.getSinglePartMIMEReaderCallbacks();
 
     Assert.assertEquals(singlePartMIMEReaderCallbacks.size(), 6);
 
@@ -170,9 +170,9 @@ public class TestMIMEReaderAbandon extends AbstractMIMEUnitTest
         expectedHeaders.put(header.getName(), header.getValue());
       }
 
-      Assert.assertEquals(currentCallback._headers, expectedHeaders);
+      Assert.assertEquals(currentCallback.getHeaders(), expectedHeaders);
       //Verify that the bodies are empty
-      Assert.assertNull(currentCallback._finishedData);
+      Assert.assertNull(currentCallback.getFinishedData());
     }
   }
 
@@ -187,7 +187,7 @@ public class TestMIMEReaderAbandon extends AbstractMIMEUnitTest
     //Single part alternates between consumption and abandoning the first 6 parts, then top level abandons all of remaining.
     //This means that parts 0, 2, 4 will be consumed and parts 1, 3, 5 will be abandoned.
     List<SinglePartMIMEAbandonReaderCallbackImpl> singlePartMIMEReaderCallbacks =
-        _currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks;
+        _currentMultiPartMIMEReaderCallback.getSinglePartMIMEReaderCallbacks();
 
     Assert.assertEquals(singlePartMIMEReaderCallbacks.size(), 6);
 
@@ -210,17 +210,17 @@ public class TestMIMEReaderAbandon extends AbstractMIMEUnitTest
         expectedHeaders.put(header.getName(), header.getValue());
       }
 
-      Assert.assertEquals(currentCallback._headers, expectedHeaders);
+      Assert.assertEquals(currentCallback.getHeaders(), expectedHeaders);
 
       //Verify the body matches
       if (currentExpectedPart.getContent() instanceof byte[])
       {
-        Assert.assertEquals(currentCallback._finishedData.copyBytes(), currentExpectedPart.getContent());
+        Assert.assertEquals(currentCallback.getFinishedData().copyBytes(), currentExpectedPart.getContent());
       }
       else
       {
         //Default is String
-        Assert.assertEquals(new String(currentCallback._finishedData.copyBytes()), currentExpectedPart.getContent());
+        Assert.assertEquals(new String(currentCallback.getFinishedData().copyBytes()), currentExpectedPart.getContent());
       }
     }
 
@@ -243,9 +243,9 @@ public class TestMIMEReaderAbandon extends AbstractMIMEUnitTest
         expectedHeaders.put(header.getName(), header.getValue());
       }
 
-      Assert.assertEquals(currentCallback._headers, expectedHeaders);
+      Assert.assertEquals(currentCallback.getHeaders(), expectedHeaders);
       //Verify that the bodies are empty
-      Assert.assertNull(currentCallback._finishedData, null);
+      Assert.assertNull(currentCallback.getFinishedData(), null);
     }
   }
 
@@ -258,7 +258,7 @@ public class TestMIMEReaderAbandon extends AbstractMIMEUnitTest
 
     //Single part abandons all, one by one
     List<SinglePartMIMEAbandonReaderCallbackImpl> singlePartMIMEReaderCallbacks =
-        _currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks;
+        _currentMultiPartMIMEReaderCallback.getSinglePartMIMEReaderCallbacks();
 
     Assert.assertEquals(singlePartMIMEReaderCallbacks.size(), 12);
 
@@ -281,9 +281,9 @@ public class TestMIMEReaderAbandon extends AbstractMIMEUnitTest
         expectedHeaders.put(header.getName(), header.getValue());
       }
 
-      Assert.assertEquals(currentCallback._headers, expectedHeaders);
+      Assert.assertEquals(currentCallback.getHeaders(), expectedHeaders);
       //Verify that the bodies are empty
-      Assert.assertNull(currentCallback._finishedData);
+      Assert.assertNull(currentCallback.getFinishedData());
     }
   }
 
@@ -297,7 +297,7 @@ public class TestMIMEReaderAbandon extends AbstractMIMEUnitTest
     //Single part alternates between consumption and abandoning for all 12 parts.
     //This means that parts 0, 2, 4, etc.. will be consumed and parts 1, 3, 5, etc... will be abandoned.
     List<SinglePartMIMEAbandonReaderCallbackImpl> singlePartMIMEReaderCallbacks =
-        _currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks;
+        _currentMultiPartMIMEReaderCallback.getSinglePartMIMEReaderCallbacks();
 
     Assert.assertEquals(singlePartMIMEReaderCallbacks.size(), 12);
 
@@ -320,17 +320,17 @@ public class TestMIMEReaderAbandon extends AbstractMIMEUnitTest
         expectedHeaders.put(header.getName(), header.getValue());
       }
 
-      Assert.assertEquals(currentCallback._headers, expectedHeaders);
+      Assert.assertEquals(currentCallback.getHeaders(), expectedHeaders);
 
       //Verify the body matches
       if (currentExpectedPart.getContent() instanceof byte[])
       {
-        Assert.assertEquals(currentCallback._finishedData.copyBytes(), currentExpectedPart.getContent());
+        Assert.assertEquals(currentCallback.getFinishedData().copyBytes(), currentExpectedPart.getContent());
       }
       else
       {
         //Default is String
-        Assert.assertEquals(new String(currentCallback._finishedData.copyBytes()), currentExpectedPart.getContent());
+        Assert.assertEquals(new String(currentCallback.getFinishedData().copyBytes()), currentExpectedPart.getContent());
       }
     }
 
@@ -353,9 +353,9 @@ public class TestMIMEReaderAbandon extends AbstractMIMEUnitTest
         expectedHeaders.put(header.getName(), header.getValue());
       }
 
-      Assert.assertEquals(currentCallback._headers, expectedHeaders);
+      Assert.assertEquals(currentCallback.getHeaders(), expectedHeaders);
       //Verify that the bodies are empty
-      Assert.assertNull(currentCallback._finishedData);
+      Assert.assertNull(currentCallback.getFinishedData());
     }
   }
 
@@ -380,13 +380,13 @@ public class TestMIMEReaderAbandon extends AbstractMIMEUnitTest
     mockR2AndWrite(requestPayload, chunkSize, multiPartMimeBody.getContentType());
 
     final CountDownLatch latch = new CountDownLatch(1);
-    MultiPartMIMEReader reader = MultiPartMIMEReader.createAndAcquireStream(streamRequest);
+    MultiPartMIMEReader reader = MultiPartMIMEReader.createAndAcquireStream(_streamRequest);
     _currentMultiPartMIMEReaderCallback = new MultiPartMIMEAbandonReaderCallbackImpl(latch, abandonStrategy, reader);
     reader.registerReaderCallback(_currentMultiPartMIMEReaderCallback);
 
     latch.await(TEST_TIMEOUT, TimeUnit.MILLISECONDS);
 
-    Assert.assertEquals(_currentMultiPartMIMEReaderCallback._responseHeaders.get(ABANDON_HEADER), serverHeaderPrefix + abandonStrategy);
+    Assert.assertEquals(_currentMultiPartMIMEReaderCallback.getResponseHeaders().get(ABANDON_HEADER), serverHeaderPrefix + abandonStrategy);
 
     try
     {
@@ -400,21 +400,20 @@ public class TestMIMEReaderAbandon extends AbstractMIMEUnitTest
     Assert.assertTrue(reader.haveAllPartsFinished());
 
     //mock verifies
-    verify(streamRequest, times(1)).getEntityStream();
-    verify(streamRequest, times(1)).getHeader(HEADER_CONTENT_TYPE);
-    verify(entityStream, times(1)).setReader(isA(MultiPartMIMEReader.R2MultiPartMIMEReader.class));
+    verify(_streamRequest, times(1)).getEntityStream();
+    verify(_streamRequest, times(1)).getHeader(HEADER_CONTENT_TYPE);
+    verify(_entityStream, times(1)).setReader(isA(MultiPartMIMEReader.R2MultiPartMIMEReader.class));
     final int expectedRequests = (int) Math.ceil((double) requestPayload.length() / chunkSize);
     //One more expected request because we have to make the last call to get called onDone().
-    verify(readHandle, times(expectedRequests + 1)).request(1);
-    verifyNoMoreInteractions(streamRequest);
-    verifyNoMoreInteractions(entityStream);
-    verifyNoMoreInteractions(readHandle);
+    verify(_readHandle, times(expectedRequests + 1)).request(1);
+    verifyNoMoreInteractions(_streamRequest);
+    verifyNoMoreInteractions(_entityStream);
+    verifyNoMoreInteractions(_readHandle);
   }
 
   private static class SinglePartMIMEAbandonReaderCallbackImpl implements SinglePartMIMEReaderCallback
   {
     final MultiPartMIMEReader.SinglePartMIMEReader _singlePartMIMEReader;
-    static String _abandonValue;
     final ByteArrayOutputStream _byteArrayOutputStream = new ByteArrayOutputStream();
     Map<String, String> _headers;
     ByteString _finishedData = null;
@@ -424,6 +423,16 @@ public class TestMIMEReaderAbandon extends AbstractMIMEUnitTest
     {
       _singlePartMIMEReader = singlePartMIMEReader;
       _headers = singlePartMIMEReader.dataSourceHeaders();
+    }
+
+    public Map<String, String> getHeaders()
+    {
+      return _headers;
+    }
+
+    public ByteString getFinishedData()
+    {
+      return _finishedData;
     }
 
     @Override
@@ -468,8 +477,25 @@ public class TestMIMEReaderAbandon extends AbstractMIMEUnitTest
     final String _abandonValue;
     final MultiPartMIMEReader _reader;
     final Map<String, String> _responseHeaders = new HashMap<String, String>();
-    final List<SinglePartMIMEAbandonReaderCallbackImpl> _singlePartMIMEReaderCallbacks =
-        new ArrayList<SinglePartMIMEAbandonReaderCallbackImpl>();
+    final List<SinglePartMIMEAbandonReaderCallbackImpl> _singlePartMIMEReaderCallbacks = new ArrayList<SinglePartMIMEAbandonReaderCallbackImpl>();
+
+    MultiPartMIMEAbandonReaderCallbackImpl(final CountDownLatch latch, final String abandonValue,
+                                           final MultiPartMIMEReader reader)
+    {
+      _latch = latch;
+      _abandonValue = abandonValue;
+      _reader = reader;
+    }
+
+    public List<SinglePartMIMEAbandonReaderCallbackImpl> getSinglePartMIMEReaderCallbacks()
+    {
+      return _singlePartMIMEReaderCallbacks;
+    }
+
+    public Map<String, String> getResponseHeaders()
+    {
+      return _responseHeaders;
+    }
 
     @Override
     public void onNewPart(MultiPartMIMEReader.SinglePartMIMEReader singlePartMIMEReader)
@@ -544,15 +570,6 @@ public class TestMIMEReaderAbandon extends AbstractMIMEUnitTest
     public void onStreamError(Throwable throwable)
     {
       Assert.fail();
-    }
-
-    MultiPartMIMEAbandonReaderCallbackImpl(final CountDownLatch latch, final String abandonValue,
-                                           final MultiPartMIMEReader reader)
-    {
-      _latch = latch;
-      _abandonValue = abandonValue;
-      _reader = reader;
-      SinglePartMIMEAbandonReaderCallbackImpl._abandonValue = _abandonValue;
     }
   }
 }

@@ -117,16 +117,16 @@ public final class RestLiAttachmentReader
     _multiPartMIMEReader.registerReaderCallback(new MultiPartMIMEReaderCallback()
     {
       @Override
-      public void onNewPart(MultiPartMIMEReader.SinglePartMIMEReader singleParMIMEReader)
+      public void onNewPart(MultiPartMIMEReader.SinglePartMIMEReader singlePartMIMEReader)
       {
         //If there is no Content-ID in the response then we bail early
-        final String contentID = singleParMIMEReader.dataSourceHeaders().get(RestConstants.HEADER_CONTENT_ID);
+        final String contentID = singlePartMIMEReader.dataSourceHeaders().get(RestConstants.HEADER_CONTENT_ID);
         if (contentID == null)
         {
           onStreamError(new RemoteInvocationException("Illegally formed multipart mime envelope. RestLi attachment"
               + " is missing the ContentID!"));
         }
-        restLiAttachmentReaderCallback.onNewAttachment(new SingleRestLiAttachmentReader(singleParMIMEReader, contentID));
+        restLiAttachmentReaderCallback.onNewAttachment(new SingleRestLiAttachmentReader(singlePartMIMEReader, contentID));
       }
 
       @Override

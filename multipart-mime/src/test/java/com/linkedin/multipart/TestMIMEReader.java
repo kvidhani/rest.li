@@ -123,16 +123,24 @@ public class TestMIMEReader extends AbstractMIMEUnitTest
     //For this particular data source, we will use a variety of chunk sizes to cover all edge cases.
     //This is particularly useful due to the way we decompose ByteStrings when creating data
     //for our clients. Such chunk sizes allow us to make sure that our decomposing logic works as intended.
-    final Object[][] multipleChunkPayloads = new Object[101][];
-    for (int i = 0; i < 100; i++)
+    //We use chunk sizes based off prime numbers for good distribution.
+    final List<Integer> primeNumberList = generatePrimeNumbers(100);
+
+    //Make space at the end for the R2 default chunk size.
+    final Object[][] multipleChunkPayloads = new Object[primeNumberList.size() + 1][];
+
+    for (int i = 0; i < primeNumberList.size(); i++)
     {
       multipleChunkPayloads[i] = new Object[2];
-      multipleChunkPayloads[i][0] = i + 1;
+      multipleChunkPayloads[i][0] = primeNumberList.get(i);
       multipleChunkPayloads[i][1] = bodyPartList;
     }
-    multipleChunkPayloads[100] = new Object[2];
-    multipleChunkPayloads[100][0] = R2Constants.DEFAULT_DATA_CHUNK_SIZE;
-    multipleChunkPayloads[100][1] = bodyPartList;
+
+    final int lastIndex = primeNumberList.size();
+
+    multipleChunkPayloads[lastIndex] = new Object[2];
+    multipleChunkPayloads[lastIndex][0] = R2Constants.DEFAULT_DATA_CHUNK_SIZE;
+    multipleChunkPayloads[lastIndex][1] = bodyPartList;
 
     return multipleChunkPayloads;
   }
@@ -315,7 +323,7 @@ public class TestMIMEReader extends AbstractMIMEUnitTest
     executeRequestAndAssert(trimTrailingCRLF(requestPayload), Integer.MAX_VALUE, multiPartMimeBody);
   }
 
-///////////////////////////////////////////////////////////////////////////////////////
+  ///////////////////////////////////////////////////////////////////////////////////////
 
   //This test will verify, that once we are successfully finished, that if R2 gives us onError() we don't let the client know.
   @Test(dataProvider = "allTypesOfBodiesDataSource")
@@ -336,12 +344,13 @@ public class TestMIMEReader extends AbstractMIMEUnitTest
     final CountDownLatch latch = new CountDownLatch(1);
 
     //We simulate _client.streamRequest(request, callback);
-    _reader = MultiPartMIMEReader.createAndAcquireStream(streamRequest);
-    MultiPartMIMEReaderCallbackImpl _testMultiPartMIMEReaderCallback = new MultiPartMIMEReaderCallbackImpl(latch);
-    _reader.registerReaderCallback(_testMultiPartMIMEReaderCallback);
+    _reader = MultiPartMIMEReader.createAndAcquireStream(_streamRequest);
+    MultiPartMIMEReaderCallbackImpl testMultiPartMIMEReaderCallback = new MultiPartMIMEReaderCallbackImpl(latch);
+    _reader.registerReaderCallback(testMultiPartMIMEReaderCallback);
 
     latch.await(TEST_TIMEOUT, TimeUnit.MILLISECONDS);
 
+    //Verify this is unusable.
     try
     {
       _reader.abandonAllParts();
@@ -349,9 +358,10 @@ public class TestMIMEReader extends AbstractMIMEUnitTest
     }
     catch (MultiPartReaderFinishedException multiPartReaderFinishedException)
     {
+      //pass
     }
 
-    List<SinglePartMIMEReaderCallbackImpl> singlePartMIMEReaderCallbacks = _testMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks;
+    List<SinglePartMIMEReaderCallbackImpl> singlePartMIMEReaderCallbacks = testMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks;
     Assert.assertEquals(singlePartMIMEReaderCallbacks.size(), mimeMultipart.getCount());
     for (int i = 0; i < singlePartMIMEReaderCallbacks.size(); i++)
     {
@@ -387,15 +397,15 @@ public class TestMIMEReader extends AbstractMIMEUnitTest
     Assert.assertTrue(_reader.haveAllPartsFinished());
 
     //Mock verifies
-    verify(streamRequest, times(1)).getEntityStream();
-    verify(streamRequest, times(1)).getHeader(HEADER_CONTENT_TYPE);
-    verify(entityStream, times(1)).setReader(isA(MultiPartMIMEReader.R2MultiPartMIMEReader.class));
+    verify(_streamRequest, times(1)).getEntityStream();
+    verify(_streamRequest, times(1)).getHeader(HEADER_CONTENT_TYPE);
+    verify(_entityStream, times(1)).setReader(isA(MultiPartMIMEReader.R2MultiPartMIMEReader.class));
     final int expectedRequests = (int) Math.ceil((double) payload.length() / chunkSize);
     //One more expected request because we have to make the last call to get called onDone().
-    verify(readHandle, times(expectedRequests + 1)).request(1);
-    verifyNoMoreInteractions(streamRequest);
-    verifyNoMoreInteractions(entityStream);
-    verifyNoMoreInteractions(readHandle);
+    verify(_readHandle, times(expectedRequests + 1)).request(1);
+    verifyNoMoreInteractions(_streamRequest);
+    verifyNoMoreInteractions(_entityStream);
+    verifyNoMoreInteractions(_readHandle);
   }
 
   private static class SinglePartMIMEReaderCallbackImpl implements SinglePartMIMEReaderCallback
@@ -464,13 +474,19 @@ public class TestMIMEReader extends AbstractMIMEUnitTest
     final CountDownLatch _latch;
     final List<SinglePartMIMEReaderCallbackImpl> _singlePartMIMEReaderCallbacks = new ArrayList<SinglePartMIMEReaderCallbackImpl>();
 
-    @Override
-    public void onNewPart(MultiPartMIMEReader.SinglePartMIMEReader singleParMIMEReader)
+    MultiPartMIMEReaderCallbackImpl(final CountDownLatch latch)
     {
-      SinglePartMIMEReaderCallbackImpl singlePartMIMEReaderCallback = new SinglePartMIMEReaderCallbackImpl(this, singleParMIMEReader);
-      singleParMIMEReader.registerReaderCallback(singlePartMIMEReaderCallback);
+      _latch = latch;
+    }
+
+    @Override
+    public void onNewPart(MultiPartMIMEReader.SinglePartMIMEReader singlePartMIMEReader)
+    {
+      SinglePartMIMEReaderCallbackImpl singlePartMIMEReaderCallback = new SinglePartMIMEReaderCallbackImpl(this,
+                                                                                                           singlePartMIMEReader);
+      singlePartMIMEReader.registerReaderCallback(singlePartMIMEReaderCallback);
       _singlePartMIMEReaderCallbacks.add(singlePartMIMEReaderCallback);
-      singleParMIMEReader.requestPartData();
+      singlePartMIMEReader.requestPartData();
     }
 
     @Override
@@ -489,11 +505,6 @@ public class TestMIMEReader extends AbstractMIMEUnitTest
     public void onStreamError(Throwable throwable)
     {
       Assert.fail();
-    }
-
-    MultiPartMIMEReaderCallbackImpl(final CountDownLatch latch)
-    {
-      _latch = latch;
     }
   }
 }

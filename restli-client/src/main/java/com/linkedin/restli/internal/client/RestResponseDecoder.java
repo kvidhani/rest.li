@@ -178,7 +178,7 @@ public abstract class RestResponseDecoder<T>
     }
 
     @Override
-    public void onNewPart(MultiPartMIMEReader.SinglePartMIMEReader singleParMIMEReader)
+    public void onNewPart(MultiPartMIMEReader.SinglePartMIMEReader singlePartMIMEReader)
     {
       if (_response == null)
       {
@@ -186,10 +186,10 @@ public abstract class RestResponseDecoder<T>
         FirstPartReaderCallback firstPartReaderCallback = new FirstPartReaderCallback(_responseCallback,
                                                                                       this,
                                                                                       _multiPartMIMEReader,
-                                                                                      singleParMIMEReader,
+                                                                                      singlePartMIMEReader,
                                                                                       _streamResponse);
-        singleParMIMEReader.registerReaderCallback(firstPartReaderCallback);
-        singleParMIMEReader.requestPartData();
+        singlePartMIMEReader.registerReaderCallback(firstPartReaderCallback);
+        singlePartMIMEReader.requestPartData();
       }
       else
       {

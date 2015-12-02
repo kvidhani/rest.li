@@ -156,16 +156,24 @@ public class TestMIMEIntegrationReader extends AbstractMIMEIntegrationStreamTest
     //For this particular data source, we will use a variety of chunk sizes to cover all edge cases.
     //This is particularly useful due to the way we decompose ByteStrings when creating data
     //for our clients. Such chunk sizes allow us to make sure that our decomposing logic works as intended.
-    final Object[][] multipleChunkPayloads = new Object[101][];
-    for (int i = 0; i < 100; i++)
+    //We use chunk sizes based off prime numbers for good distribution.
+    final List<Integer> primeNumberList = generatePrimeNumbers(100);
+
+    //Make space at the end for the R2 default chunk size.
+    final Object[][] multipleChunkPayloads = new Object[primeNumberList.size() + 1][];
+
+    for (int i = 0; i < primeNumberList.size(); i++)
     {
       multipleChunkPayloads[i] = new Object[2];
-      multipleChunkPayloads[i][0] = i + 1;
+      multipleChunkPayloads[i][0] = primeNumberList.get(i);
       multipleChunkPayloads[i][1] = bodyPartList;
     }
-    multipleChunkPayloads[100] = new Object[2];
-    multipleChunkPayloads[100][0] = R2Constants.DEFAULT_DATA_CHUNK_SIZE;
-    multipleChunkPayloads[100][1] = bodyPartList;
+
+    final int lastIndex = primeNumberList.size();
+
+    multipleChunkPayloads[lastIndex] = new Object[2];
+    multipleChunkPayloads[lastIndex][0] = R2Constants.DEFAULT_DATA_CHUNK_SIZE;
+    multipleChunkPayloads[lastIndex][1] = bodyPartList;
 
     return multipleChunkPayloads;
   }
@@ -439,13 +447,19 @@ public class TestMIMEIntegrationReader extends AbstractMIMEIntegrationStreamTest
     final Callback<StreamResponse> _r2callback;
     final List<SinglePartMIMEReaderCallbackImpl> _singlePartMIMEReaderCallbacks = new ArrayList<SinglePartMIMEReaderCallbackImpl>();
 
-    @Override
-    public void onNewPart(MultiPartMIMEReader.SinglePartMIMEReader singleParMIMEReader)
+    MultiPartMIMEReaderCallbackImpl(final Callback<StreamResponse> r2callback)
     {
-      SinglePartMIMEReaderCallbackImpl singlePartMIMEReaderCallback = new SinglePartMIMEReaderCallbackImpl(this, singleParMIMEReader);
-      singleParMIMEReader.registerReaderCallback(singlePartMIMEReaderCallback);
+      _r2callback = r2callback;
+    }
+
+    @Override
+    public void onNewPart(MultiPartMIMEReader.SinglePartMIMEReader singlePartMIMEReader)
+    {
+      SinglePartMIMEReaderCallbackImpl singlePartMIMEReaderCallback = new SinglePartMIMEReaderCallbackImpl(this,
+                                                                                                           singlePartMIMEReader);
+      singlePartMIMEReader.registerReaderCallback(singlePartMIMEReaderCallback);
       _singlePartMIMEReaderCallbacks.add(singlePartMIMEReaderCallback);
-      singleParMIMEReader.requestPartData();
+      singlePartMIMEReader.requestPartData();
     }
 
     @Override
@@ -467,11 +481,6 @@ public class TestMIMEIntegrationReader extends AbstractMIMEIntegrationStreamTest
     {
       RestException restException = new RestException(RestStatus.responseForError(400, throwable));
       _r2callback.onError(restException);
-    }
-
-    MultiPartMIMEReaderCallbackImpl(final Callback<StreamResponse> r2callback)
-    {
-      _r2callback = r2callback;
     }
   }
 
