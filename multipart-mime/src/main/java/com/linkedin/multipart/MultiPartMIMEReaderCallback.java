@@ -32,7 +32,7 @@ public interface MultiPartMIMEReaderCallback
    * @param singlePartMIMEReader the {@link com.linkedin.multipart.MultiPartMIMEReader.SinglePartMIMEReader}
    *                            which can be used to walk through this part.
    */
-  public void onNewPart(MultiPartMIMEReader.SinglePartMIMEReader singlePartMIMEReader);
+  public void onNewPart(final MultiPartMIMEReader.SinglePartMIMEReader singlePartMIMEReader);
 
   /**
    * Invoked when this reader is finished and the multipart mime envelope has been completely read.
@@ -50,5 +50,5 @@ public interface MultiPartMIMEReaderCallback
    *
    * @param throwable the Throwable that caused this to happen.
    */
-  public void onStreamError(Throwable throwable);
+  public void onStreamError(final Throwable throwable);
 }

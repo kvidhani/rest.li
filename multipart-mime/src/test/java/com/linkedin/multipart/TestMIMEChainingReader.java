@@ -198,7 +198,7 @@ public class TestMIMEChainingReader
     @Override
     public void onNewPart(MultiPartMIMEReader.SinglePartMIMEReader singlePartMIMEReader)
     {
-      final MultiPartMIMEWriter writer = new MultiPartMIMEWriter.Builder().appendDataSourcePartIterator(_reader).build();
+      final MultiPartMIMEWriter writer = new MultiPartMIMEWriter.Builder().appendDataSourceIterator(_reader).build();
       final StreamResponse streamResponse = mock(StreamResponse.class);
       when(streamResponse.getEntityStream()).thenReturn(writer.getEntityStream());
       final String contentTypeHeader = "multipart/mixed; boundary=" + writer.getBoundary();

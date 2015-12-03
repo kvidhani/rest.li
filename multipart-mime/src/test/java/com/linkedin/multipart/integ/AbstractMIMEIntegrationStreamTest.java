@@ -14,7 +14,7 @@
    limitations under the License.
 */
 
-package com.linkedin.multipart;
+package com.linkedin.multipart.integ;
 
 
 import com.linkedin.common.callback.Callback;

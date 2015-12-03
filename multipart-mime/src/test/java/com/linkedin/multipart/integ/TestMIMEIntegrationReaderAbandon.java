@@ -14,16 +14,19 @@
    limitations under the License.
 */
 
-package com.linkedin.multipart;
+package com.linkedin.multipart.integ;
 
 
 import com.linkedin.common.callback.Callback;
 import com.linkedin.data.ByteString;
+import com.linkedin.multipart.MultiPartMIMEReader;
+import com.linkedin.multipart.MultiPartMIMEReaderCallback;
+import com.linkedin.multipart.SinglePartMIMEReaderCallback;
 import com.linkedin.multipart.exceptions.MultiPartIllegalFormatException;
 import com.linkedin.multipart.utils.VariableByteStringWriter;
 import com.linkedin.r2.filter.R2Constants;
-import com.linkedin.r2.message.RequestContext;
 import com.linkedin.r2.message.Messages;
+import com.linkedin.r2.message.RequestContext;
 import com.linkedin.r2.message.rest.RestException;
 import com.linkedin.r2.message.rest.RestResponse;
 import com.linkedin.r2.message.rest.RestResponseBuilder;
@@ -38,7 +41,6 @@ import com.linkedin.r2.transport.common.StreamRequestHandler;
 import com.linkedin.r2.transport.common.bridge.server.TransportDispatcher;
 import com.linkedin.r2.transport.common.bridge.server.TransportDispatcherBuilder;
 import com.linkedin.r2.transport.http.client.HttpClientFactory;
-
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.URI;
@@ -50,12 +52,10 @@ import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-
 import javax.mail.BodyPart;
 import javax.mail.Header;
 import javax.mail.internet.MimeBodyPart;
 import javax.mail.internet.MimeMultipart;
-
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;

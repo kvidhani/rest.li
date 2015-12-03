@@ -28,7 +28,7 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 
 /**
- * This test verifies that upon invocation of {@link MultiPartMIMEWriter#abandonDataSources(java.lang.Throwable)},
+ * This test verifies that upon invocation of {@link MultiPartMIMEWriter#abortAllDataSources(java.lang.Throwable)},
  * that each type of data source is abandoned appropriately.
  *
  * @author Karim Vidhani
@@ -47,12 +47,12 @@ public class TestMIMEWriterAbandonDataSources extends AbstractMIMEUnitTest
 
     final MultiPartMIMEWriter writer = new MultiPartMIMEWriter.Builder("abc", "123")
         .appendDataSource(singlePartMIMEReader)
-        .appendDataSourcePartIterator(multiPartMIMEReader)
+        .appendDataSourceIterator(multiPartMIMEReader)
         .appendDataSource(multiPartMIMEDataSource)
         .build();
 
     final Throwable throwable = new NullPointerException("Some exception");
-    writer.abandonDataSources(throwable);
+    writer.abortAllDataSources(throwable);
 
     //The MultiPartMIMEReader should have been abandoned.
     verify(multiPartMIMEReader, times(1)).abandonAllParts();

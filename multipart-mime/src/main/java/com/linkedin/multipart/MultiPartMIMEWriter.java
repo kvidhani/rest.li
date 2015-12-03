@@ -107,33 +107,37 @@ public final class MultiPartMIMEWriter
       catch (IOException ioException)
       {
         //Should never happen
-        throw new IllegalStateException(
-            "Serious error when constructing local byte buffer for the boundary and headers!");
+        throw new IllegalStateException("Serious error when constructing local byte buffer for the boundary and headers!");
       }
 
-      //Note that that nothing happens if there is an abort in the middle of writing a boundary or headers.
       final Writer boundaryHeaderWriter = new ByteStringWriter(serializedBoundaryAndHeaders);
       _allDataSources.add(boundaryHeaderWriter);
+
+      //If this is a SinglePartMIMEReader then we need to inform it that it should call writeHandle.done() when it
+      //is finished.
+      if (dataSource instanceof MultiPartMIMEReader.SinglePartMIMEReader)
+      {
+        ((MultiPartMIMEReader.SinglePartMIMEReader) dataSource).setWriteHandleDoneOnFinished(true);
+      }
       _allDataSources.add(dataSource);
       return this;
     }
 
     /**
-     * Append a {@link com.linkedin.multipart.MultiPartMIMEPartIterator} to be used as a non-nested data source
-     * within the multipart mime envelope. This will almost always be a {@link com.linkedin.multipart.MultiPartMIMEReader}.
+     * Append a {@link MultiPartMIMEDataSourceIterator} to be used as a non-nested data source
+     * within the multipart mime envelope. This will usually be a {@link com.linkedin.multipart.MultiPartMIMEReader}.
      *
-     * All the individual parts read using the {@link com.linkedin.multipart.MultiPartMIMEPartIterator}
+     * All the individual parts read using the {@link MultiPartMIMEDataSourceIterator}
      * will be placed one by one into this new envelope with boundaries replaced.
      *
-     * @param multiPartMIMEPartIterator the {@link com.linkedin.multipart.MultiPartMIMEPartIterator} that will be used
-     *                                  to produce multiple parts to append. This will almost always be a
-     *                                  {@link com.linkedin.multipart.MultiPartMIMEReader}.
+     * @param multiPartMIMEDataSourceIterator the {@link MultiPartMIMEDataSourceIterator} that will be used
+     *                                  to produce multiple parts to append.
      * @return the builder to continue building.
      */
-    public Builder appendDataSourcePartIterator(final MultiPartMIMEPartIterator multiPartMIMEPartIterator)
+    public Builder appendDataSourceIterator(final MultiPartMIMEDataSourceIterator multiPartMIMEDataSourceIterator)
     {
       final Writer multiPartMIMEReaderWriter =
-          new MultiPartMIMEChainReaderWriter(multiPartMIMEPartIterator, _normalEncapsulationBoundary);
+          new MultiPartMIMEChainReaderWriter(multiPartMIMEDataSourceIterator, _normalEncapsulationBoundary);
       _allDataSources.add(multiPartMIMEReaderWriter);
       return this;
     }
@@ -195,9 +199,9 @@ public final class MultiPartMIMEWriter
   }
 
   /**
-   * Abandons all data sources contained with this {@link com.linkedin.multipart.MultiPartMIMEWriter}. This is useful
+   * Aborts all data sources contained with this {@link com.linkedin.multipart.MultiPartMIMEWriter}. This is useful
    * to invoke when many data sources have been collected and this {@link com.linkedin.multipart.MultiPartMIMEWriter} has
-   * been created, but an exception (or any other event) is observed and {@link com.linkedin.r2.message.stream.StreamRequest}
+   * been created, but an exception (or any other event) is observed and a {@link com.linkedin.r2.message.stream.StreamRequest}
    * or a {@link com.linkedin.r2.message.stream.StreamResponse} will no longer be sent. In such a case it is prudent to
    * clean up all data sources.
    *
@@ -213,13 +217,13 @@ public final class MultiPartMIMEWriter
    * part will be abandoned. See {@link com.linkedin.multipart.MultiPartMIMEReader.SinglePartMIMEReader#abandonPart()}.
    * In this case the Throwable that is passed into this method will not be used.
    *
-   * 3. If the data source passed in is a {@link com.linkedin.multipart.MultiPartMIMEPartIterator}, then all parts
-   * represented by this MultiPartMIMEPartIterator will be read and abandoned. See {@link MultiPartMIMEPartIterator#abandonAllParts()}.
+   * 3. If the data source passed in is a {@link MultiPartMIMEDataSourceIterator}, then all data sources
+   * represented by this MultiPartMIMEPartIterator will be read and abandoned. See {@link MultiPartMIMEDataSourceIterator#abortAllDataSources()}.
    * In this case the Throwable that is passed into this method will not be used.
    *
    * @param throwable the Throwable that caused the abandonment to happen.
    */
-  public void abandonDataSources(final Throwable throwable)
+  public void abortAllDataSources(final Throwable throwable)
   {
     //Note that we can't simply do _writer.onAbort(throwable) since reading from this CompositeWriter may not have begun yet.
     for (Writer writer : _allDataSources)

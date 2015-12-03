@@ -22,16 +22,7 @@ import com.linkedin.r2.message.stream.entitystream.WriteHandle;
 
 
 /**
- * Used to chain a {@link com.linkedin.multipart.MultiPartMIMEReader.SinglePartMIMEReader} as a data source
- * when creating a {@link com.linkedin.multipart.MultiPartMIMEWriter}.
- *
- * This class can be used:
- * 1. When chaining along a {@link com.linkedin.multipart.MultiPartMIMEReader.SinglePartMIMEReader} directly. In
- * such a case we close the write handle upon invocation of {@link SinglePartMIMEChainReaderCallback#onFinished()}
- *
- * 2. When chaining along a top level {@link com.linkedin.multipart.MultiPartMIMEReader}. In this case the
- * {@link com.linkedin.multipart.MultiPartMIMEChainReaderCallback} will close the write handle when it receives
- * an invocation on {@link MultiPartMIMEReaderCallback#onFinished()}.
+ * Used to chain a {@link com.linkedin.multipart.MultiPartMIMEReader.SinglePartMIMEReader} as a data source.
  *
  * @author Karim Vidhani
  */
@@ -65,7 +56,7 @@ final class SinglePartMIMEChainReaderCallback implements SinglePartMIMEReaderCal
   public void onAbandoned()
   {
     //This can happen if the SinglePartMIMEReader this callback was registered with was used as a data source and it was
-    //told to abandon.
+    //told to abandon and the abandon finished.
     //We don't need to take any action here.
   }
 
@@ -82,7 +73,8 @@ final class SinglePartMIMEChainReaderCallback implements SinglePartMIMEReaderCal
   }
 
   SinglePartMIMEChainReaderCallback(final WriteHandle writeHandle,
-      final MultiPartMIMEReader.SinglePartMIMEReader singlePartMIMEReader, final boolean doneOnFinished)
+                                    final MultiPartMIMEReader.SinglePartMIMEReader singlePartMIMEReader,
+                                    final boolean doneOnFinished)
   {
     _singlePartMIMEReader = singlePartMIMEReader;
     _writeHandle = writeHandle;

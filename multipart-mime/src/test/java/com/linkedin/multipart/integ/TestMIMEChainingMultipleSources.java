@@ -14,13 +14,20 @@
    limitations under the License.
 */
 
-package com.linkedin.multipart;
+package com.linkedin.multipart.integ;
 
 
 import com.linkedin.common.callback.Callback;
 import com.linkedin.common.callback.FutureCallback;
 import com.linkedin.common.util.None;
 import com.linkedin.data.ByteString;
+import com.linkedin.multipart.MultiPartMIMEDataSource;
+import com.linkedin.multipart.MultiPartMIMEInputStream;
+import com.linkedin.multipart.MultiPartMIMEReader;
+import com.linkedin.multipart.MultiPartMIMEReaderCallback;
+import com.linkedin.multipart.MultiPartMIMEStreamRequestFactory;
+import com.linkedin.multipart.MultiPartMIMEStreamResponseFactory;
+import com.linkedin.multipart.MultiPartMIMEWriter;
 import com.linkedin.multipart.exceptions.MultiPartIllegalFormatException;
 import com.linkedin.multipart.utils.MIMETestUtils;
 import com.linkedin.r2.filter.R2Constants;
@@ -247,10 +254,11 @@ public class TestMIMEChainingMultipleSources
 
         final MultiPartMIMEWriter writer =
             new MultiPartMIMEWriter.Builder().appendDataSource(singlePartMIMEReader).appendDataSource(localInputStream)
-                .appendDataSourcePartIterator(incomingRequestReader).build();
+                .appendDataSourceIterator(incomingRequestReader).build();
 
         final StreamResponse streamResponse =
-            MultiPartMIMEStreamResponseFactory.generateMultiPartMIMEStreamResponse("mixed", writer, Collections.<String, String>emptyMap());
+            MultiPartMIMEStreamResponseFactory
+                .generateMultiPartMIMEStreamResponse("mixed", writer, Collections.<String, String>emptyMap());
         _incomingRequestCallback.onSuccess(streamResponse);
       }
       else
@@ -348,8 +356,9 @@ public class TestMIMEChainingMultipleSources
     final MultiPartMIMEWriter writer = new MultiPartMIMEWriter.Builder().appendDataSources(dataSources).build();
 
     final StreamRequest streamRequest =
-        MultiPartMIMEStreamRequestFactory.generateMultiPartMIMEStreamRequest(Bootstrap.createHttpsURI(PORT_SERVER_A, SERVER_A_URI),
-                                                                             "mixed", writer, Collections.<String, String>emptyMap());
+        MultiPartMIMEStreamRequestFactory
+            .generateMultiPartMIMEStreamRequest(Bootstrap.createHttpsURI(PORT_SERVER_A, SERVER_A_URI), "mixed", writer,
+                                                Collections.<String, String>emptyMap());
 
     ClientMultiPartReceiver clientReceiver = new ClientMultiPartReceiver();
     Callback<StreamResponse> callback = generateSuccessChainCallback(clientReceiver);

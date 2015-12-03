@@ -14,16 +14,24 @@
    limitations under the License.
 */
 
-package com.linkedin.multipart;
+package com.linkedin.multipart.integ;
 
 
+import com.google.common.collect.ImmutableList;
 import com.linkedin.common.callback.Callback;
 import com.linkedin.data.ByteString;
+import com.linkedin.multipart.MultiPartMIMEDataSource;
+import com.linkedin.multipart.MultiPartMIMEInputStream;
+import com.linkedin.multipart.MultiPartMIMEReader;
+import com.linkedin.multipart.MultiPartMIMEReaderCallback;
+import com.linkedin.multipart.MultiPartMIMEStreamRequestFactory;
+import com.linkedin.multipart.MultiPartMIMEWriter;
+import com.linkedin.multipart.SinglePartMIMEReaderCallback;
 import com.linkedin.multipart.exceptions.MultiPartIllegalFormatException;
 import com.linkedin.multipart.utils.MIMEDataPart;
 import com.linkedin.r2.filter.R2Constants;
-import com.linkedin.r2.message.RequestContext;
 import com.linkedin.r2.message.Messages;
+import com.linkedin.r2.message.RequestContext;
 import com.linkedin.r2.message.rest.RestException;
 import com.linkedin.r2.message.rest.RestResponse;
 import com.linkedin.r2.message.rest.RestStatus;
@@ -34,9 +42,6 @@ import com.linkedin.r2.transport.common.StreamRequestHandler;
 import com.linkedin.r2.transport.common.bridge.server.TransportDispatcher;
 import com.linkedin.r2.transport.common.bridge.server.TransportDispatcherBuilder;
 import com.linkedin.r2.transport.http.client.HttpClientFactory;
-
-import com.google.common.collect.ImmutableList;
-
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -51,7 +56,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-
 import org.testng.Assert;
 import org.testng.annotations.AfterTest;
 import org.testng.annotations.BeforeTest;
@@ -237,8 +241,9 @@ public class TestMIMEIntegrationReaderWriter extends AbstractMIMEIntegrationStre
       throws Exception
   {
     final StreamRequest streamRequest =
-        MultiPartMIMEStreamRequestFactory.generateMultiPartMIMEStreamRequest(Bootstrap.createHttpURI(PORT, SERVER_URI),
-                                                                             "mixed", requestWriter, Collections.<String, String>emptyMap());
+        MultiPartMIMEStreamRequestFactory
+            .generateMultiPartMIMEStreamRequest(Bootstrap.createHttpURI(PORT, SERVER_URI), "mixed", requestWriter,
+                                                Collections.<String, String>emptyMap());
 
     final AtomicInteger status = new AtomicInteger(-1);
     final CountDownLatch latch = new CountDownLatch(1);

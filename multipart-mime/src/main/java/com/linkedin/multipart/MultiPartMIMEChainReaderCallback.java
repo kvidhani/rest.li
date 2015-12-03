@@ -25,30 +25,27 @@ import java.io.IOException;
 
 /**
  * Callback registered by the {@link com.linkedin.multipart.MultiPartMIMEWriter} to chain
- * a {@link com.linkedin.multipart.MultiPartMIMEReader} as a data source.
+ * a {@link com.linkedin.multipart.MultiPartMIMEDataSourceIterator} as a data source.
  *
  * @author Karim Vidhani
  */
-final class MultiPartMIMEChainReaderCallback implements MultiPartMIMEReaderCallback
+final class MultiPartMIMEChainReaderCallback implements MultiPartMIMEDataSourceIteratorCallback
 {
   private final WriteHandle _writeHandle;
-  private MultiPartMIMEReader.SinglePartMIMEReader _currentSinglePartReader;
+  private MultiPartMIMEDataSource _currentDataSource;
   private final byte[] _normalEncapsulationBoundary;
 
   @Override
-  public void onNewPart(MultiPartMIMEReader.SinglePartMIMEReader singlePartMIMEReader)
+  public void onNewDataSource(final MultiPartMIMEDataSource multiPartMIMEDataSource)
   {
-    //When each single part finishes we cannot notify the write handle that we are done.
-    final SinglePartMIMEReaderCallback singlePartMIMEChainReader =
-        new SinglePartMIMEChainReaderCallback(_writeHandle, singlePartMIMEReader, false);
-    _currentSinglePartReader = singlePartMIMEReader;
-    singlePartMIMEReader.registerReaderCallback(singlePartMIMEChainReader);
+    multiPartMIMEDataSource.onInit(_writeHandle);
+    _currentDataSource = multiPartMIMEDataSource;
 
     ByteString serializedBoundaryAndHeaders = null;
     try
     {
       serializedBoundaryAndHeaders =
-          MultiPartMIMEUtils.serializeBoundaryAndHeaders(_normalEncapsulationBoundary, singlePartMIMEReader);
+          MultiPartMIMEUtils.serializeBoundaryAndHeaders(_normalEncapsulationBoundary, multiPartMIMEDataSource);
     }
     catch (IOException ioException)
     {
@@ -58,37 +55,33 @@ final class MultiPartMIMEChainReaderCallback implements MultiPartMIMEReaderCallb
     _writeHandle.write(serializedBoundaryAndHeaders);
     if (_writeHandle.remaining() > 0)
     {
-      singlePartMIMEReader.requestPartData();
+      multiPartMIMEDataSource.onWritePossible();
     }
   }
 
   @Override
   public void onFinished()
   {
+    //When each single part finishes we cannot notify the write handle that we are done.
     _writeHandle.done();
   }
 
   @Override
   public void onAbandoned()
   {
-    //This can happen if the MultiPartMIMEReader this callback was registered with was used as a data source and it was
-    //told to abandon.
+    //This can happen if the MultiPartMIMEDataSourceIterator this callback was registered with was used as a data source and it was
+    //told to abandon and the abandon finished.
     //We don't need to take any action here.
   }
 
   @Override
-  public void onStreamError(Throwable throwable)
+  public void onStreamError(final Throwable throwable)
   {
-    //If there was an error reading then we notify the writeHandle.
-    //Note that the MultiPartMIMEReader and SinglePartMIMEReader have already been rendered
-    //inoperable due to this. We just need to let the writeHandle know of this problem.
+    //If there was an error obtaining data sources then we notify the writeHandle.
 
-    //Also note that there may or may not be a current SinglePartMIMEReader. If there was
-    //then it already invoked _writeHandle.error().
+    //Note that there may or may not be a current MultiPartMIMEDataSource. If there was then it may already have
+    //invoked _writeHandle.error().
     //Regardless its safe to do it again in case this did not happen.
-
-    //Lastly note there is no way to let an application developer know that their MultiPartMIMEReader
-    //they sent further downstream had an error.
     _writeHandle.error(throwable);
   }
 
@@ -98,8 +91,8 @@ final class MultiPartMIMEChainReaderCallback implements MultiPartMIMEReaderCallb
     _normalEncapsulationBoundary = normalEncapsulationBoundary;
   }
 
-  MultiPartMIMEReader.SinglePartMIMEReader getCurrentSinglePartReader()
+  MultiPartMIMEDataSource getCurrentDataSource()
   {
-    return _currentSinglePartReader;
+    return _currentDataSource;
   }
 }

@@ -22,25 +22,24 @@ import com.linkedin.r2.message.stream.entitystream.Writer;
 
 
 /**
- * The writer to consume parts from a {@link com.linkedin.multipart.MultiPartMIMEReader} when
- * chaining the entire {@link com.linkedin.multipart.MultiPartMIMEReader} itself as a non-nested data source.
- * This will read each part from the {@link com.linkedin.multipart.MultiPartMIMEReader} and append that part serially
+ * The writer to consume parts from a {@link com.linkedin.multipart.MultiPartMIMEDataSourceIterator} when
+ * chaining the entire {@link com.linkedin.multipart.MultiPartMIMEDataSourceIterator} itself as a non-nested data source.
+ * This will read each part from the {@link com.linkedin.multipart.MultiPartMIMEDataSourceIterator} and append that part serially
  * when invoked by R2.
- *
- * To make this behavior explicit, the {@link com.linkedin.multipart.MultiPartMIMEPartIterator} interface is used.
  *
  * @author Karim Vidhani
  */
 final class MultiPartMIMEChainReaderWriter implements Writer
 {
-  private final MultiPartMIMEPartIterator _multiPartMIMEPartIterator;
+  private final MultiPartMIMEDataSourceIterator _multiPartMIMEDataSourceIterator;
   private final byte[] _normalEncapsulationBoundary;
   private WriteHandle _writeHandle;
   private MultiPartMIMEChainReaderCallback _multiPartMIMEChainReaderCallback = null;
 
-  MultiPartMIMEChainReaderWriter(final MultiPartMIMEPartIterator multiPartMIMEPartIterator, final byte[] normalEncapsulationBoundary)
+  MultiPartMIMEChainReaderWriter(final MultiPartMIMEDataSourceIterator multiPartMIMEDataSourceIterator,
+                                 final byte[] normalEncapsulationBoundary)
   {
-    _multiPartMIMEPartIterator = multiPartMIMEPartIterator;
+    _multiPartMIMEDataSourceIterator = multiPartMIMEDataSourceIterator;
     _normalEncapsulationBoundary = normalEncapsulationBoundary;
   }
 
@@ -60,8 +59,8 @@ final class MultiPartMIMEChainReaderWriter implements Writer
       //Since this is not a MultiPartMIMEDataSource we can't use the regular mechanism for reading data.
       //Instead of create a new callback that will use to write to the writeHandle using the SinglePartMIMEReader.
 
-      _multiPartMIMEPartIterator.registerReaderCallback(_multiPartMIMEChainReaderCallback);
-      //Note that by registering here, this will eventually lead to onNewPart() which will then requestPartData()
+      _multiPartMIMEDataSourceIterator.registerDataSourceReaderCallback(_multiPartMIMEChainReaderCallback);
+      //Note that by registering here, this will eventually lead to onNewDataSource() which will then requestPartData()
       //which will eventually lead to onPartDataAvailable() which will then write to the writeHandle thereby
       //honoring the original request here to write data. This initial write here will write out the boundary that this
       //writer is using followed by the headers.
@@ -69,7 +68,7 @@ final class MultiPartMIMEChainReaderWriter implements Writer
     else
     {
       //R2 asked us to read after initial setup is done.
-      _multiPartMIMEChainReaderCallback.getCurrentSinglePartReader().requestPartData();
+      _multiPartMIMEChainReaderCallback.getCurrentDataSource().onWritePossible();
     }
   }
 
@@ -85,8 +84,7 @@ final class MultiPartMIMEChainReaderWriter implements Writer
     //2. This can also be invoked if there is a functional need to abort all data sources.
 
     //Regardless of how it was called we need to completely drain and drop all bytes to the ground. We can't
-    //leave these bytes in the MultiPartMIMEReader untouched.
-
-    _multiPartMIMEPartIterator.abandonAllParts();
+    //leave these bytes in the MultiPartMIMEDataSourceIterator untouched.
+    _multiPartMIMEDataSourceIterator.abortAllDataSources();
   }
 }
