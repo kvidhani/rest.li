@@ -19,25 +19,18 @@ package com.linkedin.multipart;
 
 import com.linkedin.common.callback.Callback;
 import com.linkedin.multipart.utils.MIMETestUtils;
-import com.linkedin.r2.filter.R2Constants;
 import com.linkedin.r2.message.stream.StreamRequest;
 import com.linkedin.r2.message.stream.StreamResponse;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import org.testng.Assert;
-import org.testng.annotations.AfterClass;
-import org.testng.annotations.BeforeClass;
-import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import static com.linkedin.multipart.utils.MIMETestUtils.*;
-
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -48,32 +41,8 @@ import static org.mockito.Mockito.when;
  *
  * @author Karim Vidhani
  */
-public class TestMIMEChainingReader
+public class TestMIMEChainingReader extends AbstractMIMEUnitTest
 {
-  private ScheduledExecutorService _scheduledExecutorService;
-  private static final int TEST_TIMEOUT = 30000;
-
-  @BeforeClass
-  public void threadPoolSetup()
-  {
-    _scheduledExecutorService = Executors.newScheduledThreadPool(30);
-  }
-
-  @AfterClass
-  public void threadPoolTearDown()
-  {
-    _scheduledExecutorService.shutdownNow();
-  }
-
-  @DataProvider(name = "chunkSizes")
-  public Object[][] chunkSizes() throws Exception
-  {
-    return new Object[][]
-        {
-            {1}, {R2Constants.DEFAULT_DATA_CHUNK_SIZE}
-        };
-  }
-
   //Verifies that a multi part mime reader can be used as a data source to the writer.
   //To make the test easier to write, we simply chain back to the client in the form of simulating a response.
   @Test(dataProvider = "chunkSizes")
@@ -101,20 +70,20 @@ public class TestMIMEChainingReader
         _serverSender = new ServerMultiPartMIMEChainReaderWriterCallback(callback, reader);
     reader.registerReaderCallback(_serverSender);
 
-    latch.await(TEST_TIMEOUT, TimeUnit.MILLISECONDS);
+    latch.await(_testTimeout, TimeUnit.MILLISECONDS);
 
     //Verify client. No need to verify the server.
     List<MIMETestUtils.SinglePartMIMEFullReaderCallback> singlePartMIMEReaderCallbacks = _clientReceiver.getSinglePartMIMEReaderCallbacks();
 
     Assert.assertEquals(singlePartMIMEReaderCallbacks.size(), 4);
-    Assert.assertEquals(singlePartMIMEReaderCallbacks.get(0).getFinishedData(), _bodyA.getPartData());
-    Assert.assertEquals(singlePartMIMEReaderCallbacks.get(0).getHeaders(), _bodyA.getPartHeaders());
-    Assert.assertEquals(singlePartMIMEReaderCallbacks.get(1).getFinishedData(), _bodyB.getPartData());
-    Assert.assertEquals(singlePartMIMEReaderCallbacks.get(1).getHeaders(), _bodyB.getPartHeaders());
-    Assert.assertEquals(singlePartMIMEReaderCallbacks.get(2).getFinishedData(), _bodyC.getPartData());
-    Assert.assertEquals(singlePartMIMEReaderCallbacks.get(2).getHeaders(), _bodyC.getPartHeaders());
-    Assert.assertEquals(singlePartMIMEReaderCallbacks.get(3).getFinishedData(), _bodyD.getPartData());
-    Assert.assertEquals(singlePartMIMEReaderCallbacks.get(3).getHeaders(), _bodyD.getPartHeaders());
+    Assert.assertEquals(singlePartMIMEReaderCallbacks.get(0).getFinishedData(), bodyA.getPartData());
+    Assert.assertEquals(singlePartMIMEReaderCallbacks.get(0).getHeaders(), bodyA.getPartHeaders());
+    Assert.assertEquals(singlePartMIMEReaderCallbacks.get(1).getFinishedData(), bodyB.getPartData());
+    Assert.assertEquals(singlePartMIMEReaderCallbacks.get(1).getHeaders(), bodyB.getPartHeaders());
+    Assert.assertEquals(singlePartMIMEReaderCallbacks.get(2).getFinishedData(), bodyC.getPartData());
+    Assert.assertEquals(singlePartMIMEReaderCallbacks.get(2).getHeaders(), bodyC.getPartHeaders());
+    Assert.assertEquals(singlePartMIMEReaderCallbacks.get(3).getFinishedData(), bodyD.getPartData());
+    Assert.assertEquals(singlePartMIMEReaderCallbacks.get(3).getHeaders(), bodyD.getPartHeaders());
   }
 
   private Callback<StreamResponse> generateSuccessChainCallback(final ClientMultiPartMIMEReaderReceiverCallback receiver)

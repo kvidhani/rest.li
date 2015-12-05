@@ -28,11 +28,12 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.atomic.AtomicReference;
 
-import org.mockito.invocation.InvocationOnMock;
-import org.mockito.stubbing.Answer;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
+
+import org.mockito.invocation.InvocationOnMock;
+import org.mockito.stubbing.Answer;
 
 import static org.mockito.Matchers.isA;
 import static org.mockito.Mockito.doAnswer;
@@ -49,7 +50,7 @@ import static org.mockito.Mockito.when;
 public abstract class AbstractMIMEUnitTest
 {
   protected ScheduledExecutorService _scheduledExecutorService;
-  protected int TEST_TIMEOUT = 30000;
+  protected int _testTimeout = 30000;
   //The following are mock objects used when we test the reader using a mocked version of R2.
   protected EntityStream _entityStream;
   protected ReadHandle _readHandle;
@@ -66,7 +67,7 @@ public abstract class AbstractMIMEUnitTest
   public void threadPoolTearDown()
   {
     _scheduledExecutorService.shutdownNow();
-    TEST_TIMEOUT = 30000; //In case a subclass changed this
+    _testTimeout = 30000; //In case a subclass changed this
   }
 
   @DataProvider(name = "chunkSizes")

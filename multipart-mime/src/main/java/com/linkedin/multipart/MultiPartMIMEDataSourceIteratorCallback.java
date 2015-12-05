@@ -30,15 +30,6 @@ public interface MultiPartMIMEDataSourceIteratorCallback
    * {@link com.linkedin.r2.message.stream.entitystream.Writer} APIs to produce data to write to the
    * {@link com.linkedin.r2.message.stream.entitystream.WriteHandle}.
    *
-   * Note that it is critical that this {@link com.linkedin.multipart.MultiPartMIMEDataSource} does NOT
-   * call {@link com.linkedin.r2.message.stream.entitystream.WriteHandle#done()} when it is finished writing.
-   *
-   * This is because all data sources represented by the
-   * {@link com.linkedin.multipart.MultiPartMIMEDataSourceIterator} are all written using one writer:
-   * {@link com.linkedin.multipart.MultiPartMIMEChainReaderWriter}. This writer will be responsible calling
-   * {@link com.linkedin.r2.message.stream.entitystream.WriteHandle#done()} when all data sources have fully written
-   * the data they represent.
-   *
    * @param multiPartMIMEDataSource the data source which can write/produce data.
    */
   public void onNewDataSource(final MultiPartMIMEDataSource multiPartMIMEDataSource);

@@ -32,11 +32,15 @@ import javax.mail.internet.MimeBodyPart;
 import javax.mail.internet.MimeMultipart;
 
 import org.testng.Assert;
-import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import static com.linkedin.multipart.utils.MIMETestUtils.*;
+import static com.linkedin.multipart.utils.MIMETestUtils.bodyLessBody;
+import static com.linkedin.multipart.utils.MIMETestUtils.bytesBody;
+import static com.linkedin.multipart.utils.MIMETestUtils.headerLessBody;
+import static com.linkedin.multipart.utils.MIMETestUtils.largeDataSource;
+import static com.linkedin.multipart.utils.MIMETestUtils.purelyEmptyBody;
+import static com.linkedin.multipart.utils.MIMETestUtils.smallDataSource;
 
 
 /**
@@ -50,25 +54,18 @@ public class TestMIMEReaderClientCallbackExceptions extends AbstractMIMEUnitTest
   MultiPartMIMEReader _reader;
   MultiPartMIMEExceptionReaderCallbackImpl _currentMultiPartMIMEReaderCallback;
 
-  @BeforeMethod
-  public void setup()
-  {
-    SinglePartMIMEExceptionReaderCallbackImpl.resetAllFlags();
-    MultiPartMIMEExceptionReaderCallbackImpl.resetAllFlags();
-  }
-
   //MultiPartMIMEReader callback invocations throwing exceptions:
   //These tests all verify the resilience of the multipart mime reader when multipart mime reader client callbacks throw runtime exceptions
   @DataProvider(name = "allTypesOfBodiesDataSource")
   public Object[][] allTypesOfBodiesDataSource() throws Exception
   {
     final List<MimeBodyPart> bodyPartList = new ArrayList<MimeBodyPart>();
-    bodyPartList.add(_smallDataSource);
-    bodyPartList.add(_largeDataSource);
-    bodyPartList.add(_headerLessBody);
-    bodyPartList.add(_bodyLessBody);
-    bodyPartList.add(_bytesBody);
-    bodyPartList.add(_purelyEmptyBody);
+    bodyPartList.add(smallDataSource);
+    bodyPartList.add(largeDataSource);
+    bodyPartList.add(headerLessBody);
+    bodyPartList.add(bodyLessBody);
+    bodyPartList.add(bytesBody);
+    bodyPartList.add(purelyEmptyBody);
 
     return new Object[][]
         {
@@ -93,18 +90,19 @@ public class TestMIMEReaderClientCallbackExceptions extends AbstractMIMEUnitTest
     multiPartMimeBody.writeTo(byteArrayOutputStream);
     final ByteString requestPayload = ByteString.copy(byteArrayOutputStream.toByteArray());
 
-    MultiPartMIMEExceptionReaderCallbackImpl.throwOnNewPart = true;
-    CountDownLatch countDownLatch =
-        executeRequestPartialReadWithException(requestPayload, chunkSize, multiPartMimeBody.getContentType());
+    final CountDownLatch countDownLatch =
+        executeRequestPartialReadWithException(requestPayload, chunkSize, multiPartMimeBody.getContentType(),
+                                               MultiPartMIMEThrowOnFlag.THROW_ON_NEW_PART,
+                                               SinglePartMIMEThrowOnFlag.NO_THROW);
 
-    countDownLatch.await(TEST_TIMEOUT, TimeUnit.MILLISECONDS);
+    countDownLatch.await(_testTimeout, TimeUnit.MILLISECONDS);
 
-    Assert.assertTrue(_currentMultiPartMIMEReaderCallback._streamError instanceof IllegalMonitorStateException);
-    Assert.assertEquals(_currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.size(), 0);
+    Assert.assertTrue(_currentMultiPartMIMEReaderCallback.getStreamError() instanceof IllegalMonitorStateException);
+    Assert.assertEquals(_currentMultiPartMIMEReaderCallback.getSinglePartMIMEReaderCallbacks().size(), 0);
 
     try
     {
-      _currentMultiPartMIMEReaderCallback._reader.abandonAllParts();
+      _currentMultiPartMIMEReaderCallback.getReader().abandonAllParts();
       Assert.fail();
     }
     catch (MultiPartReaderFinishedException multiPartReaderFinishedException)
@@ -129,18 +127,19 @@ public class TestMIMEReaderClientCallbackExceptions extends AbstractMIMEUnitTest
     multiPartMimeBody.writeTo(byteArrayOutputStream);
     final ByteString requestPayload = ByteString.copy(byteArrayOutputStream.toByteArray());
 
-    MultiPartMIMEExceptionReaderCallbackImpl.throwOnFinished = true;
-    CountDownLatch countDownLatch =
-        executeRequestPartialReadWithException(requestPayload, chunkSize, multiPartMimeBody.getContentType());
+    final CountDownLatch countDownLatch =
+        executeRequestPartialReadWithException(requestPayload, chunkSize, multiPartMimeBody.getContentType(),
+                                               MultiPartMIMEThrowOnFlag.THROW_ON_FINISHED,
+                                               SinglePartMIMEThrowOnFlag.NO_THROW);
 
-    countDownLatch.await(TEST_TIMEOUT, TimeUnit.MILLISECONDS);
+    countDownLatch.await(_testTimeout, TimeUnit.MILLISECONDS);
 
-    Assert.assertTrue(_currentMultiPartMIMEReaderCallback._streamError instanceof IllegalMonitorStateException);
+    Assert.assertTrue(_currentMultiPartMIMEReaderCallback.getStreamError() instanceof IllegalMonitorStateException);
 
     //Verify this is unusable.
     try
     {
-      _currentMultiPartMIMEReaderCallback._reader.abandonAllParts();
+      _currentMultiPartMIMEReaderCallback.getReader().abandonAllParts();
       Assert.fail();
     }
     catch (MultiPartReaderFinishedException multiPartReaderFinishedException)
@@ -148,17 +147,16 @@ public class TestMIMEReaderClientCallbackExceptions extends AbstractMIMEUnitTest
       //pass
     }
 
-    Assert.assertEquals(_currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.size(), 6);
+    Assert.assertEquals(_currentMultiPartMIMEReaderCallback.getSinglePartMIMEReaderCallbacks().size(), 6);
     //None of the single part callbacks should have recieved the error since they were all done before the top
     //callback threw
-    for (int i = 0; i < _currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.size(); i++)
+    for (int i = 0; i < _currentMultiPartMIMEReaderCallback.getSinglePartMIMEReaderCallbacks().size(); i++)
     {
-      Assert.assertNull(_currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.get(i)._streamError);
+      Assert.assertNull(_currentMultiPartMIMEReaderCallback.getSinglePartMIMEReaderCallbacks().get(i).getStreamError());
       //Verify this is unusable.
       try
       {
-        _currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.get(i)._singlePartMIMEReader
-            .requestPartData();
+        _currentMultiPartMIMEReaderCallback.getSinglePartMIMEReaderCallbacks().get(i).getSinglePartMIMEReader().requestPartData();
         Assert.fail();
       }
       catch (SinglePartFinishedException singlePartFinishedException)
@@ -184,19 +182,20 @@ public class TestMIMEReaderClientCallbackExceptions extends AbstractMIMEUnitTest
     multiPartMimeBody.writeTo(byteArrayOutputStream);
     final ByteString requestPayload = ByteString.copy(byteArrayOutputStream.toByteArray());
 
-    MultiPartMIMEExceptionReaderCallbackImpl.throwOnAbandoned = true;
-    CountDownLatch countDownLatch =
-        executeRequestPartialReadWithException(requestPayload, chunkSize, multiPartMimeBody.getContentType());
+    final CountDownLatch countDownLatch =
+        executeRequestPartialReadWithException(requestPayload, chunkSize, multiPartMimeBody.getContentType(),
+                                               MultiPartMIMEThrowOnFlag.THROW_ON_ABANDONED,
+                                               SinglePartMIMEThrowOnFlag.NO_THROW);
 
-    countDownLatch.await(TEST_TIMEOUT, TimeUnit.MILLISECONDS);
+    countDownLatch.await(_testTimeout, TimeUnit.MILLISECONDS);
 
-    Assert.assertTrue(_currentMultiPartMIMEReaderCallback._streamError instanceof IllegalMonitorStateException);
-    Assert.assertEquals(_currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.size(), 0);
+    Assert.assertTrue(_currentMultiPartMIMEReaderCallback.getStreamError() instanceof IllegalMonitorStateException);
+    Assert.assertEquals(_currentMultiPartMIMEReaderCallback.getSinglePartMIMEReaderCallbacks().size(), 0);
 
     //Verify this is unusable.
     try
     {
-      _currentMultiPartMIMEReaderCallback._reader.abandonAllParts();
+      _currentMultiPartMIMEReaderCallback.getReader().abandonAllParts();
       Assert.fail();
     }
     catch (MultiPartReaderFinishedException multiPartReaderFinishedException)
@@ -224,16 +223,18 @@ public class TestMIMEReaderClientCallbackExceptions extends AbstractMIMEUnitTest
     multiPartMimeBody.writeTo(byteArrayOutputStream);
     final ByteString requestPayload = ByteString.copy(byteArrayOutputStream.toByteArray());
 
-    SinglePartMIMEExceptionReaderCallbackImpl.throwOnPartDataAvailable = true;
-    CountDownLatch countDownLatch = executeRequestPartialReadWithException(requestPayload, chunkSize, multiPartMimeBody.getContentType());
+    final CountDownLatch countDownLatch = executeRequestPartialReadWithException(requestPayload, chunkSize,
+                                                                                 multiPartMimeBody.getContentType(),
+                                                                                 MultiPartMIMEThrowOnFlag.NO_THROW,
+                                                                                 SinglePartMIMEThrowOnFlag.THROW_ON_PART_DATA_AVAILABLE);
 
-    countDownLatch.await(TEST_TIMEOUT, TimeUnit.MILLISECONDS);
+    countDownLatch.await(_testTimeout, TimeUnit.MILLISECONDS);
 
-    Assert.assertTrue(_currentMultiPartMIMEReaderCallback._streamError instanceof IllegalMonitorStateException);
+    Assert.assertTrue(_currentMultiPartMIMEReaderCallback.getStreamError() instanceof IllegalMonitorStateException);
     //Verify this is unusable.
     try
     {
-      _currentMultiPartMIMEReaderCallback._reader.abandonAllParts();
+      _currentMultiPartMIMEReaderCallback.getReader().abandonAllParts();
       Assert.fail();
     }
     catch (MultiPartReaderFinishedException multiPartReaderFinishedException)
@@ -241,11 +242,11 @@ public class TestMIMEReaderClientCallbackExceptions extends AbstractMIMEUnitTest
       //pass
     }
 
-    Assert.assertEquals(_currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.size(), 1);
-    Assert.assertTrue(_currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.get(0)._streamError instanceof IllegalMonitorStateException);
+    Assert.assertEquals(_currentMultiPartMIMEReaderCallback.getSinglePartMIMEReaderCallbacks().size(), 1);
+    Assert.assertTrue(_currentMultiPartMIMEReaderCallback.getSinglePartMIMEReaderCallbacks().get(0).getStreamError() instanceof IllegalMonitorStateException);
     try
     {
-      _currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.get(0)._singlePartMIMEReader.requestPartData();
+      _currentMultiPartMIMEReaderCallback.getSinglePartMIMEReaderCallbacks().get(0).getSinglePartMIMEReader().requestPartData();
       Assert.fail();
     }
     catch (SinglePartFinishedException singlePartFinishedException)
@@ -270,16 +271,18 @@ public class TestMIMEReaderClientCallbackExceptions extends AbstractMIMEUnitTest
     multiPartMimeBody.writeTo(byteArrayOutputStream);
     final ByteString requestPayload = ByteString.copy(byteArrayOutputStream.toByteArray());
 
-    SinglePartMIMEExceptionReaderCallbackImpl.throwOnFinished = true;
-    CountDownLatch countDownLatch = executeRequestPartialReadWithException(requestPayload, chunkSize, multiPartMimeBody.getContentType());
+    final CountDownLatch countDownLatch =
+        executeRequestPartialReadWithException(requestPayload, chunkSize, multiPartMimeBody.getContentType(),
+                                               MultiPartMIMEThrowOnFlag.NO_THROW,
+                                               SinglePartMIMEThrowOnFlag.THROW_ON_FINISHED);
 
-    countDownLatch.await(TEST_TIMEOUT, TimeUnit.MILLISECONDS);
+    countDownLatch.await(_testTimeout, TimeUnit.MILLISECONDS);
 
-    Assert.assertTrue(_currentMultiPartMIMEReaderCallback._streamError instanceof IllegalMonitorStateException);
+    Assert.assertTrue(_currentMultiPartMIMEReaderCallback.getStreamError() instanceof IllegalMonitorStateException);
     //Verify this is unusable.
     try
     {
-      _currentMultiPartMIMEReaderCallback._reader.abandonAllParts();
+      _currentMultiPartMIMEReaderCallback.getReader().abandonAllParts();
       Assert.fail();
     }
     catch (MultiPartReaderFinishedException multiPartReaderFinishedException)
@@ -287,11 +290,11 @@ public class TestMIMEReaderClientCallbackExceptions extends AbstractMIMEUnitTest
       //pass
     }
 
-    Assert.assertEquals(_currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.size(), 1);
-    Assert.assertTrue(_currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.get(0)._streamError instanceof IllegalMonitorStateException);
+    Assert.assertEquals(_currentMultiPartMIMEReaderCallback.getSinglePartMIMEReaderCallbacks().size(), 1);
+    Assert.assertTrue(_currentMultiPartMIMEReaderCallback.getSinglePartMIMEReaderCallbacks().get(0).getStreamError() instanceof IllegalMonitorStateException);
     try
     {
-      _currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.get(0)._singlePartMIMEReader.requestPartData();
+      _currentMultiPartMIMEReaderCallback.getSinglePartMIMEReaderCallbacks().get(0).getSinglePartMIMEReader().requestPartData();
       Assert.fail();
     }
     catch (SinglePartFinishedException singlePartFinishedException)
@@ -316,27 +319,29 @@ public class TestMIMEReaderClientCallbackExceptions extends AbstractMIMEUnitTest
     multiPartMimeBody.writeTo(byteArrayOutputStream);
     final ByteString requestPayload = ByteString.copy(byteArrayOutputStream.toByteArray());
 
-    SinglePartMIMEExceptionReaderCallbackImpl.throwOnAbandoned = true;
-    CountDownLatch countDownLatch = executeRequestPartialReadWithException(requestPayload, chunkSize, multiPartMimeBody.getContentType());
+    final CountDownLatch countDownLatch =
+        executeRequestPartialReadWithException(requestPayload, chunkSize, multiPartMimeBody.getContentType(),
+                                               MultiPartMIMEThrowOnFlag.NO_THROW,
+                                               SinglePartMIMEThrowOnFlag.THROW_ON_ABANDONED);
 
-    countDownLatch.await(TEST_TIMEOUT, TimeUnit.MILLISECONDS);
+    countDownLatch.await(_testTimeout, TimeUnit.MILLISECONDS);
 
-    Assert.assertTrue(_currentMultiPartMIMEReaderCallback._streamError instanceof IllegalMonitorStateException);
+    Assert.assertTrue(_currentMultiPartMIMEReaderCallback.getStreamError() instanceof IllegalMonitorStateException);
     //Verify these are unusable.
     try
     {
-      _currentMultiPartMIMEReaderCallback._reader.abandonAllParts();
+      _currentMultiPartMIMEReaderCallback.getReader().abandonAllParts();
       Assert.fail();
     }
     catch (MultiPartReaderFinishedException multiPartReaderFinishedException)
     {
       //pass
     }
-    Assert.assertEquals(_currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.size(), 1);
-    Assert.assertTrue(_currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.get(0)._streamError instanceof IllegalMonitorStateException);
+    Assert.assertEquals(_currentMultiPartMIMEReaderCallback.getSinglePartMIMEReaderCallbacks().size(), 1);
+    Assert.assertTrue(_currentMultiPartMIMEReaderCallback.getSinglePartMIMEReaderCallbacks().get(0).getStreamError() instanceof IllegalMonitorStateException);
     try
     {
-      _currentMultiPartMIMEReaderCallback._singlePartMIMEReaderCallbacks.get(0)._singlePartMIMEReader.requestPartData();
+      _currentMultiPartMIMEReaderCallback.getSinglePartMIMEReaderCallbacks().get(0).getSinglePartMIMEReader().requestPartData();
       Assert.fail();
     }
     catch (SinglePartFinishedException singlePartFinishedException)
@@ -346,17 +351,30 @@ public class TestMIMEReaderClientCallbackExceptions extends AbstractMIMEUnitTest
   }
 
   ///////////////////////////////////////////////////////////////////////////////////////
-  private CountDownLatch executeRequestPartialReadWithException(final ByteString requestPayload, final int chunkSize,
-                                                                final String contentTypeHeader) throws Exception
+  private CountDownLatch executeRequestPartialReadWithException(final ByteString requestPayload,
+                                                                final int chunkSize,
+                                                                final String contentTypeHeader,
+                                                                final MultiPartMIMEThrowOnFlag multiPartThrowOnFlag,
+                                                                final SinglePartMIMEThrowOnFlag singlePartThrowOnFlag) throws Exception
   {
     mockR2AndWrite(requestPayload, chunkSize, contentTypeHeader);
     final CountDownLatch latch = new CountDownLatch(1);
 
     _reader = MultiPartMIMEReader.createAndAcquireStream(_streamRequest);
-    _currentMultiPartMIMEReaderCallback = new MultiPartMIMEExceptionReaderCallbackImpl(latch, _reader);
+    _currentMultiPartMIMEReaderCallback = new MultiPartMIMEExceptionReaderCallbackImpl(latch, _reader,
+                                                                                       multiPartThrowOnFlag,
+                                                                                       singlePartThrowOnFlag);
     _reader.registerReaderCallback(_currentMultiPartMIMEReaderCallback);
 
     return latch;
+  }
+
+  private enum SinglePartMIMEThrowOnFlag
+  {
+    THROW_ON_PART_DATA_AVAILABLE,
+    THROW_ON_FINISHED,
+    THROW_ON_ABANDONED,
+    NO_THROW;
   }
 
   private static class SinglePartMIMEExceptionReaderCallbackImpl implements SinglePartMIMEReaderCallback
@@ -364,33 +382,35 @@ public class TestMIMEReaderClientCallbackExceptions extends AbstractMIMEUnitTest
     final MultiPartMIMEReader.SinglePartMIMEReader _singlePartMIMEReader;
     Throwable _streamError = null;
     final CountDownLatch _countDownLatch;
-
-    static boolean throwOnPartDataAvailable = false;
-    static boolean throwOnFinished = false;
-    static boolean throwOnAbandoned = false;
-
-    static void resetAllFlags()
-    {
-      throwOnPartDataAvailable = false;
-      throwOnFinished = false;
-      throwOnAbandoned = false;
-    }
+    final SinglePartMIMEThrowOnFlag _singlePartMIMEThrowOnFlag;
 
     SinglePartMIMEExceptionReaderCallbackImpl(final MultiPartMIMEReader.SinglePartMIMEReader singlePartMIMEReader,
-                                              final CountDownLatch countDownLatch)
+                                              final CountDownLatch countDownLatch,
+                                              final SinglePartMIMEThrowOnFlag singlePartMIMEThrowOnFlag)
     {
       _singlePartMIMEReader = singlePartMIMEReader;
       _countDownLatch = countDownLatch;
+      _singlePartMIMEThrowOnFlag = singlePartMIMEThrowOnFlag;
+    }
+
+    public MultiPartMIMEReader.SinglePartMIMEReader getSinglePartMIMEReader()
+    {
+      return _singlePartMIMEReader;
+    }
+
+    public Throwable getStreamError()
+    {
+      return _streamError;
     }
 
     @Override
     public void onPartDataAvailable(ByteString partData)
     {
-      if (throwOnPartDataAvailable)
+      if (_singlePartMIMEThrowOnFlag == SinglePartMIMEThrowOnFlag.THROW_ON_PART_DATA_AVAILABLE)
       {
         throw new IllegalMonitorStateException();
       }
-      else if (throwOnAbandoned)
+      else if (_singlePartMIMEThrowOnFlag == SinglePartMIMEThrowOnFlag.THROW_ON_ABANDONED)
       {
         _singlePartMIMEReader.abandonPart();
         return;
@@ -404,7 +424,7 @@ public class TestMIMEReaderClientCallbackExceptions extends AbstractMIMEUnitTest
     @Override
     public void onFinished()
     {
-      if (throwOnFinished)
+      if (_singlePartMIMEThrowOnFlag == SinglePartMIMEThrowOnFlag.THROW_ON_FINISHED)
       {
         throw new IllegalMonitorStateException();
       }
@@ -424,46 +444,65 @@ public class TestMIMEReaderClientCallbackExceptions extends AbstractMIMEUnitTest
     }
   }
 
+  private enum MultiPartMIMEThrowOnFlag
+  {
+    THROW_ON_NEW_PART,
+    THROW_ON_FINISHED,
+    THROW_ON_ABANDONED,
+    NO_THROW;
+  }
+
   private static class MultiPartMIMEExceptionReaderCallbackImpl implements MultiPartMIMEReaderCallback
   {
     final List<SinglePartMIMEExceptionReaderCallbackImpl> _singlePartMIMEReaderCallbacks = new ArrayList<SinglePartMIMEExceptionReaderCallbackImpl>();
     Throwable _streamError = null;
     final CountDownLatch _latch;
     final MultiPartMIMEReader _reader;
+    final MultiPartMIMEThrowOnFlag _multiPartMIMEThrowOnFlag;
+    final SinglePartMIMEThrowOnFlag _singlePartMIMEThrowOnFlag;
 
-    static boolean throwOnNewPart = false;
-    static boolean throwOnFinished = false;
-    static boolean throwOnAbandoned = false;
-
-    static void resetAllFlags()
-    {
-      throwOnNewPart = false;
-      throwOnFinished = false;
-      throwOnAbandoned = false;
-    }
-
-    MultiPartMIMEExceptionReaderCallbackImpl(final CountDownLatch latch, final MultiPartMIMEReader reader)
+    MultiPartMIMEExceptionReaderCallbackImpl(final CountDownLatch latch,
+                                             final MultiPartMIMEReader reader,
+                                             final MultiPartMIMEThrowOnFlag multiPartMIMEThrowOnFlag,
+                                             final SinglePartMIMEThrowOnFlag singlePartMIMEThrowOnFlag)
     {
       _latch = latch;
       _reader = reader;
+      _multiPartMIMEThrowOnFlag = multiPartMIMEThrowOnFlag;
+      _singlePartMIMEThrowOnFlag = singlePartMIMEThrowOnFlag;
+    }
+
+    public List<SinglePartMIMEExceptionReaderCallbackImpl> getSinglePartMIMEReaderCallbacks()
+    {
+      return _singlePartMIMEReaderCallbacks;
+    }
+
+    public Throwable getStreamError()
+    {
+      return _streamError;
+    }
+
+    public MultiPartMIMEReader getReader()
+    {
+      return _reader;
     }
 
     @Override
     public void onNewPart(MultiPartMIMEReader.SinglePartMIMEReader singlePartMIMEReader)
     {
-      if (throwOnNewPart)
+      if (_multiPartMIMEThrowOnFlag == MultiPartMIMEThrowOnFlag.THROW_ON_NEW_PART)
       {
         throw new IllegalMonitorStateException();
       }
 
-      if (throwOnAbandoned)
+      if (_multiPartMIMEThrowOnFlag == MultiPartMIMEThrowOnFlag.THROW_ON_ABANDONED)
       {
         _reader.abandonAllParts();
         return;
       }
 
       SinglePartMIMEExceptionReaderCallbackImpl singlePartMIMEReaderCallback =
-          new SinglePartMIMEExceptionReaderCallbackImpl(singlePartMIMEReader, _latch);
+          new SinglePartMIMEExceptionReaderCallbackImpl(singlePartMIMEReader, _latch, _singlePartMIMEThrowOnFlag);
       singlePartMIMEReader.registerReaderCallback(singlePartMIMEReaderCallback);
       _singlePartMIMEReaderCallbacks.add(singlePartMIMEReaderCallback);
 
@@ -473,7 +512,7 @@ public class TestMIMEReaderClientCallbackExceptions extends AbstractMIMEUnitTest
     @Override
     public void onFinished()
     {
-      if (throwOnFinished)
+      if (_multiPartMIMEThrowOnFlag == MultiPartMIMEThrowOnFlag.THROW_ON_FINISHED)
       {
         throw new IllegalMonitorStateException();
       }

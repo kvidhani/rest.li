@@ -95,18 +95,18 @@ public class TestMIMEIntegrationReader extends AbstractMIMEIntegrationStreamTest
   {
     return new Object[][]
         {
-            {1, _smallDataSource},
-            {R2Constants.DEFAULT_DATA_CHUNK_SIZE, _smallDataSource},
-            {1, _largeDataSource},
-            {R2Constants.DEFAULT_DATA_CHUNK_SIZE, _largeDataSource},
-            {1, _headerLessBody},
-            {R2Constants.DEFAULT_DATA_CHUNK_SIZE, _headerLessBody},
-            {1, _bodyLessBody},
-            {R2Constants.DEFAULT_DATA_CHUNK_SIZE, _bodyLessBody},
-            {1, _bytesBody},
-            {R2Constants.DEFAULT_DATA_CHUNK_SIZE, _bytesBody},
-            {1, _purelyEmptyBody},
-            {R2Constants.DEFAULT_DATA_CHUNK_SIZE, _purelyEmptyBody}
+            {1, smallDataSource},
+            {R2Constants.DEFAULT_DATA_CHUNK_SIZE, smallDataSource},
+            {1, largeDataSource},
+            {R2Constants.DEFAULT_DATA_CHUNK_SIZE, largeDataSource},
+            {1, headerLessBody},
+            {R2Constants.DEFAULT_DATA_CHUNK_SIZE, headerLessBody},
+            {1, bodyLessBody},
+            {R2Constants.DEFAULT_DATA_CHUNK_SIZE, bodyLessBody},
+            {1, bytesBody},
+            {R2Constants.DEFAULT_DATA_CHUNK_SIZE, bytesBody},
+            {1, purelyEmptyBody},
+            {R2Constants.DEFAULT_DATA_CHUNK_SIZE, purelyEmptyBody}
         };
   }
 
@@ -146,12 +146,12 @@ public class TestMIMEIntegrationReader extends AbstractMIMEIntegrationStreamTest
   public Object[][] multipleNormalBodiesDataSource() throws Exception
   {
     final List<MimeBodyPart> bodyPartList = new ArrayList<MimeBodyPart>();
-    bodyPartList.add(_largeDataSource);
-    bodyPartList.add(_smallDataSource);
-    bodyPartList.add(_bodyLessBody);
-    bodyPartList.add(_largeDataSource);
-    bodyPartList.add(_smallDataSource);
-    bodyPartList.add(_bodyLessBody);
+    bodyPartList.add(largeDataSource);
+    bodyPartList.add(smallDataSource);
+    bodyPartList.add(bodyLessBody);
+    bodyPartList.add(largeDataSource);
+    bodyPartList.add(smallDataSource);
+    bodyPartList.add(bodyLessBody);
 
     //For this particular data source, we will use a variety of chunk sizes to cover all edge cases.
     //This is particularly useful due to the way we decompose ByteStrings when creating data
@@ -202,9 +202,9 @@ public class TestMIMEIntegrationReader extends AbstractMIMEIntegrationStreamTest
   public Object[][] multipleAbnormalBodies() throws Exception
   {
     final List<MimeBodyPart> bodyPartList = new ArrayList<MimeBodyPart>();
-    bodyPartList.add(_headerLessBody);
-    bodyPartList.add(_bodyLessBody);
-    bodyPartList.add(_purelyEmptyBody);
+    bodyPartList.add(headerLessBody);
+    bodyPartList.add(bodyLessBody);
+    bodyPartList.add(purelyEmptyBody);
 
     return new Object[][]
         {
@@ -235,12 +235,12 @@ public class TestMIMEIntegrationReader extends AbstractMIMEIntegrationStreamTest
   public Object[][] allTypesOfBodiesDataSource() throws Exception
   {
     final List<MimeBodyPart> bodyPartList = new ArrayList<MimeBodyPart>();
-    bodyPartList.add(_smallDataSource);
-    bodyPartList.add(_largeDataSource);
-    bodyPartList.add(_headerLessBody);
-    bodyPartList.add(_bodyLessBody);
-    bodyPartList.add(_bytesBody);
-    bodyPartList.add(_purelyEmptyBody);
+    bodyPartList.add(smallDataSource);
+    bodyPartList.add(largeDataSource);
+    bodyPartList.add(headerLessBody);
+    bodyPartList.add(bodyLessBody);
+    bodyPartList.add(bytesBody);
+    bodyPartList.add(purelyEmptyBody);
 
     return new Object[][]
         {
@@ -272,12 +272,12 @@ public class TestMIMEIntegrationReader extends AbstractMIMEIntegrationStreamTest
   public Object[][] preambleEpilogueDataSource() throws Exception
   {
     final List<MimeBodyPart> bodyPartList = new ArrayList<MimeBodyPart>();
-    bodyPartList.add(_smallDataSource);
-    bodyPartList.add(_largeDataSource);
-    bodyPartList.add(_headerLessBody);
-    bodyPartList.add(_bodyLessBody);
-    bodyPartList.add(_bytesBody);
-    bodyPartList.add(_purelyEmptyBody);
+    bodyPartList.add(smallDataSource);
+    bodyPartList.add(largeDataSource);
+    bodyPartList.add(headerLessBody);
+    bodyPartList.add(bodyLessBody);
+    bodyPartList.add(bytesBody);
+    bodyPartList.add(purelyEmptyBody);
 
     return new Object[][]
         {

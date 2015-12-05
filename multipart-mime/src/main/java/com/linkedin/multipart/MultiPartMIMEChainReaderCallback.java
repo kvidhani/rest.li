@@ -38,7 +38,33 @@ final class MultiPartMIMEChainReaderCallback implements MultiPartMIMEDataSourceI
   @Override
   public void onNewDataSource(final MultiPartMIMEDataSource multiPartMIMEDataSource)
   {
-    multiPartMIMEDataSource.onInit(_writeHandle);
+    multiPartMIMEDataSource.onInit(new WriteHandle()
+    {
+      @Override
+      public void write(ByteString data)
+      {
+        _writeHandle.write(data);
+      }
+
+      @Override
+      public void done()
+      {
+        //We intentionally ignore this, since we will be responsible for calling writeHandle.done() when all the data
+        //sources represented by the MultiPartMIMEDataSourceIterator have finished.
+      }
+
+      @Override
+      public void error(Throwable throwable)
+      {
+        _writeHandle.error(throwable);
+      }
+
+      @Override
+      public int remaining()
+      {
+        return _writeHandle.remaining();
+      }
+    });
     _currentDataSource = multiPartMIMEDataSource;
 
     ByteString serializedBoundaryAndHeaders = null;
@@ -62,7 +88,7 @@ final class MultiPartMIMEChainReaderCallback implements MultiPartMIMEDataSourceI
   @Override
   public void onFinished()
   {
-    //When each single part finishes we cannot notify the write handle that we are done.
+    //When each single data source finishes we notify the write handle that we are done.
     _writeHandle.done();
   }
 

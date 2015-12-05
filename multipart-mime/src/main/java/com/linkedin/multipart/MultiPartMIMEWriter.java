@@ -32,8 +32,7 @@ import java.util.List;
 
 
 /**
- * Used to aggregate multiple different data sources and subsequently construct a multipart mime
- * envelope.
+ * Used to aggregate multiple different data sources and subsequently construct a multipart mime envelope.
  *
  * @author Karim Vidhani
  */
@@ -112,13 +111,6 @@ public final class MultiPartMIMEWriter
 
       final Writer boundaryHeaderWriter = new ByteStringWriter(serializedBoundaryAndHeaders);
       _allDataSources.add(boundaryHeaderWriter);
-
-      //If this is a SinglePartMIMEReader then we need to inform it that it should call writeHandle.done() when it
-      //is finished.
-      if (dataSource instanceof MultiPartMIMEReader.SinglePartMIMEReader)
-      {
-        ((MultiPartMIMEReader.SinglePartMIMEReader) dataSource).setWriteHandleDoneOnFinished(true);
-      }
       _allDataSources.add(dataSource);
       return this;
     }
@@ -212,12 +204,7 @@ public final class MultiPartMIMEWriter
    * the custom data source can perform any cleanup necessary. Note that the custom {@link com.linkedin.multipart.MultiPartMIMEDataSource}
    * will be able to see the Throwable that is passed into this method.
    *
-   * 2. If the data source passed in is a {@link com.linkedin.multipart.MultiPartMIMEReader.SinglePartMIMEReader}, then
-   * all the bytes from the single part represented by this SinglePartMIMEReader will be read and dropped. Therefore the
-   * part will be abandoned. See {@link com.linkedin.multipart.MultiPartMIMEReader.SinglePartMIMEReader#abandonPart()}.
-   * In this case the Throwable that is passed into this method will not be used.
-   *
-   * 3. If the data source passed in is a {@link MultiPartMIMEDataSourceIterator}, then all data sources
+   * 2. If the data source passed in is a {@link MultiPartMIMEDataSourceIterator}, then all data sources
    * represented by this MultiPartMIMEPartIterator will be read and abandoned. See {@link MultiPartMIMEDataSourceIterator#abortAllDataSources()}.
    * In this case the Throwable that is passed into this method will not be used.
    *

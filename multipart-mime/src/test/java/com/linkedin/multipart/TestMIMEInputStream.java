@@ -220,7 +220,7 @@ public class TestMIMEInputStream extends AbstractMIMEUnitTest
     //Wait to finish
     try
     {
-      boolean successful = doneLatch.await(TEST_TIMEOUT, TimeUnit.MILLISECONDS);
+      boolean successful = doneLatch.await(_testTimeout, TimeUnit.MILLISECONDS);
       if (!successful)
       {
         Assert.fail("Timeout when waiting for input stream to completely transfer");
@@ -366,7 +366,7 @@ public class TestMIMEInputStream extends AbstractMIMEUnitTest
     //Wait to finish
     try
     {
-      boolean successful = doneLatch.await(TEST_TIMEOUT, TimeUnit.MILLISECONDS);
+      boolean successful = doneLatch.await(_testTimeout, TimeUnit.MILLISECONDS);
       if (!successful)
       {
         Assert.fail("Timeout when waiting for input stream to completely transfer");
@@ -463,7 +463,7 @@ public class TestMIMEInputStream extends AbstractMIMEUnitTest
     //Wait to finish
     try
     {
-      boolean successful = errorLatch.await(TEST_TIMEOUT, TimeUnit.MILLISECONDS);
+      boolean successful = errorLatch.await(_testTimeout, TimeUnit.MILLISECONDS);
       if (!successful)
       {
         Assert.fail("Timeout when waiting for input stream to completely transfer");
@@ -561,7 +561,7 @@ public class TestMIMEInputStream extends AbstractMIMEUnitTest
     //Wait to finish
     try
     {
-      boolean successful = errorLatch.await(TEST_TIMEOUT, TimeUnit.MILLISECONDS);
+      boolean successful = errorLatch.await(_testTimeout, TimeUnit.MILLISECONDS);
       if (!successful)
       {
         Assert.fail("Timeout when waiting for input stream to completely transfer");
@@ -674,7 +674,7 @@ public class TestMIMEInputStream extends AbstractMIMEUnitTest
     //Wait to finish
     try
     {
-      boolean successful = doneLatch.await(TEST_TIMEOUT, TimeUnit.MILLISECONDS);
+      boolean successful = doneLatch.await(_testTimeout, TimeUnit.MILLISECONDS);
       if (!successful)
       {
         Assert.fail("Timeout when waiting for input stream to completely transfer");
@@ -742,7 +742,7 @@ public class TestMIMEInputStream extends AbstractMIMEUnitTest
     //Wait to finish
     try
     {
-      boolean successful = closeInputStreamLatch.await(TEST_TIMEOUT, TimeUnit.MILLISECONDS);
+      boolean successful = closeInputStreamLatch.await(_testTimeout, TimeUnit.MILLISECONDS);
       if (!successful)
       {
         Assert.fail("Timeout when waiting for abort to happen!");
@@ -815,7 +815,7 @@ public class TestMIMEInputStream extends AbstractMIMEUnitTest
     //Wait to finish
     try
     {
-      boolean successful = closeInputStreamLatch.await(TEST_TIMEOUT, TimeUnit.MILLISECONDS);
+      boolean successful = closeInputStreamLatch.await(_testTimeout, TimeUnit.MILLISECONDS);
       if (!successful)
       {
         Assert.fail("Timeout when waiting for abort to happen!");

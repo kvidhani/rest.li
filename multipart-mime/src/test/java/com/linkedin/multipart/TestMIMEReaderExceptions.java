@@ -68,8 +68,8 @@ public class TestMIMEReaderExceptions extends AbstractMIMEUnitTest
   public Object[][] multiplePartsDataSource() throws Exception
   {
     final List<MimeBodyPart> bodyPartList = new ArrayList<MimeBodyPart>();
-    bodyPartList.add(MIMETestUtils._smallDataSource);
-    bodyPartList.add(MIMETestUtils._bodyLessBody);
+    bodyPartList.add(MIMETestUtils.smallDataSource);
+    bodyPartList.add(MIMETestUtils.bodyLessBody);
 
     return new Object[][]
         {
@@ -416,7 +416,7 @@ public class TestMIMEReaderExceptions extends AbstractMIMEUnitTest
     _currentMultiPartMIMEReaderCallback = new MultiPartMIMEExceptionReaderCallbackImpl(latch, reader);
     reader.registerReaderCallback(_currentMultiPartMIMEReaderCallback);
 
-    latch.await(TEST_TIMEOUT, TimeUnit.MILLISECONDS);
+    latch.await(_testTimeout, TimeUnit.MILLISECONDS);
 
     //Verify the correct exception was sent to the reader callback. The test itself will then verify
     //if the correct error (if applicable) was sent to the single part reader callback.

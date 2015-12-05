@@ -1168,7 +1168,7 @@ public class MultiPartMIMEReader implements MultiPartMIMEDataSourceIterator
    *
    * This API can be used in only the following scenarios:
    *
-   * 1. Without a registration using a {@link com.linkedin.multipart.MultiPartMIMEReaderCallback}. Abandonment will begin
+   * 1. Without registering a {@link com.linkedin.multipart.MultiPartMIMEReaderCallback}. Abandonment will begin
    * and since no callback is registered, there will be no notification when it is completed.
    *
    * 2. After registration using a {@link com.linkedin.multipart.MultiPartMIMEReaderCallback}
@@ -1220,6 +1220,7 @@ public class MultiPartMIMEReader implements MultiPartMIMEDataSourceIterator
     }
     else
     {
+      assert(_multiPartReaderState == MultiPartReaderState.READING_PARTS);
       //We are in READING_PARTS. At this point we require that there exist a valid, non-null SinglePartMIMEReader before
       //we continue since the contract is that the top level callback can only abandon upon witnessing onNewPart().
 
@@ -1416,7 +1417,7 @@ public class MultiPartMIMEReader implements MultiPartMIMEDataSourceIterator
    * Please do not use. This is for internal use only.
    *
    * Invoked when all the potential data sources that this MultiPartMIMEDataSourceIterator represents need to be aborted
-   * since they will not give given a chance to produce data.
+   * since they will not be given a chance to produce data.
    */
   @Override
   public void abortAllDataSources()
@@ -1608,23 +1609,6 @@ public class MultiPartMIMEReader implements MultiPartMIMEDataSourceIterator
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     //Chaining interface implementation. These should not be used directly by external consumers.
 
-    //This variable represents whether or not this SinglePartMIMEReader should call _writeHandle.done()
-    //when all the data it read is finished being written.
-    //
-    //It should be true when a SinglePartMIMEReader is used directly as a data source in MultiPartMIMEWriter.
-    //In this case this writer is done when this part is done (within the CompositeWriter).
-    //
-    //It should be false when a SinglePartMIMEReader is used within a MultiPartMIMEReader that is used as a data source
-    //in MultiPartMIMEWriter.
-    //In this case the writer is done when all parts of the MultiPartMIMEReader are done (within the CompositeWriter).
-    private volatile boolean _writeHandleDoneOnFinished = false;
-
-    //Package private control of _writeHandleDoneOnFinished
-    void setWriteHandleDoneOnFinished(final boolean writeHandleDoneOnFinished)
-    {
-      _writeHandleDoneOnFinished = writeHandleDoneOnFinished;
-    }
-
     /**
      * Please do not use. This is for internal use only.
      */
@@ -1633,7 +1617,7 @@ public class MultiPartMIMEReader implements MultiPartMIMEDataSourceIterator
     {
       //We have been informed that this part will be treated as a data source by the MultiPartMIMEWriter.
       SinglePartMIMEReaderCallback singlePartMIMEChainReaderCallback =
-          new SinglePartMIMEChainReaderCallback(writeHandle, this, _writeHandleDoneOnFinished);
+          new SinglePartMIMEChainReaderCallback(writeHandle, this);
       registerReaderCallback(singlePartMIMEChainReaderCallback);
     }
 

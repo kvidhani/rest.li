@@ -17,7 +17,6 @@
 package com.linkedin.multipart.integ;
 
 
-import com.google.common.collect.ImmutableList;
 import com.linkedin.common.callback.Callback;
 import com.linkedin.data.ByteString;
 import com.linkedin.multipart.MultiPartMIMEDataSource;
@@ -42,6 +41,9 @@ import com.linkedin.r2.transport.common.StreamRequestHandler;
 import com.linkedin.r2.transport.common.bridge.server.TransportDispatcher;
 import com.linkedin.r2.transport.common.bridge.server.TransportDispatcherBuilder;
 import com.linkedin.r2.transport.http.client.HttpClientFactory;
+
+import com.google.common.collect.ImmutableList;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -56,6 +58,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+
 import org.testng.Assert;
 import org.testng.annotations.AfterTest;
 import org.testng.annotations.BeforeTest;
@@ -74,7 +77,7 @@ public class TestMIMEIntegrationReaderWriter extends AbstractMIMEIntegrationStre
   private static ScheduledExecutorService scheduledExecutorService;
 
   private static final URI SERVER_URI = URI.create("/pegasusMimeServer");
-  private MimeServerRequestHandler _mimeServerRequestHandler;
+  private MIMEServerRequestHandler _mimeServerRequestHandler;
 
   byte[] _normalBodyData;
   Map<String, String> _normalBodyHeaders;
@@ -124,7 +127,7 @@ public class TestMIMEIntegrationReaderWriter extends AbstractMIMEIntegrationStre
   @Override
   protected TransportDispatcher getTransportDispatcher()
   {
-    _mimeServerRequestHandler = new MimeServerRequestHandler();
+    _mimeServerRequestHandler = new MIMEServerRequestHandler();
     return new TransportDispatcherBuilder().addStreamHandler(SERVER_URI, _mimeServerRequestHandler).build();
   }
 
@@ -144,12 +147,16 @@ public class TestMIMEIntegrationReaderWriter extends AbstractMIMEIntegrationStre
     return new Object[][]
         {
             {1, _normalBody},
+            {10, _normalBody},
             {R2Constants.DEFAULT_DATA_CHUNK_SIZE, _normalBody},
             {1, _headerLessBody},
+            {10, _headerLessBody},
             {R2Constants.DEFAULT_DATA_CHUNK_SIZE, _headerLessBody},
             {1, _bodyLessBody},
+            {10, _bodyLessBody},
             {R2Constants.DEFAULT_DATA_CHUNK_SIZE, _bodyLessBody},
             {1, _purelyEmptyBody},
+            {10, _purelyEmptyBody},
             {R2Constants.DEFAULT_DATA_CHUNK_SIZE, _purelyEmptyBody}
         };
   }
@@ -378,11 +385,11 @@ public class TestMIMEIntegrationReaderWriter extends AbstractMIMEIntegrationStre
     }
   }
 
-  private static class MimeServerRequestHandler implements StreamRequestHandler
+  private static class MIMEServerRequestHandler implements StreamRequestHandler
   {
     private MultiPartMIMEReaderCallbackImpl _testMultiPartMIMEReaderCallback;
 
-    MimeServerRequestHandler()
+    MIMEServerRequestHandler()
     {
     }
 

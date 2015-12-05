@@ -17,6 +17,7 @@
 package com.linkedin.multipart;
 
 
+import com.linkedin.data.ByteString;
 import com.linkedin.multipart.exceptions.MultiPartReaderFinishedException;
 import com.linkedin.multipart.exceptions.SinglePartBindException;
 import com.linkedin.multipart.exceptions.SinglePartFinishedException;
@@ -41,6 +42,9 @@ import static org.mockito.Mockito.when;
  */
 public class TestMIMEReaderStateTransitions
 {
+  private static final EmptyMultiPartMIMEReaderCallback EMPTY_MULTI_PART_MIME_READER_CALLBACK = new EmptyMultiPartMIMEReaderCallback();
+  private static final EmptySinglePartMIMEReaderCallback EMPTY_SINGLE_PART_MIME_READER_CALLBACK = new EmptySinglePartMIMEReaderCallback();
+
   //MultiPartMIMEReader exceptions:
   @Test
   public void testRegisterCallbackMultiPartMIMEReader()
@@ -55,7 +59,7 @@ public class TestMIMEReaderStateTransitions
     reader.setState(MultiPartMIMEReader.MultiPartReaderState.FINISHED);
     try
     {
-      reader.registerReaderCallback(null);
+      reader.registerReaderCallback(EMPTY_MULTI_PART_MIME_READER_CALLBACK);
       Assert.fail();
     }
     catch (MultiPartReaderFinishedException multiPartReaderFinishedException)
@@ -65,7 +69,7 @@ public class TestMIMEReaderStateTransitions
     reader.setState(MultiPartMIMEReader.MultiPartReaderState.READING_EPILOGUE);
     try
     {
-      reader.registerReaderCallback(null);
+      reader.registerReaderCallback(EMPTY_MULTI_PART_MIME_READER_CALLBACK);
       Assert.fail();
     }
     catch (MultiPartReaderFinishedException multiPartReaderFinishedException)
@@ -75,7 +79,7 @@ public class TestMIMEReaderStateTransitions
     reader.setState(MultiPartMIMEReader.MultiPartReaderState.CALLBACK_BOUND_AND_READING_PREAMBLE);
     try
     {
-      reader.registerReaderCallback(null);
+      reader.registerReaderCallback(EMPTY_MULTI_PART_MIME_READER_CALLBACK);
       Assert.fail();
     }
     catch (StreamBusyException streamBusyException)
@@ -85,7 +89,7 @@ public class TestMIMEReaderStateTransitions
     reader.setState(MultiPartMIMEReader.MultiPartReaderState.ABANDONING);
     try
     {
-      reader.registerReaderCallback(null);
+      reader.registerReaderCallback(EMPTY_MULTI_PART_MIME_READER_CALLBACK);
       Assert.fail();
     }
     catch (StreamBusyException streamBusyException)
@@ -98,7 +102,7 @@ public class TestMIMEReaderStateTransitions
     reader.setCurrentSinglePartMIMEReader(singlePartMIMEReader);
     try
     {
-      reader.registerReaderCallback(null);
+      reader.registerReaderCallback(EMPTY_MULTI_PART_MIME_READER_CALLBACK);
       Assert.fail();
     }
     catch (StreamBusyException streamBusyException)
@@ -190,7 +194,7 @@ public class TestMIMEReaderStateTransitions
     singlePartMIMEReader.setState(MultiPartMIMEReader.SingleReaderState.REQUESTED_DATA); //This is a undesired single part state
     try
     {
-      singlePartMIMEReader.registerReaderCallback(null);
+      singlePartMIMEReader.registerReaderCallback(EMPTY_SINGLE_PART_MIME_READER_CALLBACK);
       Assert.fail();
     }
     catch (SinglePartBindException singlePartBindException)
@@ -264,6 +268,52 @@ public class TestMIMEReaderStateTransitions
       Assert.fail();
     }
     catch (SinglePartNotInitializedException singlePartNotInitializedException)
+    {
+    }
+  }
+
+  private static final class EmptyMultiPartMIMEReaderCallback implements MultiPartMIMEReaderCallback
+  {
+    @Override
+    public void onNewPart(MultiPartMIMEReader.SinglePartMIMEReader singlePartMIMEReader)
+    {
+    }
+
+    @Override
+    public void onFinished()
+    {
+    }
+
+    @Override
+    public void onAbandoned()
+    {
+    }
+
+    @Override
+    public void onStreamError(Throwable throwable)
+    {
+    }
+  }
+
+  private static final class EmptySinglePartMIMEReaderCallback implements SinglePartMIMEReaderCallback
+  {
+    @Override
+    public void onPartDataAvailable(ByteString partData)
+    {
+    }
+
+    @Override
+    public void onFinished()
+    {
+    }
+
+    @Override
+    public void onAbandoned()
+    {
+    }
+
+    @Override
+    public void onStreamError(Throwable throwable)
     {
     }
   }

@@ -97,19 +97,19 @@ public class TestMIMEReaderAbandon extends AbstractMIMEUnitTest
   public Object[][] allTypesOfBodiesDataSource() throws Exception
   {
     final List<MimeBodyPart> bodyPartList = new ArrayList<MimeBodyPart>();
-    bodyPartList.add(_smallDataSource);
-    bodyPartList.add(_largeDataSource);
-    bodyPartList.add(_headerLessBody);
-    bodyPartList.add(_bodyLessBody);
-    bodyPartList.add(_bytesBody);
-    bodyPartList.add(_purelyEmptyBody);
+    bodyPartList.add(smallDataSource);
+    bodyPartList.add(largeDataSource);
+    bodyPartList.add(headerLessBody);
+    bodyPartList.add(bodyLessBody);
+    bodyPartList.add(bytesBody);
+    bodyPartList.add(purelyEmptyBody);
 
-    bodyPartList.add(_purelyEmptyBody);
-    bodyPartList.add(_bytesBody);
-    bodyPartList.add(_bodyLessBody);
-    bodyPartList.add(_headerLessBody);
-    bodyPartList.add(_largeDataSource);
-    bodyPartList.add(_smallDataSource);
+    bodyPartList.add(purelyEmptyBody);
+    bodyPartList.add(bytesBody);
+    bodyPartList.add(bodyLessBody);
+    bodyPartList.add(headerLessBody);
+    bodyPartList.add(largeDataSource);
+    bodyPartList.add(smallDataSource);
 
     return new Object[][]
         {
@@ -384,7 +384,7 @@ public class TestMIMEReaderAbandon extends AbstractMIMEUnitTest
     _currentMultiPartMIMEReaderCallback = new MultiPartMIMEAbandonReaderCallbackImpl(latch, abandonStrategy, reader);
     reader.registerReaderCallback(_currentMultiPartMIMEReaderCallback);
 
-    latch.await(TEST_TIMEOUT, TimeUnit.MILLISECONDS);
+    latch.await(_testTimeout, TimeUnit.MILLISECONDS);
 
     Assert.assertEquals(_currentMultiPartMIMEReaderCallback.getResponseHeaders().get(ABANDON_HEADER), serverHeaderPrefix + abandonStrategy);
 

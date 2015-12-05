@@ -30,7 +30,7 @@ import javax.mail.internet.MimeMultipart;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-import static com.linkedin.multipart.utils.MIMETestUtils._largeDataSource;
+import static com.linkedin.multipart.utils.MIMETestUtils.largeDataSource;
 
 
 /**
@@ -52,12 +52,12 @@ public class TestMIMEReaderR2Error extends AbstractMIMEUnitTest
   {
     MimeMultipart multiPartMimeBody = new MimeMultipart();
 
-    multiPartMimeBody.addBodyPart(_largeDataSource);
-    multiPartMimeBody.addBodyPart(_largeDataSource);
-    multiPartMimeBody.addBodyPart(_largeDataSource);
-    multiPartMimeBody.addBodyPart(_largeDataSource);
-    multiPartMimeBody.addBodyPart(_largeDataSource);
-    multiPartMimeBody.addBodyPart(_largeDataSource);
+    multiPartMimeBody.addBodyPart(largeDataSource);
+    multiPartMimeBody.addBodyPart(largeDataSource);
+    multiPartMimeBody.addBodyPart(largeDataSource);
+    multiPartMimeBody.addBodyPart(largeDataSource);
+    multiPartMimeBody.addBodyPart(largeDataSource);
+    multiPartMimeBody.addBodyPart(largeDataSource);
 
     final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     multiPartMimeBody.writeTo(byteArrayOutputStream);
@@ -66,7 +66,7 @@ public class TestMIMEReaderR2Error extends AbstractMIMEUnitTest
     CountDownLatch countDownLatch =
         executeRequestPartialReadWithException(requestPayload, 1, multiPartMimeBody.getContentType());
 
-    countDownLatch.await(TEST_TIMEOUT, TimeUnit.MILLISECONDS);
+    countDownLatch.await(_testTimeout, TimeUnit.MILLISECONDS);
 
     //When this returns, its partially complete
     //In this point in time let us simulate an R2 error

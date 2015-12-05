@@ -30,7 +30,6 @@ final class SinglePartMIMEChainReaderCallback implements SinglePartMIMEReaderCal
 {
   private final WriteHandle _writeHandle;
   private final MultiPartMIMEReader.SinglePartMIMEReader _singlePartMIMEReader;
-  private final boolean _doneOnFinished;
 
   @Override
   public void onPartDataAvailable(ByteString partData)
@@ -46,10 +45,7 @@ final class SinglePartMIMEChainReaderCallback implements SinglePartMIMEReaderCal
   @Override
   public void onFinished()
   {
-    if (_doneOnFinished)
-    {
-      _writeHandle.done();
-    }
+    _writeHandle.done();
   }
 
   @Override
@@ -73,11 +69,9 @@ final class SinglePartMIMEChainReaderCallback implements SinglePartMIMEReaderCal
   }
 
   SinglePartMIMEChainReaderCallback(final WriteHandle writeHandle,
-                                    final MultiPartMIMEReader.SinglePartMIMEReader singlePartMIMEReader,
-                                    final boolean doneOnFinished)
+                                    final MultiPartMIMEReader.SinglePartMIMEReader singlePartMIMEReader)
   {
     _singlePartMIMEReader = singlePartMIMEReader;
     _writeHandle = writeHandle;
-    _doneOnFinished = doneOnFinished;
   }
 }

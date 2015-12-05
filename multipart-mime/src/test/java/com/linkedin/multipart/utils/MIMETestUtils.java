@@ -17,14 +17,14 @@
 package com.linkedin.multipart.utils;
 
 
+import com.google.common.collect.ImmutableMap;
+
 import com.linkedin.data.ByteString;
 import com.linkedin.multipart.MultiPartMIMEDataSource;
 import com.linkedin.multipart.MultiPartMIMEInputStream;
 import com.linkedin.multipart.MultiPartMIMEReader;
 import com.linkedin.multipart.MultiPartMIMEReaderCallback;
 import com.linkedin.multipart.SinglePartMIMEReaderCallback;
-
-import com.google.common.collect.ImmutableMap;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -82,25 +82,25 @@ public final class MIMETestUtils
   public static final String SINGLE_ALTERNATE = "SINGLE_ALTERNATE";
 
   //Javax mail data sources
-  public static MimeBodyPart _tinyDataSource;
+  public static MimeBodyPart tinyDataSource;
   //Represents a tiny part with no headers. Used exclusively for the stack overflow test.
-  public static MimeBodyPart _smallDataSource; //Represents a small part with headers and a body composed of simple text
-  public static MimeBodyPart _largeDataSource; //Represents a large part with headers and a body composed of simple text
-  public static MimeBodyPart _headerLessBody; //Represents a part with a body and no headers
-  public static MimeBodyPart _bodyLessBody; //Represents a part with headers but no body
-  public static MimeBodyPart _bytesBody; //Represents a part with bytes
-  public static MimeBodyPart _purelyEmptyBody; //Represents a part with no headers and no body
+  public static MimeBodyPart smallDataSource; //Represents a small part with headers and a body composed of simple text
+  public static MimeBodyPart largeDataSource; //Represents a large part with headers and a body composed of simple text
+  public static MimeBodyPart headerLessBody; //Represents a part with a body and no headers
+  public static MimeBodyPart bodyLessBody; //Represents a part with headers but no body
+  public static MimeBodyPart bytesBody; //Represents a part with bytes
+  public static MimeBodyPart purelyEmptyBody; //Represents a part with no headers and no body
 
   //Non javax, custom data sources
-  public static MIMEDataPart _bodyA;
-  public static MIMEDataPart _bodyB;
-  public static MIMEDataPart _bodyC;
-  public static MIMEDataPart _bodyD;
-  public static MIMEDataPart _body1;
-  public static MIMEDataPart _body2;
-  public static MIMEDataPart _body3;
-  public static MIMEDataPart _body4;
-  public static MIMEDataPart _body5;
+  public static MIMEDataPart bodyA;
+  public static MIMEDataPart bodyB;
+  public static MIMEDataPart bodyC;
+  public static MIMEDataPart bodyD;
+  public static MIMEDataPart body1;
+  public static MIMEDataPart body2;
+  public static MIMEDataPart body3;
+  public static MIMEDataPart body4;
+  public static MIMEDataPart body5;
 
   //Disable instantiation
   private MIMETestUtils()
@@ -154,38 +154,38 @@ public final class MIMETestUtils
     //Non javax mail sources:
     final byte[] bodyAbytes = "bodyA".getBytes();
     final Map<String, String> bodyAHeaders = ImmutableMap.of("headerA", "valueA");
-    _bodyA = new MIMEDataPart(ByteString.copy(bodyAbytes), bodyAHeaders);
+    bodyA = new MIMEDataPart(ByteString.copy(bodyAbytes), bodyAHeaders);
 
     final byte[] bodyBbytes = "bodyB".getBytes();
     final Map<String, String> bodyBHeaders = ImmutableMap.of("headerB", "valueB");
-    _bodyB = new MIMEDataPart(ByteString.copy(bodyBbytes), bodyBHeaders);
+    bodyB = new MIMEDataPart(ByteString.copy(bodyBbytes), bodyBHeaders);
 
     //body c has no headers
     final byte[] bodyCbytes = "bodyC".getBytes();
-    _bodyC = new MIMEDataPart(ByteString.copy(bodyCbytes), Collections.<String, String>emptyMap());
+    bodyC = new MIMEDataPart(ByteString.copy(bodyCbytes), Collections.<String, String>emptyMap());
 
     final byte[] bodyDbytes = "bodyD".getBytes();
     final Map<String, String> bodyDHeaders = ImmutableMap.of("headerD", "valueD");
-    _bodyD = new MIMEDataPart(ByteString.copy(bodyDbytes), bodyDHeaders);
+    bodyD = new MIMEDataPart(ByteString.copy(bodyDbytes), bodyDHeaders);
 
     final byte[] body1bytes = "body1".getBytes();
     final Map<String, String> body1Headers = ImmutableMap.of("header1", "value1");
-    _body1 = new MIMEDataPart(ByteString.copy(body1bytes), body1Headers);
+    body1 = new MIMEDataPart(ByteString.copy(body1bytes), body1Headers);
 
     final byte[] body2bytes = "body2".getBytes();
     final Map<String, String> body2Headers = ImmutableMap.of("header2", "value2");
-    _body2 = new MIMEDataPart(ByteString.copy(body2bytes), body2Headers);
+    body2 = new MIMEDataPart(ByteString.copy(body2bytes), body2Headers);
 
     //body 3 is completely empty
-    _body3 = new MIMEDataPart(ByteString.empty(), Collections.<String, String>emptyMap());
+    body3 = new MIMEDataPart(ByteString.empty(), Collections.<String, String>emptyMap());
 
     final byte[] body4bytes = "body4".getBytes();
     final Map<String, String> body4Headers = ImmutableMap.of("header4", "value4");
-    _body4 = new MIMEDataPart(ByteString.copy(body4bytes), body4Headers);
+    body4 = new MIMEDataPart(ByteString.copy(body4bytes), body4Headers);
 
     final byte[] localInputStreamBytes = "local input stream".getBytes();
     final Map<String, String> localInputStreamHeaders = ImmutableMap.of("local1", "local2");
-    _body5 = new MIMEDataPart(ByteString.copy(localInputStreamBytes), localInputStreamHeaders);
+    body5 = new MIMEDataPart(ByteString.copy(localInputStreamBytes), localInputStreamHeaders);
 
     //Now create the javax data sources:
     try
@@ -196,7 +196,7 @@ public final class MIMETestUtils
         final MimeBodyPart dataPart = new MimeBodyPart();
         final ContentType contentType = new ContentType(TEXT_PLAIN_CONTENT_TYPE);
         dataPart.setContent(body, contentType.getBaseType());
-        _tinyDataSource = dataPart;
+        tinyDataSource = dataPart;
       }
 
       //Small body.
@@ -207,7 +207,7 @@ public final class MIMETestUtils
         dataPart.setContent(body, contentType.getBaseType());
         dataPart.setHeader(HEADER_CONTENT_TYPE, contentType.toString());
         dataPart.setHeader("SomeCustomHeader", "SomeCustomValue");
-        _smallDataSource = dataPart;
+        smallDataSource = dataPart;
       }
 
       //Large body. Something bigger then the size of the boundary with folded headers.
@@ -239,7 +239,7 @@ public final class MIMETestUtils
         dataPart.setHeader(HEADER_CONTENT_TYPE, contentTypeBuffer.toString());
         dataPart.setHeader("AnotherCustomHeader", "AnotherCustomValue");
         dataPart.setHeader("FoldedHeader", customHeaderBuffer.toString());
-        _largeDataSource = dataPart;
+        largeDataSource = dataPart;
       }
 
       //Header-less body. This has a body but no headers.
@@ -248,7 +248,7 @@ public final class MIMETestUtils
         final MimeBodyPart dataPart = new MimeBodyPart();
         final ContentType contentType = new ContentType(TEXT_PLAIN_CONTENT_TYPE);
         dataPart.setContent(body, contentType.getBaseType());
-        _headerLessBody = dataPart;
+        headerLessBody = dataPart;
       }
 
       //Body-less body. This has no body but does have headers, some of which are folded.
@@ -263,7 +263,7 @@ public final class MIMETestUtils
         dataPart.setContent("", contentType.getBaseType());
         dataPart.setHeader(HEADER_CONTENT_TYPE, contentType.toString());
         dataPart.setHeader("YetAnotherCustomHeader", "YetAnotherCustomValue");
-        _bodyLessBody = dataPart;
+        bodyLessBody = dataPart;
       }
 
       //Bytes body. A body that uses a content type different then just text/plain.
@@ -277,7 +277,7 @@ public final class MIMETestUtils
         final ContentType contentType = new ContentType(BINARY_CONTENT_TYPE);
         dataPart.setContent(body, contentType.getBaseType());
         dataPart.setHeader(HEADER_CONTENT_TYPE, contentType.toString());
-        _bytesBody = dataPart;
+        bytesBody = dataPart;
       }
 
       //Purely empty body. This has no body or headers.
@@ -285,7 +285,7 @@ public final class MIMETestUtils
         final MimeBodyPart dataPart = new MimeBodyPart();
         final ContentType contentType = new ContentType(TEXT_PLAIN_CONTENT_TYPE);
         dataPart.setContent("", contentType.getBaseType()); //Mail requires content so we do a bit of a hack here.
-        _purelyEmptyBody = dataPart;
+        purelyEmptyBody = dataPart;
       }
     }
     catch (Exception exception)
@@ -299,20 +299,20 @@ public final class MIMETestUtils
                                                                              final ExecutorService executorService)
   {
     final MultiPartMIMEInputStream bodyADataSource =
-        new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_bodyA.getPartData().copyBytes()),
-            executorService, _bodyA.getPartHeaders()).withWriteChunkSize(chunkSize).build();
+        new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(bodyA.getPartData().copyBytes()),
+            executorService, bodyA.getPartHeaders()).withWriteChunkSize(chunkSize).build();
 
     final MultiPartMIMEInputStream bodyBDataSource =
-        new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_bodyB.getPartData().copyBytes()),
-            executorService, _bodyB.getPartHeaders()).withWriteChunkSize(chunkSize).build();
+        new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(bodyB.getPartData().copyBytes()),
+            executorService, bodyB.getPartHeaders()).withWriteChunkSize(chunkSize).build();
 
     final MultiPartMIMEInputStream bodyCDataSource =
-        new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_bodyC.getPartData().copyBytes()),
-            executorService, _bodyC.getPartHeaders()).withWriteChunkSize(chunkSize).build();
+        new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(bodyC.getPartData().copyBytes()),
+            executorService, bodyC.getPartHeaders()).withWriteChunkSize(chunkSize).build();
 
     final MultiPartMIMEInputStream bodyDDataSource =
-        new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_bodyD.getPartData().copyBytes()),
-            executorService, _bodyD.getPartHeaders()).withWriteChunkSize(chunkSize).build();
+        new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(bodyD.getPartData().copyBytes()),
+            executorService, bodyD.getPartHeaders()).withWriteChunkSize(chunkSize).build();
 
     final List<MultiPartMIMEDataSource> dataSources = new ArrayList<MultiPartMIMEDataSource>();
     dataSources.add(bodyADataSource);

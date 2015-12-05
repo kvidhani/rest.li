@@ -122,7 +122,7 @@ public class TestMIMEWriter extends AbstractMIMEUnitTest
     final FutureCallback<ByteString> futureCallback = new FutureCallback<ByteString>();
     final FullEntityReader fullEntityReader = new FullEntityReader(futureCallback);
     multiPartMIMEWriter.getEntityStream().setReader(fullEntityReader);
-    futureCallback.get(TEST_TIMEOUT, TimeUnit.MILLISECONDS);
+    futureCallback.get(_testTimeout, TimeUnit.MILLISECONDS);
 
     final StreamRequest multiPartMIMEStreamRequest =
         MultiPartMIMEStreamRequestFactory
@@ -203,7 +203,7 @@ public class TestMIMEWriter extends AbstractMIMEUnitTest
     final FutureCallback<ByteString> futureCallback = new FutureCallback<ByteString>();
     final FullEntityReader fullEntityReader = new FullEntityReader(futureCallback);
     multiPartMIMEWriter.getEntityStream().setReader(fullEntityReader);
-    futureCallback.get(TEST_TIMEOUT, TimeUnit.MILLISECONDS);
+    futureCallback.get(_testTimeout, TimeUnit.MILLISECONDS);
 
     final StreamRequest multiPartMIMEStreamRequest =
         MultiPartMIMEStreamRequestFactory
