@@ -17,14 +17,14 @@
 package com.linkedin.multipart.utils;
 
 
-import com.google.common.collect.ImmutableMap;
-
 import com.linkedin.data.ByteString;
 import com.linkedin.multipart.MultiPartMIMEDataSource;
 import com.linkedin.multipart.MultiPartMIMEInputStream;
 import com.linkedin.multipart.MultiPartMIMEReader;
 import com.linkedin.multipart.MultiPartMIMEReaderCallback;
 import com.linkedin.multipart.SinglePartMIMEReaderCallback;
+
+import com.google.common.collect.ImmutableMap;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
