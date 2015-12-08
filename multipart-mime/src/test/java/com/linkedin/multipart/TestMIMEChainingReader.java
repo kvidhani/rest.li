@@ -76,14 +76,14 @@ public class TestMIMEChainingReader extends AbstractMIMEUnitTest
     List<MIMETestUtils.SinglePartMIMEFullReaderCallback> singlePartMIMEReaderCallbacks = _clientReceiver.getSinglePartMIMEReaderCallbacks();
 
     Assert.assertEquals(singlePartMIMEReaderCallbacks.size(), 4);
-    Assert.assertEquals(singlePartMIMEReaderCallbacks.get(0).getFinishedData(), bodyA.getPartData());
-    Assert.assertEquals(singlePartMIMEReaderCallbacks.get(0).getHeaders(), bodyA.getPartHeaders());
-    Assert.assertEquals(singlePartMIMEReaderCallbacks.get(1).getFinishedData(), bodyB.getPartData());
-    Assert.assertEquals(singlePartMIMEReaderCallbacks.get(1).getHeaders(), bodyB.getPartHeaders());
-    Assert.assertEquals(singlePartMIMEReaderCallbacks.get(2).getFinishedData(), bodyC.getPartData());
-    Assert.assertEquals(singlePartMIMEReaderCallbacks.get(2).getHeaders(), bodyC.getPartHeaders());
-    Assert.assertEquals(singlePartMIMEReaderCallbacks.get(3).getFinishedData(), bodyD.getPartData());
-    Assert.assertEquals(singlePartMIMEReaderCallbacks.get(3).getHeaders(), bodyD.getPartHeaders());
+    Assert.assertEquals(singlePartMIMEReaderCallbacks.get(0).getFinishedData(), BODY_A.getPartData());
+    Assert.assertEquals(singlePartMIMEReaderCallbacks.get(0).getHeaders(), BODY_A.getPartHeaders());
+    Assert.assertEquals(singlePartMIMEReaderCallbacks.get(1).getFinishedData(), BODY_B.getPartData());
+    Assert.assertEquals(singlePartMIMEReaderCallbacks.get(1).getHeaders(), BODY_B.getPartHeaders());
+    Assert.assertEquals(singlePartMIMEReaderCallbacks.get(2).getFinishedData(), BODY_C.getPartData());
+    Assert.assertEquals(singlePartMIMEReaderCallbacks.get(2).getHeaders(), BODY_C.getPartHeaders());
+    Assert.assertEquals(singlePartMIMEReaderCallbacks.get(3).getFinishedData(), BODY_D.getPartData());
+    Assert.assertEquals(singlePartMIMEReaderCallbacks.get(3).getHeaders(), BODY_D.getPartHeaders());
   }
 
   private Callback<StreamResponse> generateSuccessChainCallback(final ClientMultiPartMIMEReaderReceiverCallback receiver)

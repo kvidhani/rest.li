@@ -68,8 +68,8 @@ public class TestMIMEReaderExceptions extends AbstractMIMEUnitTest
   public Object[][] multiplePartsDataSource() throws Exception
   {
     final List<MimeBodyPart> bodyPartList = new ArrayList<MimeBodyPart>();
-    bodyPartList.add(MIMETestUtils.smallDataSource);
-    bodyPartList.add(MIMETestUtils.bodyLessBody);
+    bodyPartList.add(MIMETestUtils.SMALL_DATA_SOURCE);
+    bodyPartList.add(MIMETestUtils.BODY_LESS_BODY);
 
     return new Object[][]
         {

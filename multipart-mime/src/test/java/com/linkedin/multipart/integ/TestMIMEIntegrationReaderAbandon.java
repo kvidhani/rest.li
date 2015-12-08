@@ -97,19 +97,19 @@ public class TestMIMEIntegrationReaderAbandon extends AbstractMIMEIntegrationStr
   public Object[][] allTypesOfBodiesDataSource() throws Exception
   {
     final List<MimeBodyPart> bodyPartList = new ArrayList<MimeBodyPart>();
-    bodyPartList.add(smallDataSource);
-    bodyPartList.add(largeDataSource);
-    bodyPartList.add(headerLessBody);
-    bodyPartList.add(bodyLessBody);
-    bodyPartList.add(bytesBody);
-    bodyPartList.add(purelyEmptyBody);
+    bodyPartList.add(SMALL_DATA_SOURCE);
+    bodyPartList.add(LARGE_DATA_SOURCE);
+    bodyPartList.add(HEADER_LESS_BODY);
+    bodyPartList.add(BODY_LESS_BODY);
+    bodyPartList.add(BYTES_BODY);
+    bodyPartList.add(PURELY_EMPTY_BODY);
 
-    bodyPartList.add(purelyEmptyBody);
-    bodyPartList.add(bytesBody);
-    bodyPartList.add(bodyLessBody);
-    bodyPartList.add(headerLessBody);
-    bodyPartList.add(largeDataSource);
-    bodyPartList.add(smallDataSource);
+    bodyPartList.add(PURELY_EMPTY_BODY);
+    bodyPartList.add(BYTES_BODY);
+    bodyPartList.add(BODY_LESS_BODY);
+    bodyPartList.add(HEADER_LESS_BODY);
+    bodyPartList.add(LARGE_DATA_SOURCE);
+    bodyPartList.add(SMALL_DATA_SOURCE);
 
     return new Object[][]
         {

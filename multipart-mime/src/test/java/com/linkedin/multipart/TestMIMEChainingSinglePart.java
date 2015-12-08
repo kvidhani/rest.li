@@ -31,10 +31,10 @@ import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import static com.linkedin.multipart.utils.MIMETestUtils.SinglePartMIMEFullReaderCallback;
-import static com.linkedin.multipart.utils.MIMETestUtils.bodyA;
-import static com.linkedin.multipart.utils.MIMETestUtils.bodyB;
-import static com.linkedin.multipart.utils.MIMETestUtils.bodyC;
-import static com.linkedin.multipart.utils.MIMETestUtils.bodyD;
+import static com.linkedin.multipart.utils.MIMETestUtils.BODY_A;
+import static com.linkedin.multipart.utils.MIMETestUtils.BODY_B;
+import static com.linkedin.multipart.utils.MIMETestUtils.BODY_C;
+import static com.linkedin.multipart.utils.MIMETestUtils.BODY_D;
 import static com.linkedin.multipart.utils.MIMETestUtils.generateInputStreamDataSources;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -79,18 +79,18 @@ public class TestMIMEChainingSinglePart extends AbstractMIMEUnitTest
 
     //Verify client
     Assert.assertEquals(clientReceiver.getSinglePartMIMEReaderCallbacks().size(), 1);
-    Assert.assertEquals(clientReceiver.getSinglePartMIMEReaderCallbacks().get(0).getFinishedData(), bodyA.getPartData());
-    Assert.assertEquals(clientReceiver.getSinglePartMIMEReaderCallbacks().get(0).getHeaders(), bodyA.getPartHeaders());
+    Assert.assertEquals(clientReceiver.getSinglePartMIMEReaderCallbacks().get(0).getFinishedData(), BODY_A.getPartData());
+    Assert.assertEquals(clientReceiver.getSinglePartMIMEReaderCallbacks().get(0).getHeaders(), BODY_A.getPartHeaders());
 
     //Verify server
     List<MIMETestUtils.SinglePartMIMEFullReaderCallback> singlePartMIMEReaderCallbacks = serverSender.getSinglePartMIMEReaderCallbacks();
     Assert.assertEquals(singlePartMIMEReaderCallbacks.size(), 3);
-    Assert.assertEquals(singlePartMIMEReaderCallbacks.get(0).getFinishedData(), bodyB.getPartData());
-    Assert.assertEquals(singlePartMIMEReaderCallbacks.get(0).getHeaders(), bodyB.getPartHeaders());
-    Assert.assertEquals(singlePartMIMEReaderCallbacks.get(1).getFinishedData(), bodyC.getPartData());
-    Assert.assertEquals(singlePartMIMEReaderCallbacks.get(1).getHeaders(), bodyC.getPartHeaders());
-    Assert.assertEquals(singlePartMIMEReaderCallbacks.get(2).getFinishedData(), bodyD.getPartData());
-    Assert.assertEquals(singlePartMIMEReaderCallbacks.get(2).getHeaders(), bodyD.getPartHeaders());
+    Assert.assertEquals(singlePartMIMEReaderCallbacks.get(0).getFinishedData(), BODY_B.getPartData());
+    Assert.assertEquals(singlePartMIMEReaderCallbacks.get(0).getHeaders(), BODY_B.getPartHeaders());
+    Assert.assertEquals(singlePartMIMEReaderCallbacks.get(1).getFinishedData(), BODY_C.getPartData());
+    Assert.assertEquals(singlePartMIMEReaderCallbacks.get(1).getHeaders(), BODY_C.getPartHeaders());
+    Assert.assertEquals(singlePartMIMEReaderCallbacks.get(2).getFinishedData(), BODY_D.getPartData());
+    Assert.assertEquals(singlePartMIMEReaderCallbacks.get(2).getHeaders(), BODY_D.getPartHeaders());
   }
 
   private Callback<StreamResponse> generateSuccessChainCallback(final MIMETestUtils.MultiPartMIMEFullReaderCallback receiver)

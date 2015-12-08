@@ -35,12 +35,12 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import static com.linkedin.multipart.utils.MIMETestUtils.bodyLessBody;
-import static com.linkedin.multipart.utils.MIMETestUtils.bytesBody;
-import static com.linkedin.multipart.utils.MIMETestUtils.headerLessBody;
-import static com.linkedin.multipart.utils.MIMETestUtils.largeDataSource;
-import static com.linkedin.multipart.utils.MIMETestUtils.purelyEmptyBody;
-import static com.linkedin.multipart.utils.MIMETestUtils.smallDataSource;
+import static com.linkedin.multipart.utils.MIMETestUtils.BODY_LESS_BODY;
+import static com.linkedin.multipart.utils.MIMETestUtils.BYTES_BODY;
+import static com.linkedin.multipart.utils.MIMETestUtils.HEADER_LESS_BODY;
+import static com.linkedin.multipart.utils.MIMETestUtils.LARGE_DATA_SOURCE;
+import static com.linkedin.multipart.utils.MIMETestUtils.PURELY_EMPTY_BODY;
+import static com.linkedin.multipart.utils.MIMETestUtils.SMALL_DATA_SOURCE;
 
 
 /**
@@ -60,12 +60,12 @@ public class TestMIMEReaderClientCallbackExceptions extends AbstractMIMEUnitTest
   public Object[][] allTypesOfBodiesDataSource() throws Exception
   {
     final List<MimeBodyPart> bodyPartList = new ArrayList<MimeBodyPart>();
-    bodyPartList.add(smallDataSource);
-    bodyPartList.add(largeDataSource);
-    bodyPartList.add(headerLessBody);
-    bodyPartList.add(bodyLessBody);
-    bodyPartList.add(bytesBody);
-    bodyPartList.add(purelyEmptyBody);
+    bodyPartList.add(SMALL_DATA_SOURCE);
+    bodyPartList.add(LARGE_DATA_SOURCE);
+    bodyPartList.add(HEADER_LESS_BODY);
+    bodyPartList.add(BODY_LESS_BODY);
+    bodyPartList.add(BYTES_BODY);
+    bodyPartList.add(PURELY_EMPTY_BODY);
 
     return new Object[][]
         {

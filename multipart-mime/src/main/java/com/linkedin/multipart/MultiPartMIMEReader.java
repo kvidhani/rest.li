@@ -1616,8 +1616,7 @@ public class MultiPartMIMEReader implements MultiPartMIMEDataSourceIterator
     public void onInit(WriteHandle writeHandle)
     {
       //We have been informed that this part will be treated as a data source by the MultiPartMIMEWriter.
-      SinglePartMIMEReaderCallback singlePartMIMEChainReaderCallback =
-          new SinglePartMIMEChainReaderCallback(writeHandle, this);
+      SinglePartMIMEReaderCallback singlePartMIMEChainReaderCallback = new SinglePartMIMEChainReaderCallback(writeHandle, this);
       registerReaderCallback(singlePartMIMEChainReaderCallback);
     }
 

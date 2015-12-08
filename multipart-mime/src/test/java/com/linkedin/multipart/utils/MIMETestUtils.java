@@ -81,26 +81,28 @@ public final class MIMETestUtils
   //Single part alternates between consumption and abandoning all the way through (using registered callbacks):
   public static final String SINGLE_ALTERNATE = "SINGLE_ALTERNATE";
 
-  //Javax mail data sources
-  public static MimeBodyPart tinyDataSource;
-  //Represents a tiny part with no headers. Used exclusively for the stack overflow test.
-  public static MimeBodyPart smallDataSource; //Represents a small part with headers and a body composed of simple text
-  public static MimeBodyPart largeDataSource; //Represents a large part with headers and a body composed of simple text
-  public static MimeBodyPart headerLessBody; //Represents a part with a body and no headers
-  public static MimeBodyPart bodyLessBody; //Represents a part with headers but no body
-  public static MimeBodyPart bytesBody; //Represents a part with bytes
-  public static MimeBodyPart purelyEmptyBody; //Represents a part with no headers and no body
+  ///////////////////////////////////////////////////////////////////////////////////////
+  //Data sources defined here:
 
-  //Non javax, custom data sources
-  public static MIMEDataPart bodyA;
-  public static MIMEDataPart bodyB;
-  public static MIMEDataPart bodyC;
-  public static MIMEDataPart bodyD;
-  public static MIMEDataPart body1;
-  public static MIMEDataPart body2;
-  public static MIMEDataPart body3;
-  public static MIMEDataPart body4;
-  public static MIMEDataPart body5;
+  //Javax mail data sources:
+  public static final MimeBodyPart TINY_DATA_SOURCE = createTinyDataSource();
+  public static final MimeBodyPart SMALL_DATA_SOURCE = createSmallDataSource();
+  public static final MimeBodyPart LARGE_DATA_SOURCE = createLargeDataSource();
+  public static final MimeBodyPart HEADER_LESS_BODY = createHeaderLessBody();
+  public static final MimeBodyPart BODY_LESS_BODY = createBodyLessBody();
+  public static final MimeBodyPart BYTES_BODY = createBytesBody();
+  public static final MimeBodyPart PURELY_EMPTY_BODY = createPurelyEmptyBody();
+
+  //Non javax, custom data sources:
+  public static final MIMEDataPart BODY_A;
+  public static final MIMEDataPart BODY_B;
+  public static final MIMEDataPart BODY_C;
+  public static final MIMEDataPart BODY_D;
+  public static final MIMEDataPart BODY_1;
+  public static final MIMEDataPart BODY_2;
+  public static final MIMEDataPart BODY_3;
+  public static final MIMEDataPart BODY_4;
+  public static final MIMEDataPart BODY_5;
 
   //Disable instantiation
   private MIMETestUtils()
@@ -152,146 +154,202 @@ public final class MIMETestUtils
   static
   {
     //Non javax mail sources:
-    final byte[] bodyAbytes = "bodyA".getBytes();
+    final byte[] bodyAbytes = "BODY_A".getBytes();
     final Map<String, String> bodyAHeaders = ImmutableMap.of("headerA", "valueA");
-    bodyA = new MIMEDataPart(ByteString.copy(bodyAbytes), bodyAHeaders);
+    BODY_A = new MIMEDataPart(ByteString.copy(bodyAbytes), bodyAHeaders);
 
-    final byte[] bodyBbytes = "bodyB".getBytes();
+    final byte[] bodyBbytes = "BODY_B".getBytes();
     final Map<String, String> bodyBHeaders = ImmutableMap.of("headerB", "valueB");
-    bodyB = new MIMEDataPart(ByteString.copy(bodyBbytes), bodyBHeaders);
+    BODY_B = new MIMEDataPart(ByteString.copy(bodyBbytes), bodyBHeaders);
 
     //body c has no headers
-    final byte[] bodyCbytes = "bodyC".getBytes();
-    bodyC = new MIMEDataPart(ByteString.copy(bodyCbytes), Collections.<String, String>emptyMap());
+    final byte[] bodyCbytes = "BODY_C".getBytes();
+    BODY_C = new MIMEDataPart(ByteString.copy(bodyCbytes), Collections.<String, String>emptyMap());
 
-    final byte[] bodyDbytes = "bodyD".getBytes();
+    final byte[] bodyDbytes = "BODY_D".getBytes();
     final Map<String, String> bodyDHeaders = ImmutableMap.of("headerD", "valueD");
-    bodyD = new MIMEDataPart(ByteString.copy(bodyDbytes), bodyDHeaders);
+    BODY_D = new MIMEDataPart(ByteString.copy(bodyDbytes), bodyDHeaders);
 
-    final byte[] body1bytes = "body1".getBytes();
+    final byte[] body1bytes = "BODY_1".getBytes();
     final Map<String, String> body1Headers = ImmutableMap.of("header1", "value1");
-    body1 = new MIMEDataPart(ByteString.copy(body1bytes), body1Headers);
+    BODY_1 = new MIMEDataPart(ByteString.copy(body1bytes), body1Headers);
 
-    final byte[] body2bytes = "body2".getBytes();
+    final byte[] body2bytes = "BODY_2".getBytes();
     final Map<String, String> body2Headers = ImmutableMap.of("header2", "value2");
-    body2 = new MIMEDataPart(ByteString.copy(body2bytes), body2Headers);
+    BODY_2 = new MIMEDataPart(ByteString.copy(body2bytes), body2Headers);
 
     //body 3 is completely empty
-    body3 = new MIMEDataPart(ByteString.empty(), Collections.<String, String>emptyMap());
+    BODY_3 = new MIMEDataPart(ByteString.empty(), Collections.<String, String>emptyMap());
 
-    final byte[] body4bytes = "body4".getBytes();
+    final byte[] body4bytes = "BODY_4".getBytes();
     final Map<String, String> body4Headers = ImmutableMap.of("header4", "value4");
-    body4 = new MIMEDataPart(ByteString.copy(body4bytes), body4Headers);
+    BODY_4 = new MIMEDataPart(ByteString.copy(body4bytes), body4Headers);
 
     final byte[] localInputStreamBytes = "local input stream".getBytes();
     final Map<String, String> localInputStreamHeaders = ImmutableMap.of("local1", "local2");
-    body5 = new MIMEDataPart(ByteString.copy(localInputStreamBytes), localInputStreamHeaders);
+    BODY_5 = new MIMEDataPart(ByteString.copy(localInputStreamBytes), localInputStreamHeaders);
+  }
 
-    //Now create the javax data sources:
+  //Now create the javax data sources:
+  private static final MimeBodyPart createTinyDataSource()
+  {
     try
     {
       //Tiny body.
-      {
-        final String body = "1";
-        final MimeBodyPart dataPart = new MimeBodyPart();
-        final ContentType contentType = new ContentType(TEXT_PLAIN_CONTENT_TYPE);
-        dataPart.setContent(body, contentType.getBaseType());
-        tinyDataSource = dataPart;
-      }
-
-      //Small body.
-      {
-        final String body = "A small body";
-        final MimeBodyPart dataPart = new MimeBodyPart();
-        final ContentType contentType = new ContentType(TEXT_PLAIN_CONTENT_TYPE);
-        dataPart.setContent(body, contentType.getBaseType());
-        dataPart.setHeader(HEADER_CONTENT_TYPE, contentType.toString());
-        dataPart.setHeader("SomeCustomHeader", "SomeCustomValue");
-        smallDataSource = dataPart;
-      }
-
-      //Large body. Something bigger then the size of the boundary with folded headers.
-      {
-        final String body =
-            "Has at possim tritani laoreet, vis te meis verear. Vel no vero quando oblique, eu blandit placerat nec, vide facilisi recusabo nec te. Veri labitur sensibus eum id. Quo omnis "
-                + "putant erroribus ad, nonumes copiosae percipit in qui, id cibo meis clita pri. An brute mundi quaerendum duo, eu aliquip facilisis sea, eruditi invidunt dissentiunt eos ea.";
-        final MimeBodyPart dataPart = new MimeBodyPart();
-        final ContentType contentType = new ContentType(TEXT_PLAIN_CONTENT_TYPE);
-        dataPart.setContent(body, contentType.getBaseType());
-        //Modify the content type header to use folding. We will also use multiple headers that use folding to verify
-        //the integrity of the reader. Note that the Content-Type header uses parameters which are key/value pairs
-        //separated by '='. Note that we do not use two consecutive CRLFs anywhere since our implementation
-        //does not support this.
-        final StringBuffer contentTypeBuffer = new StringBuffer(contentType.toString());
-        contentTypeBuffer.append(";\r\n\t\t\t");
-        contentTypeBuffer.append("parameter1= value1");
-        contentTypeBuffer.append(";\r\n   \t");
-        contentTypeBuffer.append("parameter2= value2");
-
-        //This is a custom header which is folded. It does not use parameters so it's values are separated by commas.
-        final StringBuffer customHeaderBuffer = new StringBuffer();
-        customHeaderBuffer.append("CustomValue1");
-        customHeaderBuffer.append(",\r\n\t  \t");
-        customHeaderBuffer.append("CustomValue2");
-        customHeaderBuffer.append(",\r\n ");
-        customHeaderBuffer.append("CustomValue3");
-
-        dataPart.setHeader(HEADER_CONTENT_TYPE, contentTypeBuffer.toString());
-        dataPart.setHeader("AnotherCustomHeader", "AnotherCustomValue");
-        dataPart.setHeader("FoldedHeader", customHeaderBuffer.toString());
-        largeDataSource = dataPart;
-      }
-
-      //Header-less body. This has a body but no headers.
-      {
-        final String body = "A body without any headers.";
-        final MimeBodyPart dataPart = new MimeBodyPart();
-        final ContentType contentType = new ContentType(TEXT_PLAIN_CONTENT_TYPE);
-        dataPart.setContent(body, contentType.getBaseType());
-        headerLessBody = dataPart;
-      }
-
-      //Body-less body. This has no body but does have headers, some of which are folded.
-      {
-        final MimeBodyPart dataPart = new MimeBodyPart();
-        final ParameterList parameterList = new ParameterList();
-        parameterList.set("AVeryVeryVeryVeryLongHeader", "AVeryVeryVeryVeryLongValue");
-        parameterList.set("AVeryVeryVeryVeryLongHeader2", "AVeryVeryVeryVeryLongValue2");
-        parameterList.set("AVeryVeryVeryVeryLongHeader3", "AVeryVeryVeryVeryLongValue3");
-        parameterList.set("AVeryVeryVeryVeryLongHeader4", "AVeryVeryVeryVeryLongValue4");
-        final ContentType contentType = new ContentType("text", "plain", parameterList);
-        dataPart.setContent("", contentType.getBaseType());
-        dataPart.setHeader(HEADER_CONTENT_TYPE, contentType.toString());
-        dataPart.setHeader("YetAnotherCustomHeader", "YetAnotherCustomValue");
-        bodyLessBody = dataPart;
-      }
-
-      //Bytes body. A body that uses a content type different then just text/plain.
-      {
-        final byte[] body = new byte[20];
-        for (int i = 0; i < body.length; i++)
-        {
-          body[i] = (byte) i;
-        }
-        final MimeBodyPart dataPart = new MimeBodyPart();
-        final ContentType contentType = new ContentType(BINARY_CONTENT_TYPE);
-        dataPart.setContent(body, contentType.getBaseType());
-        dataPart.setHeader(HEADER_CONTENT_TYPE, contentType.toString());
-        bytesBody = dataPart;
-      }
-
-      //Purely empty body. This has no body or headers.
-      {
-        final MimeBodyPart dataPart = new MimeBodyPart();
-        final ContentType contentType = new ContentType(TEXT_PLAIN_CONTENT_TYPE);
-        dataPart.setContent("", contentType.getBaseType()); //Mail requires content so we do a bit of a hack here.
-        purelyEmptyBody = dataPart;
-      }
+      final String body = "1";
+      final MimeBodyPart dataPart = new MimeBodyPart();
+      final ContentType contentType = new ContentType(TEXT_PLAIN_CONTENT_TYPE);
+      dataPart.setContent(body, contentType.getBaseType());
+      return dataPart;
     }
     catch (Exception exception)
     {
       Assert.fail();
     }
+    return null;
+  }
+
+  private static final MimeBodyPart createSmallDataSource()
+  {
+    try
+    {
+      //Small body.
+      final String body = "A small body";
+      final MimeBodyPart dataPart = new MimeBodyPart();
+      final ContentType contentType = new ContentType(TEXT_PLAIN_CONTENT_TYPE);
+      dataPart.setContent(body, contentType.getBaseType());
+      dataPart.setHeader(HEADER_CONTENT_TYPE, contentType.toString());
+      dataPart.setHeader("SomeCustomHeader", "SomeCustomValue");
+      return dataPart;
+    }
+    catch (Exception exception)
+    {
+      Assert.fail();
+    }
+    return null;
+  }
+
+  private static final MimeBodyPart createLargeDataSource()
+  {
+    try
+    {
+      //Large body. Something bigger then the size of the boundary with folded headers.
+      final String body =
+          "Has at possim tritani laoreet, vis te meis verear. Vel no vero quando oblique, eu blandit placerat nec, vide facilisi recusabo nec te. Veri labitur sensibus eum id. Quo omnis "
+              + "putant erroribus ad, nonumes copiosae percipit in qui, id cibo meis clita pri. An brute mundi quaerendum duo, eu aliquip facilisis sea, eruditi invidunt dissentiunt eos ea.";
+      final MimeBodyPart dataPart = new MimeBodyPart();
+      final ContentType contentType = new ContentType(TEXT_PLAIN_CONTENT_TYPE);
+      dataPart.setContent(body, contentType.getBaseType());
+      //Modify the content type header to use folding. We will also use multiple headers that use folding to verify
+      //the integrity of the reader. Note that the Content-Type header uses parameters which are key/value pairs
+      //separated by '='. Note that we do not use two consecutive CRLFs anywhere since our implementation
+      //does not support this.
+      final StringBuffer contentTypeBuffer = new StringBuffer(contentType.toString());
+      contentTypeBuffer.append(";\r\n\t\t\t");
+      contentTypeBuffer.append("parameter1= value1");
+      contentTypeBuffer.append(";\r\n   \t");
+      contentTypeBuffer.append("parameter2= value2");
+
+      //This is a custom header which is folded. It does not use parameters so it's values are separated by commas.
+      final StringBuffer customHeaderBuffer = new StringBuffer();
+      customHeaderBuffer.append("CustomValue1");
+      customHeaderBuffer.append(",\r\n\t  \t");
+      customHeaderBuffer.append("CustomValue2");
+      customHeaderBuffer.append(",\r\n ");
+      customHeaderBuffer.append("CustomValue3");
+
+      dataPart.setHeader(HEADER_CONTENT_TYPE, contentTypeBuffer.toString());
+      dataPart.setHeader("AnotherCustomHeader", "AnotherCustomValue");
+      dataPart.setHeader("FoldedHeader", customHeaderBuffer.toString());
+      return dataPart;
+    }
+    catch (Exception exception)
+    {
+      Assert.fail();
+    }
+    return null;
+  }
+
+  private static final MimeBodyPart createHeaderLessBody()
+  {
+    try
+    {
+      //Header-less body. This has a body but no headers.
+      final String body = "A body without any headers.";
+      final MimeBodyPart dataPart = new MimeBodyPart();
+      final ContentType contentType = new ContentType(TEXT_PLAIN_CONTENT_TYPE);
+      dataPart.setContent(body, contentType.getBaseType());
+      return dataPart;
+    }
+    catch (Exception exception)
+    {
+      Assert.fail();
+    }
+    return null;
+  }
+
+  private static final MimeBodyPart createBodyLessBody()
+  {
+    try
+    {
+      //Body-less body. This has no body but does have headers, some of which are folded.
+      final MimeBodyPart dataPart = new MimeBodyPart();
+      final ParameterList parameterList = new ParameterList();
+      parameterList.set("AVeryVeryVeryVeryLongHeader", "AVeryVeryVeryVeryLongValue");
+      parameterList.set("AVeryVeryVeryVeryLongHeader2", "AVeryVeryVeryVeryLongValue2");
+      parameterList.set("AVeryVeryVeryVeryLongHeader3", "AVeryVeryVeryVeryLongValue3");
+      parameterList.set("AVeryVeryVeryVeryLongHeader4", "AVeryVeryVeryVeryLongValue4");
+      final ContentType contentType = new ContentType("text", "plain", parameterList);
+      dataPart.setContent("", contentType.getBaseType());
+      dataPart.setHeader(HEADER_CONTENT_TYPE, contentType.toString());
+      dataPart.setHeader("YetAnotherCustomHeader", "YetAnotherCustomValue");
+      return dataPart;
+    }
+    catch (Exception exception)
+    {
+      Assert.fail();
+    }
+    return null;
+  }
+
+  private static final MimeBodyPart createBytesBody()
+  {
+    try
+    {
+      //Bytes body. A body that uses a content type different then just text/plain.
+      final byte[] body = new byte[20];
+      for (int i = 0; i < body.length; i++)
+      {
+        body[i] = (byte) i;
+      }
+      final MimeBodyPart dataPart = new MimeBodyPart();
+      final ContentType contentType = new ContentType(BINARY_CONTENT_TYPE);
+      dataPart.setContent(body, contentType.getBaseType());
+      dataPart.setHeader(HEADER_CONTENT_TYPE, contentType.toString());
+      return dataPart;
+    }
+    catch (Exception exception)
+    {
+      Assert.fail();
+    }
+    return null;
+  }
+
+  private static final MimeBodyPart createPurelyEmptyBody()
+  {
+    try
+    {
+      //Purely empty body. This has no body or headers.
+      final MimeBodyPart dataPart = new MimeBodyPart();
+      final ContentType contentType = new ContentType(TEXT_PLAIN_CONTENT_TYPE);
+      dataPart.setContent("", contentType.getBaseType()); //Mail requires content so we do a bit of a hack here.
+      return dataPart;
+    }
+    catch (Exception exception)
+    {
+      Assert.fail();
+    }
+    return null;
   }
 
   //The chaining tests will use these:
@@ -299,20 +357,20 @@ public final class MIMETestUtils
                                                                              final ExecutorService executorService)
   {
     final MultiPartMIMEInputStream bodyADataSource =
-        new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(bodyA.getPartData().copyBytes()),
-            executorService, bodyA.getPartHeaders()).withWriteChunkSize(chunkSize).build();
+        new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(BODY_A.getPartData().copyBytes()),
+            executorService, BODY_A.getPartHeaders()).withWriteChunkSize(chunkSize).build();
 
     final MultiPartMIMEInputStream bodyBDataSource =
-        new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(bodyB.getPartData().copyBytes()),
-            executorService, bodyB.getPartHeaders()).withWriteChunkSize(chunkSize).build();
+        new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(BODY_B.getPartData().copyBytes()),
+            executorService, BODY_B.getPartHeaders()).withWriteChunkSize(chunkSize).build();
 
     final MultiPartMIMEInputStream bodyCDataSource =
-        new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(bodyC.getPartData().copyBytes()),
-            executorService, bodyC.getPartHeaders()).withWriteChunkSize(chunkSize).build();
+        new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(BODY_C.getPartData().copyBytes()),
+            executorService, BODY_C.getPartHeaders()).withWriteChunkSize(chunkSize).build();
 
     final MultiPartMIMEInputStream bodyDDataSource =
-        new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(bodyD.getPartData().copyBytes()),
-            executorService, bodyD.getPartHeaders()).withWriteChunkSize(chunkSize).build();
+        new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(BODY_D.getPartData().copyBytes()),
+            executorService, BODY_D.getPartHeaders()).withWriteChunkSize(chunkSize).build();
 
     final List<MultiPartMIMEDataSource> dataSources = new ArrayList<MultiPartMIMEDataSource>();
     dataSources.add(bodyADataSource);
@@ -387,8 +445,7 @@ public final class MIMETestUtils
 
   public static class MultiPartMIMEFullReaderCallback implements MultiPartMIMEReaderCallback
   {
-    final List<SinglePartMIMEFullReaderCallback> _singlePartMIMEReaderCallbacks =
-        new ArrayList<SinglePartMIMEFullReaderCallback>();
+    final List<SinglePartMIMEFullReaderCallback> _singlePartMIMEReaderCallbacks = new ArrayList<SinglePartMIMEFullReaderCallback>();
 
     public MultiPartMIMEFullReaderCallback()
     {

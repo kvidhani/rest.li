@@ -30,7 +30,7 @@ import javax.mail.internet.MimeMultipart;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-import static com.linkedin.multipart.utils.MIMETestUtils.largeDataSource;
+import static com.linkedin.multipart.utils.MIMETestUtils.LARGE_DATA_SOURCE;
 
 
 /**
@@ -52,12 +52,12 @@ public class TestMIMEReaderR2Error extends AbstractMIMEUnitTest
   {
     MimeMultipart multiPartMimeBody = new MimeMultipart();
 
-    multiPartMimeBody.addBodyPart(largeDataSource);
-    multiPartMimeBody.addBodyPart(largeDataSource);
-    multiPartMimeBody.addBodyPart(largeDataSource);
-    multiPartMimeBody.addBodyPart(largeDataSource);
-    multiPartMimeBody.addBodyPart(largeDataSource);
-    multiPartMimeBody.addBodyPart(largeDataSource);
+    multiPartMimeBody.addBodyPart(LARGE_DATA_SOURCE);
+    multiPartMimeBody.addBodyPart(LARGE_DATA_SOURCE);
+    multiPartMimeBody.addBodyPart(LARGE_DATA_SOURCE);
+    multiPartMimeBody.addBodyPart(LARGE_DATA_SOURCE);
+    multiPartMimeBody.addBodyPart(LARGE_DATA_SOURCE);
+    multiPartMimeBody.addBodyPart(LARGE_DATA_SOURCE);
 
     final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     multiPartMimeBody.writeTo(byteArrayOutputStream);

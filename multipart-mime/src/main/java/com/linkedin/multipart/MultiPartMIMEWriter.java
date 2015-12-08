@@ -117,7 +117,7 @@ public final class MultiPartMIMEWriter
 
     /**
      * Append a {@link MultiPartMIMEDataSourceIterator} to be used as a non-nested data source
-     * within the multipart mime envelope. This will usually be a {@link com.linkedin.multipart.MultiPartMIMEReader}.
+     * within the multipart mime envelope.
      *
      * All the individual parts read using the {@link MultiPartMIMEDataSourceIterator}
      * will be placed one by one into this new envelope with boundaries replaced.

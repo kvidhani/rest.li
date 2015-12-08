@@ -176,7 +176,7 @@ public class TestMIMEChainingMultipleSources
       {
         //1. Send a request to server B.
         //2. Get a MIME response back.
-        //3. Tack on a local input stream (body5).
+        //3. Tack on a local input stream (BODY_5).
         //4. Send the original incoming reader + local input stream + first part from the incoming response.
         //5. Drain the remaining parts from the response.
         //6. Count down the latch.
@@ -249,8 +249,8 @@ public class TestMIMEChainingMultipleSources
         final MultiPartMIMEReader incomingRequestReader = MultiPartMIMEReader.createAndAcquireStream(_incomingRequest);
 
         final MultiPartMIMEInputStream localInputStream =
-            new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(body5.getPartData().copyBytes()),
-                _scheduledExecutorService, body5.getPartHeaders()).withWriteChunkSize(_chunkSize).build();
+            new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(BODY_5.getPartData().copyBytes()),
+                _scheduledExecutorService, BODY_5.getPartHeaders()).withWriteChunkSize(_chunkSize).build();
 
         final MultiPartMIMEWriter writer =
             new MultiPartMIMEWriter.Builder().appendDataSource(singlePartMIMEReader).appendDataSource(localInputStream)
@@ -303,20 +303,20 @@ public class TestMIMEChainingMultipleSources
       try
       {
         final MultiPartMIMEInputStream body1DataSource =
-            new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(body1.getPartData().copyBytes()),
-                _scheduledExecutorService, body1.getPartHeaders()).withWriteChunkSize(_chunkSize).build();
+            new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(BODY_1.getPartData().copyBytes()),
+                _scheduledExecutorService, BODY_1.getPartHeaders()).withWriteChunkSize(_chunkSize).build();
 
         final MultiPartMIMEInputStream body2DataSource =
-            new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(body2.getPartData().copyBytes()),
-                _scheduledExecutorService, body2.getPartHeaders()).withWriteChunkSize(_chunkSize).build();
+            new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(BODY_2.getPartData().copyBytes()),
+                _scheduledExecutorService, BODY_2.getPartHeaders()).withWriteChunkSize(_chunkSize).build();
 
         final MultiPartMIMEInputStream body3DataSource =
-            new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(body3.getPartData().copyBytes()),
-                _scheduledExecutorService, body3.getPartHeaders()).withWriteChunkSize(_chunkSize).build();
+            new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(BODY_3.getPartData().copyBytes()),
+                _scheduledExecutorService, BODY_3.getPartHeaders()).withWriteChunkSize(_chunkSize).build();
 
         final MultiPartMIMEInputStream body4DataSource =
-            new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(body4.getPartData().copyBytes()),
-                _scheduledExecutorService, body4.getPartHeaders()).withWriteChunkSize(_chunkSize).build();
+            new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(BODY_4.getPartData().copyBytes()),
+                _scheduledExecutorService, BODY_4.getPartHeaders()).withWriteChunkSize(_chunkSize).build();
 
         final List<MultiPartMIMEDataSource> dataSources = new ArrayList<MultiPartMIMEDataSource>();
         dataSources.add(body1DataSource);
@@ -371,28 +371,28 @@ public class TestMIMEChainingMultipleSources
     //Verify client
     List<MIMETestUtils.SinglePartMIMEFullReaderCallback> clientSinglePartCallbacks = clientReceiver.getSinglePartMIMEReaderCallbacks();
     Assert.assertEquals(clientReceiver.getSinglePartMIMEReaderCallbacks().size(), 6);
-    Assert.assertEquals(clientSinglePartCallbacks.get(0).getFinishedData(), body1.getPartData());
-    Assert.assertEquals(clientSinglePartCallbacks.get(0).getHeaders(), body1.getPartHeaders());
-    Assert.assertEquals(clientSinglePartCallbacks.get(1).getFinishedData(), body5.getPartData());
-    Assert.assertEquals(clientSinglePartCallbacks.get(1).getHeaders(), body5.getPartHeaders());
-    Assert.assertEquals(clientSinglePartCallbacks.get(2).getFinishedData(), bodyA.getPartData());
-    Assert.assertEquals(clientSinglePartCallbacks.get(2).getHeaders(), bodyA.getPartHeaders());
-    Assert.assertEquals(clientSinglePartCallbacks.get(3).getFinishedData(), bodyB.getPartData());
-    Assert.assertEquals(clientSinglePartCallbacks.get(3).getHeaders(), bodyB.getPartHeaders());
-    Assert.assertEquals(clientSinglePartCallbacks.get(4).getFinishedData(), bodyC.getPartData());
-    Assert.assertEquals(clientSinglePartCallbacks.get(4).getHeaders(), bodyC.getPartHeaders());
-    Assert.assertEquals(clientSinglePartCallbacks.get(5).getFinishedData(), bodyD.getPartData());
-    Assert.assertEquals(clientSinglePartCallbacks.get(5).getHeaders(), bodyD.getPartHeaders());
+    Assert.assertEquals(clientSinglePartCallbacks.get(0).getFinishedData(), BODY_1.getPartData());
+    Assert.assertEquals(clientSinglePartCallbacks.get(0).getHeaders(), BODY_1.getPartHeaders());
+    Assert.assertEquals(clientSinglePartCallbacks.get(1).getFinishedData(), BODY_5.getPartData());
+    Assert.assertEquals(clientSinglePartCallbacks.get(1).getHeaders(), BODY_5.getPartHeaders());
+    Assert.assertEquals(clientSinglePartCallbacks.get(2).getFinishedData(), BODY_A.getPartData());
+    Assert.assertEquals(clientSinglePartCallbacks.get(2).getHeaders(), BODY_A.getPartHeaders());
+    Assert.assertEquals(clientSinglePartCallbacks.get(3).getFinishedData(), BODY_B.getPartData());
+    Assert.assertEquals(clientSinglePartCallbacks.get(3).getHeaders(), BODY_B.getPartHeaders());
+    Assert.assertEquals(clientSinglePartCallbacks.get(4).getFinishedData(), BODY_C.getPartData());
+    Assert.assertEquals(clientSinglePartCallbacks.get(4).getHeaders(), BODY_C.getPartHeaders());
+    Assert.assertEquals(clientSinglePartCallbacks.get(5).getFinishedData(), BODY_D.getPartData());
+    Assert.assertEquals(clientSinglePartCallbacks.get(5).getHeaders(), BODY_D.getPartHeaders());
 
     //Verify Server A
     List<MIMETestUtils.SinglePartMIMEFullReaderCallback> serverASinglePartCallbacks = _serverAMultiPartCallback.getSinglePartMIMEReaderCallbacks();
     Assert.assertEquals(serverASinglePartCallbacks.size(), 3);
-    Assert.assertEquals(serverASinglePartCallbacks.get(0).getFinishedData(), body2.getPartData());
-    Assert.assertEquals(serverASinglePartCallbacks.get(0).getHeaders(), body2.getPartHeaders());
-    Assert.assertEquals(serverASinglePartCallbacks.get(1).getFinishedData(), body3.getPartData());
-    Assert.assertEquals(serverASinglePartCallbacks.get(1).getHeaders(), body3.getPartHeaders());
-    Assert.assertEquals(serverASinglePartCallbacks.get(2).getFinishedData(), body4.getPartData());
-    Assert.assertEquals(serverASinglePartCallbacks.get(2).getHeaders(), body4.getPartHeaders());
+    Assert.assertEquals(serverASinglePartCallbacks.get(0).getFinishedData(), BODY_2.getPartData());
+    Assert.assertEquals(serverASinglePartCallbacks.get(0).getHeaders(), BODY_2.getPartHeaders());
+    Assert.assertEquals(serverASinglePartCallbacks.get(1).getFinishedData(), BODY_3.getPartData());
+    Assert.assertEquals(serverASinglePartCallbacks.get(1).getHeaders(), BODY_3.getPartHeaders());
+    Assert.assertEquals(serverASinglePartCallbacks.get(2).getFinishedData(), BODY_4.getPartData());
+    Assert.assertEquals(serverASinglePartCallbacks.get(2).getHeaders(), BODY_4.getPartHeaders());
   }
 
   private Callback<StreamResponse> generateSuccessChainCallback(final ClientMultiPartReceiver receiver)

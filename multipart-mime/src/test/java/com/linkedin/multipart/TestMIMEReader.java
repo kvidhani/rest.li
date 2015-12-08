@@ -62,18 +62,18 @@ public class TestMIMEReader extends AbstractMIMEUnitTest
   {
     return new Object[][]
         {
-            {1, smallDataSource},
-            {R2Constants.DEFAULT_DATA_CHUNK_SIZE, smallDataSource},
-            {1, largeDataSource},
-            {R2Constants.DEFAULT_DATA_CHUNK_SIZE, largeDataSource},
-            {1, headerLessBody},
-            {R2Constants.DEFAULT_DATA_CHUNK_SIZE, headerLessBody},
-            {1, bodyLessBody},
-            {R2Constants.DEFAULT_DATA_CHUNK_SIZE, bodyLessBody},
-            {1, bytesBody},
-            {R2Constants.DEFAULT_DATA_CHUNK_SIZE, bytesBody},
-            {1, purelyEmptyBody},
-            {R2Constants.DEFAULT_DATA_CHUNK_SIZE, purelyEmptyBody}
+            {1, SMALL_DATA_SOURCE},
+            {R2Constants.DEFAULT_DATA_CHUNK_SIZE, SMALL_DATA_SOURCE},
+            {1, LARGE_DATA_SOURCE},
+            {R2Constants.DEFAULT_DATA_CHUNK_SIZE, LARGE_DATA_SOURCE},
+            {1, HEADER_LESS_BODY},
+            {R2Constants.DEFAULT_DATA_CHUNK_SIZE, HEADER_LESS_BODY},
+            {1, BODY_LESS_BODY},
+            {R2Constants.DEFAULT_DATA_CHUNK_SIZE, BODY_LESS_BODY},
+            {1, BYTES_BODY},
+            {R2Constants.DEFAULT_DATA_CHUNK_SIZE, BYTES_BODY},
+            {1, PURELY_EMPTY_BODY},
+            {R2Constants.DEFAULT_DATA_CHUNK_SIZE, PURELY_EMPTY_BODY}
         };
   }
 
@@ -113,12 +113,12 @@ public class TestMIMEReader extends AbstractMIMEUnitTest
   public Object[][] multipleNormalBodiesDataSource() throws Exception
   {
     final List<MimeBodyPart> bodyPartList = new ArrayList<MimeBodyPart>();
-    bodyPartList.add(largeDataSource);
-    bodyPartList.add(smallDataSource);
-    bodyPartList.add(bodyLessBody);
-    bodyPartList.add(largeDataSource);
-    bodyPartList.add(smallDataSource);
-    bodyPartList.add(bodyLessBody);
+    bodyPartList.add(LARGE_DATA_SOURCE);
+    bodyPartList.add(SMALL_DATA_SOURCE);
+    bodyPartList.add(BODY_LESS_BODY);
+    bodyPartList.add(LARGE_DATA_SOURCE);
+    bodyPartList.add(SMALL_DATA_SOURCE);
+    bodyPartList.add(BODY_LESS_BODY);
 
     //For this particular data source, we will use a variety of chunk sizes to cover all edge cases.
     //This is particularly useful due to the way we decompose ByteStrings when creating data
@@ -169,9 +169,9 @@ public class TestMIMEReader extends AbstractMIMEUnitTest
   public Object[][] multipleAbnormalBodies() throws Exception
   {
     final List<MimeBodyPart> bodyPartList = new ArrayList<MimeBodyPart>();
-    bodyPartList.add(headerLessBody);
-    bodyPartList.add(bodyLessBody);
-    bodyPartList.add(purelyEmptyBody);
+    bodyPartList.add(HEADER_LESS_BODY);
+    bodyPartList.add(BODY_LESS_BODY);
+    bodyPartList.add(PURELY_EMPTY_BODY);
 
     return new Object[][]
         {
@@ -202,12 +202,12 @@ public class TestMIMEReader extends AbstractMIMEUnitTest
   public Object[][] allTypesOfBodiesDataSource() throws Exception
   {
     final List<MimeBodyPart> bodyPartList = new ArrayList<MimeBodyPart>();
-    bodyPartList.add(smallDataSource);
-    bodyPartList.add(largeDataSource);
-    bodyPartList.add(headerLessBody);
-    bodyPartList.add(bodyLessBody);
-    bodyPartList.add(bytesBody);
-    bodyPartList.add(purelyEmptyBody);
+    bodyPartList.add(SMALL_DATA_SOURCE);
+    bodyPartList.add(LARGE_DATA_SOURCE);
+    bodyPartList.add(HEADER_LESS_BODY);
+    bodyPartList.add(BODY_LESS_BODY);
+    bodyPartList.add(BYTES_BODY);
+    bodyPartList.add(PURELY_EMPTY_BODY);
 
     return new Object[][]
         {
@@ -240,12 +240,12 @@ public class TestMIMEReader extends AbstractMIMEUnitTest
   public Object[][] preambleEpilogueDataSource() throws Exception
   {
     final List<MimeBodyPart> bodyPartList = new ArrayList<MimeBodyPart>();
-    bodyPartList.add(smallDataSource);
-    bodyPartList.add(largeDataSource);
-    bodyPartList.add(headerLessBody);
-    bodyPartList.add(bodyLessBody);
-    bodyPartList.add(bytesBody);
-    bodyPartList.add(purelyEmptyBody);
+    bodyPartList.add(SMALL_DATA_SOURCE);
+    bodyPartList.add(LARGE_DATA_SOURCE);
+    bodyPartList.add(HEADER_LESS_BODY);
+    bodyPartList.add(BODY_LESS_BODY);
+    bodyPartList.add(BYTES_BODY);
+    bodyPartList.add(PURELY_EMPTY_BODY);
 
     return new Object[][]
         {
@@ -314,7 +314,7 @@ public class TestMIMEReader extends AbstractMIMEUnitTest
     //does not lead to a stack overflow.
     for (int i = 0; i < 5000; i++)
     {
-      multiPartMimeBody.addBodyPart(tinyDataSource);
+      multiPartMimeBody.addBodyPart(TINY_DATA_SOURCE);
     }
 
     final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
