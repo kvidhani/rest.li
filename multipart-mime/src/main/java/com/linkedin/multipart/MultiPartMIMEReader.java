@@ -1426,6 +1426,8 @@ public class MultiPartMIMEReader implements MultiPartMIMEDataSourceIterator
   }
 
   /**
+   * Please do not use. This is for internal use only.
+   *
    * Invoked as the first step to walk through all potential data sources represented by this MultiPartMIMEDataSourceIterator.
    *
    * @param callback the callback that will be invoked as data sources become available for consumption.
