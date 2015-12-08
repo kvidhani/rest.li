@@ -19,7 +19,7 @@ package com.linkedin.multipart;
 
 /**
  * Interface to be used by classes which can produce multiple data sources instead of just a single
- * {@link com.linkedin.multipart.MultiPartMIMEDataSource}.
+ * {@link MultiPartMIMEDataSourceWriter}.
  *
  * @author Karim Vidhani
  */

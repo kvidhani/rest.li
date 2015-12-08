@@ -17,7 +17,7 @@
 package com.linkedin.restli.internal.common.attachments;
 
 
-import com.linkedin.multipart.MultiPartMIMEDataSource;
+import com.linkedin.multipart.MultiPartMIMEDataSourceWriter;
 import com.linkedin.multipart.MultiPartMIMEWriter;
 import com.linkedin.r2.message.stream.entitystream.ByteStringWriter;
 import com.linkedin.r2.message.stream.entitystream.WriteHandle;
@@ -41,7 +41,7 @@ public class AttachmentUtilities
                                                               final RestLiStreamingAttachments streamingAttachments)
   {
     final MultiPartMIMEWriter.Builder multiPartMIMEWriterBuilder = new MultiPartMIMEWriter.Builder();
-    multiPartMIMEWriterBuilder.appendDataSource(new MultiPartMIMEDataSource()
+    multiPartMIMEWriterBuilder.appendDataSource(new MultiPartMIMEDataSourceWriter()
     {
       @Override
       public Map<String, String> dataSourceHeaders()
@@ -76,7 +76,7 @@ public class AttachmentUtilities
       if (streamingDataSource instanceof RestLiAttachmentDataSource)
       {
         final RestLiAttachmentDataSource restLiAttachmentDataSource = (RestLiAttachmentDataSource) streamingDataSource;
-        multiPartMIMEWriterBuilder.appendDataSource(new MultiPartMIMEDataSource()
+        multiPartMIMEWriterBuilder.appendDataSource(new MultiPartMIMEDataSourceWriter()
         {
           @Override
           public Map<String, String> dataSourceHeaders()

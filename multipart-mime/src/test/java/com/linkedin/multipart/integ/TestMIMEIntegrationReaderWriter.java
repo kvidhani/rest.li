@@ -19,7 +19,7 @@ package com.linkedin.multipart.integ;
 
 import com.linkedin.common.callback.Callback;
 import com.linkedin.data.ByteString;
-import com.linkedin.multipart.MultiPartMIMEDataSource;
+import com.linkedin.multipart.MultiPartMIMEDataSourceWriter;
 import com.linkedin.multipart.MultiPartMIMEInputStream;
 import com.linkedin.multipart.MultiPartMIMEReader;
 import com.linkedin.multipart.MultiPartMIMEReaderCallback;
@@ -177,7 +177,7 @@ public class TestMIMEIntegrationReaderWriter extends AbstractMIMEIntegrationStre
   public void testEachSingleBodyDataSourceMultipleTimes(final int chunkSize, final MIMEDataPart bodyPart)
       throws Exception
   {
-    final List<MultiPartMIMEDataSource> dataSources = new ArrayList<MultiPartMIMEDataSource>();
+    final List<MultiPartMIMEDataSourceWriter> dataSources = new ArrayList<MultiPartMIMEDataSourceWriter>();
     for (int i = 0; i < 4; i++)
     {
       final MultiPartMIMEInputStream inputStreamDataSource =

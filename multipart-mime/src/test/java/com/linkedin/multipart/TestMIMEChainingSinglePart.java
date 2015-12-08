@@ -53,7 +53,7 @@ public class TestMIMEChainingSinglePart extends AbstractMIMEUnitTest
   @Test(dataProvider = "chunkSizes")
   public void testSinglePartDataSource(final int chunkSize) throws Exception
   {
-    final List<MultiPartMIMEDataSource> dataSources = generateInputStreamDataSources(chunkSize, _scheduledExecutorService);
+    final List<MultiPartMIMEDataSourceWriter> dataSources = generateInputStreamDataSources(chunkSize, _scheduledExecutorService);
 
     final MultiPartMIMEWriter writer = new MultiPartMIMEWriter.Builder().appendDataSources(dataSources).build();
 

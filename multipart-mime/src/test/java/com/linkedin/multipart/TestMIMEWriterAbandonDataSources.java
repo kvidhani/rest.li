@@ -41,14 +41,14 @@ public class TestMIMEWriterAbandonDataSources extends AbstractMIMEUnitTest
     //Create a MultiPartMIMEReader, SinglePartMIMEReader and custom data source all as data sources for a writer.
     final MultiPartMIMEReader multiPartMIMEReader = mock(MultiPartMIMEReader.class);
     final MultiPartMIMEReader.SinglePartMIMEReader singlePartMIMEReader = mock(MultiPartMIMEReader.SinglePartMIMEReader.class);
-    final MultiPartMIMEDataSource multiPartMIMEDataSource = mock(MultiPartMIMEDataSource.class);
+    final MultiPartMIMEDataSourceWriter multiPartMIMEDataSourceWriter = mock(MultiPartMIMEDataSourceWriter.class);
 
     Mockito.doCallRealMethod().when(singlePartMIMEReader).onAbort(any(Throwable.class));
 
     final MultiPartMIMEWriter writer = new MultiPartMIMEWriter.Builder("abc", "123")
         .appendDataSource(singlePartMIMEReader)
         .appendDataSourceIterator(multiPartMIMEReader)
-        .appendDataSource(multiPartMIMEDataSource)
+        .appendDataSource(multiPartMIMEDataSourceWriter)
         .build();
 
     final Throwable throwable = new NullPointerException("Some exception");
@@ -63,11 +63,11 @@ public class TestMIMEWriterAbandonDataSources extends AbstractMIMEUnitTest
     verify(singlePartMIMEReader, times(1)).dataSourceHeaders();
 
     //The custom data source should have been told to abort.
-    verify(multiPartMIMEDataSource, times(1)).onAbort(throwable);
-    verify(multiPartMIMEDataSource, times(1)).dataSourceHeaders();
+    verify(multiPartMIMEDataSourceWriter, times(1)).onAbort(throwable);
+    verify(multiPartMIMEDataSourceWriter, times(1)).dataSourceHeaders();
 
     verifyNoMoreInteractions(multiPartMIMEReader);
     verifyNoMoreInteractions(singlePartMIMEReader);
-    verifyNoMoreInteractions(multiPartMIMEDataSource);
+    verifyNoMoreInteractions(multiPartMIMEDataSourceWriter);
   }
 }

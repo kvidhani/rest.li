@@ -32,13 +32,13 @@ import java.io.IOException;
 final class MultiPartMIMEChainReaderCallback implements MultiPartMIMEDataSourceIteratorCallback
 {
   private final WriteHandle _writeHandle;
-  private MultiPartMIMEDataSource _currentDataSource;
+  private MultiPartMIMEDataSourceWriter _currentDataSource;
   private final byte[] _normalEncapsulationBoundary;
 
   @Override
-  public void onNewDataSource(final MultiPartMIMEDataSource multiPartMIMEDataSource)
+  public void onNewDataSource(final MultiPartMIMEDataSourceWriter multiPartMIMEDataSourceWriter)
   {
-    multiPartMIMEDataSource.onInit(new WriteHandle()
+    multiPartMIMEDataSourceWriter.onInit(new WriteHandle()
     {
       @Override
       public void write(ByteString data)
@@ -65,13 +65,13 @@ final class MultiPartMIMEChainReaderCallback implements MultiPartMIMEDataSourceI
         return _writeHandle.remaining();
       }
     });
-    _currentDataSource = multiPartMIMEDataSource;
+    _currentDataSource = multiPartMIMEDataSourceWriter;
 
     ByteString serializedBoundaryAndHeaders = null;
     try
     {
       serializedBoundaryAndHeaders =
-          MultiPartMIMEUtils.serializeBoundaryAndHeaders(_normalEncapsulationBoundary, multiPartMIMEDataSource);
+          MultiPartMIMEUtils.serializeBoundaryAndHeaders(_normalEncapsulationBoundary, multiPartMIMEDataSourceWriter);
     }
     catch (IOException ioException)
     {
@@ -81,7 +81,7 @@ final class MultiPartMIMEChainReaderCallback implements MultiPartMIMEDataSourceI
     _writeHandle.write(serializedBoundaryAndHeaders);
     if (_writeHandle.remaining() > 0)
     {
-      multiPartMIMEDataSource.onWritePossible();
+      multiPartMIMEDataSourceWriter.onWritePossible();
     }
   }
 
@@ -117,7 +117,7 @@ final class MultiPartMIMEChainReaderCallback implements MultiPartMIMEDataSourceI
     _normalEncapsulationBoundary = normalEncapsulationBoundary;
   }
 
-  MultiPartMIMEDataSource getCurrentDataSource()
+  MultiPartMIMEDataSourceWriter getCurrentDataSource()
   {
     return _currentDataSource;
   }

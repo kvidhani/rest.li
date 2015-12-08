@@ -183,7 +183,7 @@ public final class MultiPartMIMEUtils
   //Note: This could be optimized to pass in a ByteArrayOutputStream so that we don't reallocate a new one
   //each time.
   static ByteString serializeBoundaryAndHeaders(final byte[] normalEncapsulationBoundary,
-      final MultiPartMIMEDataSource dataSource) throws IOException
+      final MultiPartMIMEDataSourceWriter dataSource) throws IOException
   {
     final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
 

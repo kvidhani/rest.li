@@ -56,7 +56,7 @@ final class MultiPartMIMEChainReaderWriter implements Writer
     {
       _multiPartMIMEChainReaderCallback =
           new MultiPartMIMEChainReaderCallback(_writeHandle, _normalEncapsulationBoundary);
-      //Since this is not a MultiPartMIMEDataSource we can't use the regular mechanism for reading data.
+      //Since this is not a MultiPartMIMEDataSourceWriter we can't use the regular mechanism for reading data.
       //Instead of create a new callback that will use to write to the writeHandle using the SinglePartMIMEReader.
 
       _multiPartMIMEDataSourceIterator.registerDataSourceReaderCallback(_multiPartMIMEChainReaderCallback);

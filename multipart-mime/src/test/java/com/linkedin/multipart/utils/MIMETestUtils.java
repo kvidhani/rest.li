@@ -18,7 +18,7 @@ package com.linkedin.multipart.utils;
 
 
 import com.linkedin.data.ByteString;
-import com.linkedin.multipart.MultiPartMIMEDataSource;
+import com.linkedin.multipart.MultiPartMIMEDataSourceWriter;
 import com.linkedin.multipart.MultiPartMIMEInputStream;
 import com.linkedin.multipart.MultiPartMIMEReader;
 import com.linkedin.multipart.MultiPartMIMEReaderCallback;
@@ -353,7 +353,7 @@ public final class MIMETestUtils
   }
 
   //The chaining tests will use these:
-  public static List<MultiPartMIMEDataSource> generateInputStreamDataSources(final int chunkSize,
+  public static List<MultiPartMIMEDataSourceWriter> generateInputStreamDataSources(final int chunkSize,
                                                                              final ExecutorService executorService)
   {
     final MultiPartMIMEInputStream bodyADataSource =
@@ -372,7 +372,7 @@ public final class MIMETestUtils
         new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(BODY_D.getPartData().copyBytes()),
             executorService, BODY_D.getPartHeaders()).withWriteChunkSize(chunkSize).build();
 
-    final List<MultiPartMIMEDataSource> dataSources = new ArrayList<MultiPartMIMEDataSource>();
+    final List<MultiPartMIMEDataSourceWriter> dataSources = new ArrayList<MultiPartMIMEDataSourceWriter>();
     dataSources.add(bodyADataSource);
     dataSources.add(bodyBDataSource);
     dataSources.add(bodyCDataSource);

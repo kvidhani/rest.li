@@ -90,12 +90,12 @@ public final class MultiPartMIMEWriter
     }
 
     /**
-     * Append a {@link com.linkedin.multipart.MultiPartMIMEDataSource} to be placed in the multipart mime envelope.
+     * Append a {@link MultiPartMIMEDataSourceWriter} to be placed in the multipart mime envelope.
      *
      * @param dataSource the data source to be added.
      * @return the builder to continue building.
      */
-    public Builder appendDataSource(final MultiPartMIMEDataSource dataSource)
+    public Builder appendDataSource(final MultiPartMIMEDataSourceWriter dataSource)
     {
       ByteString serializedBoundaryAndHeaders = null;
       try
@@ -123,7 +123,7 @@ public final class MultiPartMIMEWriter
      * will be placed one by one into this new envelope with boundaries replaced.
      *
      * @param multiPartMIMEDataSourceIterator the {@link MultiPartMIMEDataSourceIterator} that will be used
-     *                                  to produce multiple parts to append.
+     *                                        to produce multiple parts to append.
      * @return the builder to continue building.
      */
     public Builder appendDataSourceIterator(final MultiPartMIMEDataSourceIterator multiPartMIMEDataSourceIterator)
@@ -135,14 +135,14 @@ public final class MultiPartMIMEWriter
     }
 
     /**
-     * Append multiple {@link com.linkedin.multipart.MultiPartMIMEDataSource}s into the multipart mime envelope.
+     * Append multiple {@link MultiPartMIMEDataSourceWriter}s into the multipart mime envelope.
      *
      * @param dataSources the data sources to be added.
      * @return the builder to continue building.
      */
-    public Builder appendDataSources(final List<MultiPartMIMEDataSource> dataSources)
+    public Builder appendDataSources(final List<MultiPartMIMEDataSourceWriter> dataSources)
     {
-      for (final MultiPartMIMEDataSource dataSource : dataSources)
+      for (final MultiPartMIMEDataSourceWriter dataSource : dataSources)
       {
         appendDataSource(dataSource);
       }
@@ -199,9 +199,9 @@ public final class MultiPartMIMEWriter
    *
    * The abandon behavior can be different for each data source passed in.
    *
-   * 1. If the data source passed in is a custom {@link com.linkedin.multipart.MultiPartMIMEDataSource}, then it will be
+   * 1. If the data source passed in is a custom {@link MultiPartMIMEDataSourceWriter}, then it will be
    * invoked on {@link com.linkedin.r2.message.stream.entitystream.Writer#onAbort(java.lang.Throwable)}. At this point
-   * the custom data source can perform any cleanup necessary. Note that the custom {@link com.linkedin.multipart.MultiPartMIMEDataSource}
+   * the custom data source can perform any cleanup necessary. Note that the custom {@link MultiPartMIMEDataSourceWriter}
    * will be able to see the Throwable that is passed into this method.
    *
    * 2. If the data source passed in is a {@link MultiPartMIMEDataSourceIterator}, then all data sources

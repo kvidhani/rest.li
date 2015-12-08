@@ -159,7 +159,7 @@ public class TestMIMEWriter extends AbstractMIMEUnitTest
     expectedParts.add(_normalBody);
     expectedParts.add(_bodyLessBody);
 
-    final List<MultiPartMIMEDataSource> inputStreamDataSources = new ArrayList<MultiPartMIMEDataSource>();
+    final List<MultiPartMIMEDataSourceWriter> inputStreamDataSources = new ArrayList<MultiPartMIMEDataSourceWriter>();
     inputStreamDataSources.add(new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(_normalBodyData),
                                                                     _scheduledExecutorService,
                                                                     _normalBodyHeaders).build());

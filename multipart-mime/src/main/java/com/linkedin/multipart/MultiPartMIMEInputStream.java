@@ -48,7 +48,7 @@ import java.util.concurrent.TimeoutException;
  *
  * @author Karim Vidhani
  */
-public final class MultiPartMIMEInputStream implements MultiPartMIMEDataSource
+public final class MultiPartMIMEInputStream implements MultiPartMIMEDataSourceWriter
 {
   public static final int DEFAULT_MAXIMUM_BLOCKING_DURATION = 3000;
   public static final int DEFAULT_WRITE_CHUNK_SIZE = 5000;

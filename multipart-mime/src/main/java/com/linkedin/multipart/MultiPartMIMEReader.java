@@ -1472,7 +1472,7 @@ public class MultiPartMIMEReader implements MultiPartMIMEDataSourceIterator
    * and then call {@link com.linkedin.multipart.MultiPartMIMEReader.SinglePartMIMEReader#requestPartData()}
    * to start the flow of data.
    */
-  public class SinglePartMIMEReader implements MultiPartMIMEDataSource
+  public class SinglePartMIMEReader implements MultiPartMIMEDataSourceWriter
   {
     private final Map<String, String> _headers;
     private volatile SinglePartMIMEReaderCallback _callback = null;

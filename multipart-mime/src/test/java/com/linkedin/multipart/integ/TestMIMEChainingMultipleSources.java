@@ -21,7 +21,7 @@ import com.linkedin.common.callback.Callback;
 import com.linkedin.common.callback.FutureCallback;
 import com.linkedin.common.util.None;
 import com.linkedin.data.ByteString;
-import com.linkedin.multipart.MultiPartMIMEDataSource;
+import com.linkedin.multipart.MultiPartMIMEDataSourceWriter;
 import com.linkedin.multipart.MultiPartMIMEInputStream;
 import com.linkedin.multipart.MultiPartMIMEReader;
 import com.linkedin.multipart.MultiPartMIMEReaderCallback;
@@ -318,7 +318,7 @@ public class TestMIMEChainingMultipleSources
             new MultiPartMIMEInputStream.Builder(new ByteArrayInputStream(BODY_4.getPartData().copyBytes()),
                 _scheduledExecutorService, BODY_4.getPartHeaders()).withWriteChunkSize(_chunkSize).build();
 
-        final List<MultiPartMIMEDataSource> dataSources = new ArrayList<MultiPartMIMEDataSource>();
+        final List<MultiPartMIMEDataSourceWriter> dataSources = new ArrayList<MultiPartMIMEDataSourceWriter>();
         dataSources.add(body1DataSource);
         dataSources.add(body2DataSource);
         dataSources.add(body3DataSource);
@@ -351,7 +351,7 @@ public class TestMIMEChainingMultipleSources
   {
     _chunkSize = chunkSize;
 
-    final List<MultiPartMIMEDataSource> dataSources = generateInputStreamDataSources(chunkSize, _scheduledExecutorService);
+    final List<MultiPartMIMEDataSourceWriter> dataSources = generateInputStreamDataSources(chunkSize, _scheduledExecutorService);
 
     final MultiPartMIMEWriter writer = new MultiPartMIMEWriter.Builder().appendDataSources(dataSources).build();
 

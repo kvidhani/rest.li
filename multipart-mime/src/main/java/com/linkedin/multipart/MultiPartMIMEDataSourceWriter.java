@@ -28,7 +28,7 @@ import java.util.Map;
  *
  * @author Karim Vidhani
  */
-public interface MultiPartMIMEDataSource extends Writer
+public interface MultiPartMIMEDataSourceWriter extends Writer
 {
   /**
    * Immediately return the headers need for this part. If no headers are provided, clients must
